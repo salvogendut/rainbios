@@ -61,6 +61,13 @@ PAYLOAD_RAM_END equ #f396
 TAPE_PERIOD     equ #f398
 TAPE_LEVEL      equ #f399
 TAPE_SYNC       equ #f39a
+H_PHYD          equ #ffa7
+H_FORM          equ #ffac
+H_ISFL          equ #fedf
+H_OUTD          equ #fee4
+PTRFIL          equ #f864
+VOICEN          equ #fb38
+VCBA            equ #fb41
 STACK_TOP       equ #f380
 
                 org #0000
@@ -391,6 +398,8 @@ bootstrap_empty_hook:
                 ld (hl),#c9
                 add hl,de
                 djnz bootstrap_empty_hook
+
+                call init_disk_default_hooks
 
 ; Publish the eight write-only TMS9918 register values used by the boot UI.
 ; Firmware clients read these RAM shadows when changing individual bits.
@@ -939,32 +948,80 @@ unsupported_call:
                 scf
                 ret
 
-; MSX1 mass-storage stubs.
-; These interfaces are intentionally unsupported in this BIOS slice.
+; MSX1 mass-storage callouts.
+; These call into hook vectors when a disk ROM provides them; safe defaults are
+; installed at cold boot so read-only behavior is still defined without
+; additional mass-storage support.
 disk_phyio:
-                scf
+                call H_PHYD
                 ret
 
 disk_format:
-                scf
+                call H_FORM
                 ret
 
-; Return #00 and clear carry to report no active storage I/O and
-; no active transfer context.
 disk_isflio:
                 xor a
+                call H_ISFL
                 ret
 
 disk_outdlp:
-                scf
+                call H_OUTD
                 ret
 
 disk_getvcp:
-                scf
+                ld l,2
+                call disk_getvc2
                 ret
 
 disk_getvc2:
+                ld a,(VOICEN)
+                push de
+                ld d,0
+                ld e,l
+                ld hl,VCBA
+                add hl,de
+                ld e,37
+disk_getvc2_loop:
+                or a
+                jr z,disk_getvc2_exit
+                add hl,de
+                dec a
+                jr disk_getvc2_loop
+disk_getvc2_exit:
+                pop de
                 scf
+                ret
+
+; Initialize disk-related hook vectors to safe defaults.
+;
+; H_PHYD, H_FORM and H_OUTD:
+;   - scf / ret (report not supported)
+; H_ISFL:
+;   - xor a / ret (no active transfer context)
+;
+; A default is stored as two instruction bytes; this is sufficient because all
+; current call sites use a direct CALL to this address.
+init_disk_default_hooks:
+                ld hl,H_PHYD
+                ld (hl),#37
+                inc hl
+                ld (hl),#c9
+
+                ld hl,H_FORM
+                ld (hl),#37
+                inc hl
+                ld (hl),#c9
+
+                ld hl,H_ISFL
+                ld (hl),#af
+                inc hl
+                ld (hl),#c9
+
+                ld hl,H_OUTD
+                ld (hl),#37
+                inc hl
+                ld (hl),#c9
                 ret
 
 ; Partial inline inter-slot call used by standard five-byte hooks:
