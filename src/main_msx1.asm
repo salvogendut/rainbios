@@ -1199,7 +1199,8 @@ initgrp_name_loop:
 
 ; Minimal Screen 0/1 console output. Cursor coordinates are one-based, as
 ; published for POSIT and the CSRX/CSRY work bytes. CHPUT preserves every
-; normal register and handles printable ASCII, CR, LF, and line wrapping.
+; normal register and handles printable ASCII, CR, LF, line wrapping, and
+; scrolling at the bottom of the 24-row text screen.
 chput:
                 push af
                 push bc
@@ -1254,6 +1255,7 @@ chput_advance_line:
                 inc a
                 cp 25
                 jr c,chput_store_y
+                call console_scroll
                 ld a,24
 chput_store_y:
                 ld (CSRY),a
@@ -1293,6 +1295,45 @@ console_cursor_column:
                 ld de,#1800
                 add hl,de
                 ret
+
+; Move text rows 2..24 to rows 1..23 and blank the last row. The direct
+; bytewise VRAM copy works in both 40-column Screen 0 and 32-column Screen 1
+; without reserving a large RAM buffer.
+console_scroll:
+                ld a,(SCRMOD)
+                cp 1
+                jr z,console_scroll_screen1
+                ld hl,#0028                    ; Screen 0 row 2
+                ld de,#0000                    ; Screen 0 row 1
+                ld bc,920                      ; 23 rows * 40 columns
+                jr console_scroll_copy
+console_scroll_screen1:
+                ld hl,#1820                    ; Screen 1 row 2
+                ld de,#1800                    ; Screen 1 row 1
+                ld bc,736                      ; 23 rows * 32 columns
+console_scroll_copy:
+                call rdvrm
+                ex de,hl
+                call wrtvrm
+                ex de,hl
+                inc hl
+                inc de
+                dec bc
+                ld a,b
+                or c
+                jr nz,console_scroll_copy
+                ld a,(SCRMOD)
+                cp 1
+                jr z,console_scroll_clear_screen1
+                ld hl,#0398                    ; Screen 0 row 24
+                ld bc,40
+                jr console_scroll_clear
+console_scroll_clear_screen1:
+                ld hl,#1ae0                    ; Screen 1 row 24
+                ld bc,32
+console_scroll_clear:
+                ld a,#20
+                jp filvrm
 
 cls:
                 push hl

@@ -97,6 +97,21 @@ proc chput_done {} {
         format "CHPUT=%02X,%02X,%02X" \
             [debug read VRAM 81] [peek 0xF3DD] [peek 0xF3DC]
     ]
+    debug write VRAM 0x0000 0x11
+    debug write VRAM 0x0028 0x42
+    debug write VRAM 0x0398 0x55
+    poke 0xF3DD 5
+    poke 0xF3DC 24
+    reg A 0x0A
+    invoke_bios 0x00A2 scroll_done
+}
+
+proc scroll_done {} {
+    puts $::services_handle [
+        format "SCROLL=%02X,%02X,%02X,%02X" \
+            [debug read VRAM 0x0000] [debug read VRAM 0x0398] \
+            [peek 0xF3DD] [peek 0xF3DC]
+    ]
     reg F 0x40
     invoke_bios 0x00C3 cls_done
 }
