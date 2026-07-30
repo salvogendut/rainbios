@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+import csv
+import os
+from pathlib import Path
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+ROM_PATH = Path(
+    os.environ.get("RAINBIOS_MSX1_ROM", ROOT / "build" / "rainbios_msx1.rom")
+)
+ABI_PATH = ROOT / "docs" / "abi" / "main-bios.csv"
+
+
+def read_abi():
+    with ABI_PATH.open(newline="", encoding="utf-8") as stream:
+        return list(csv.DictReader(stream))
+
+
+class MainRomLayoutTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.rom = ROM_PATH.read_bytes()
+        cls.abi = read_abi()
+
+    def test_rom_is_exactly_32_kib(self):
+        self.assertEqual(len(self.rom), 0x8000)
+
+    def test_reset_starts_with_di_and_absolute_jump(self):
+        self.assertEqual(self.rom[0], 0xF3)  # DI
+        self.assertEqual(self.rom[1], 0xC3)  # JP nn
+        destination = int.from_bytes(self.rom[2:4], "little")
+        self.assertGreaterEqual(destination, 0x0200)
+        self.assertLess(destination, len(self.rom))
+
+    def test_fixed_metadata(self):
+        font = int.from_bytes(self.rom[0x0004:0x0006], "little")
+        self.assertGreaterEqual(font, 0x0200)
+        self.assertLessEqual(font + 2048, len(self.rom))
+        self.assertEqual(self.rom[0x0006:0x0008], bytes((0x98, 0x98)))
+        self.assertEqual(self.rom[0x002B:0x0030], bytes((0x21, 0x11, 0, 0, 0)))
+
+    def test_every_documented_jump_is_a_jump_into_the_rom(self):
+        for row in self.abi:
+            if row["kind"] != "jump":
+                continue
+            address = int(row["address"], 16)
+            with self.subTest(name=row["name"], address=row["address"]):
+                self.assertEqual(self.rom[address], 0xC3)
+                destination = int.from_bytes(
+                    self.rom[address + 1 : address + 3], "little"
+                )
+                self.assertGreaterEqual(destination, 0x0200)
+                self.assertLess(destination, len(self.rom))
+
+    def test_msx1_extrom_compatibility_entry_returns(self):
+        self.assertEqual(self.rom[0x015F], 0xC9)  # RET
+
+    def test_abi_addresses_are_unique_and_ordered(self):
+        addresses = [int(row["address"], 16) for row in self.abi]
+        self.assertEqual(addresses, sorted(addresses))
+        self.assertEqual(len(addresses), len(set(addresses)))
+
+    def test_abi_status_vocabulary_is_controlled(self):
+        statuses = {row["status"] for row in self.abi}
+        self.assertLessEqual(statuses, {"stub", "partial", "implemented"})
+        self.assertIn("stub", statuses)
+
+    def test_unused_rom_tail_is_erased(self):
+        self.assertEqual(self.rom[-256:], bytes((0xFF,)) * 256)
+
+
+if __name__ == "__main__":
+    unittest.main()

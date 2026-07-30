@@ -1,0 +1,9 @@
+{
+  "artifact": null,
+  "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
+  "revision": "87384ff4f2f554ff71494100c3fc431b9bb71f1b",
+  "upstream_snapshot": "d70c643a5db24007ad6533f92b701fd714a99b7f",
+  "upstream_tag": "upstream-cpmish-d70c643",
+  "upstream_tip": "d4f2987a95f194a3431930340afbf1fc69f42125",
+  "upstream_tree": "e9d0ae3c5f53fbd78379aa0d3f38d13f31c823f6"
+}

@@ -1,0 +1,116 @@
+address,name,kind,status,milestone,notes
+0000,RESET,reset,partial,M1,Displays the logo and startup notice; plays a PSG jingle; Space opens the early boot menu
+0004,CGTABL,data,partial,M2,Points to the project-owned partial 8x8 boot font
+0006,VDP_DR,data,partial,M0,MSX1 VDP data port
+0007,VDP_DW,data,partial,M0,MSX1 VDP data port
+0008,SYNCHR,jump,stub,M6,
+000C,RDSLT,jump,stub,M1,
+0010,CHRGTR,jump,stub,M6,
+0014,WRSLT,jump,stub,M1,
+0018,OUTDO,jump,stub,M6,
+001C,CALSLT,jump,stub,M1,
+0020,DCOMPR,jump,partial,M0,Needs flag and clobber conformance tests
+0024,ENASLT,jump,stub,M1,
+0028,GETYPR,jump,stub,M6,
+002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
+002C,IDBYT2,data,partial,M0,US keyboard and BASIC identifiers
+002D,VERSION,data,partial,M0,MSX1 generation identifier
+0030,CALLF,jump,stub,M1,Fail-stop because this entry has inline operands
+0038,KEYINT,jump,stub,M1,Safe empty interrupt return only
+003B,INITIO,jump,stub,M1,
+003E,INIFNK,jump,stub,M3,
+0041,DISSCR,jump,partial,M2,No interrupt atomicity tests yet
+0044,ENASCR,jump,partial,M2,No interrupt atomicity tests yet
+0047,WRTVDP,jump,partial,M2,MSX1 registers 0 through 7 only
+004A,RDVRM,jump,partial,M2,Needs VDP timing tests
+004D,WRTVRM,jump,partial,M2,Needs VDP timing tests
+0050,SETRD,jump,partial,M2,14-bit VRAM address only
+0053,SETWRT,jump,partial,M2,14-bit VRAM address only
+0056,FILVRM,jump,partial,M2,Needs count and timing conformance tests
+0059,LDIRMV,jump,partial,M2,Needs count and timing conformance tests
+005C,LDIRVM,jump,partial,M2,Needs count and timing conformance tests
+005F,CHGMOD,jump,stub,M2,
+0062,CHGCLR,jump,stub,M2,
+0066,NMI,jump,stub,M1,Safe empty NMI return only
+0069,CLRSPR,jump,stub,M2,
+006C,INITXT,jump,stub,M2,
+006F,INIT32,jump,stub,M2,
+0072,INITGRP,jump,stub,M2,
+0075,INIMLT,jump,stub,M2,
+0078,SETTXT,jump,stub,M2,
+007B,SETT32,jump,stub,M2,
+007E,SETGRP,jump,stub,M2,
+0081,SETMLT,jump,stub,M2,
+0084,CALPAT,jump,stub,M2,
+0087,CALATR,jump,stub,M2,
+008A,GSPSIZ,jump,stub,M2,
+008D,GRPPRT,jump,stub,M2,
+0090,GICINI,jump,stub,M3,
+0093,WRTPSG,jump,partial,M3,Needs register-clobber tests
+0096,RDPSG,jump,partial,M3,Needs register-clobber tests
+0099,STRTMS,jump,stub,M3,
+009C,CHSNS,jump,stub,M3,
+009F,CHGET,jump,stub,M3,
+00A2,CHPUT,jump,stub,M2,
+00A5,LPTOUT,jump,stub,M3,
+00A8,LPTSTT,jump,stub,M3,
+00AB,CNVCHR,jump,stub,M3,
+00AE,PINLIN,jump,stub,M3,
+00B1,INLIN,jump,stub,M3,
+00B4,QINLIN,jump,stub,M3,
+00B7,BREAKX,jump,stub,M3,
+00BA,ISCNTC,jump,stub,M3,
+00BD,CKCNTC,jump,stub,M3,
+00C0,BEEP,jump,stub,M3,
+00C3,CLS,jump,stub,M2,
+00C6,POSIT,jump,stub,M2,
+00C9,FNKSB,jump,stub,M2,
+00CC,ERAFNK,jump,stub,M2,
+00CF,DSPFNK,jump,stub,M2,
+00D2,TOTEXT,jump,stub,M2,
+00D5,GTSTCK,jump,stub,M3,
+00D8,GTTRIG,jump,stub,M3,
+00DB,GTPAD,jump,stub,M3,
+00DE,GTPDL,jump,stub,M3,
+00E1,TAPION,jump,stub,M3,
+00E4,TAPIN,jump,stub,M3,
+00E7,TAPIOF,jump,stub,M3,
+00EA,TAPOON,jump,stub,M3,
+00ED,TAPOUT,jump,stub,M3,
+00F0,TAPOOF,jump,stub,M3,
+00F3,STMOTR,jump,stub,M3,
+00F6,LFTQ,jump,stub,M3,
+00F9,PUTQ,jump,stub,M3,
+00FC,RIGHTC,jump,stub,M2,
+00FF,LEFTC,jump,stub,M2,
+0102,UPC,jump,stub,M2,
+0105,TUPC,jump,stub,M2,
+0108,DOWNC,jump,stub,M2,
+010B,TDOWNC,jump,stub,M2,
+010E,SCALXY,jump,stub,M2,
+0111,MAPXY,jump,stub,M2,
+0114,FETCHC,jump,stub,M2,
+0117,STOREC,jump,stub,M2,
+011A,SETATR,jump,stub,M2,
+011D,READC,jump,stub,M2,
+0120,SETC,jump,stub,M2,
+0123,NSETCX,jump,stub,M2,
+0126,GTASPC,jump,stub,M2,
+0129,PNTINI,jump,stub,M2,
+012C,SCANR,jump,stub,M2,
+012F,SCANL,jump,stub,M2,
+0132,CHGCAP,jump,stub,M3,
+0135,CHGSND,jump,stub,M3,
+0138,RSLREG,jump,partial,M1,Direct primary-slot register access
+013B,WSLREG,jump,partial,M1,Direct primary-slot register access
+013E,RDVDP,jump,partial,M2,Reads and mirrors status register zero
+0141,SNSMAT,jump,partial,M3,Needs PPI direction and clobber tests
+0144,PHYDIO,jump,stub,M6,
+0147,FORMAT,jump,stub,M6,
+014A,ISFLIO,jump,stub,M6,
+014D,OUTDLP,jump,stub,M6,
+0150,GETVCP,jump,stub,M6,
+0153,GETVC2,jump,stub,M6,
+0156,KILBUF,jump,stub,M3,
+0159,CALBAS,jump,stub,M6,
+015F,EXTROM_COMPAT,return,stub,M4,MSX1 compatibility return

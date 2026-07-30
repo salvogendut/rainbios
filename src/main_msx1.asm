@@ -1,0 +1,575 @@
+; SPDX-License-Identifier: BSD-3-Clause
+;
+; RainBIOS M0 MSX1 main-ROM skeleton.
+;
+; This source establishes the public ROM layout. Routines marked partial have
+; straightforward hardware behavior but have not yet passed instruction-level
+; and hardware compatibility tests.
+
+VDP_DATA        equ #98
+VDP_CONTROL     equ #99
+PSG_ADDRESS     equ #a0
+PSG_WRITE       equ #a1
+PSG_READ        equ #a2
+PPI_SLOT        equ #a8
+PPI_KEYBOARD    equ #a9
+PPI_CONTROL_C   equ #aa
+PPI_CONTROL     equ #ab
+
+RG1SAV          equ #f3e0
+STATFL          equ #f3e7
+
+                org #0000
+
+; Reset entry and fixed metadata.
+                di
+                jp cold_boot
+                dw boot_font
+                db VDP_DATA
+                db VDP_DATA
+
+; MSX1 main BIOS ABI.
+                jp unsupported_call             ; 0008 SYNCHR
+                defs #000c-$,#ff
+                jp unsupported_call             ; 000C RDSLT
+                defs #0010-$,#ff
+                jp unsupported_call             ; 0010 CHRGTR
+                defs #0014-$,#ff
+                jp unsupported_call             ; 0014 WRSLT
+                defs #0018-$,#ff
+                jp unsupported_call             ; 0018 OUTDO
+                defs #001c-$,#ff
+                jp unsupported_call             ; 001C CALSLT
+                defs #0020-$,#ff
+                jp dcompr                       ; 0020 DCOMPR
+                defs #0024-$,#ff
+                jp unsupported_call             ; 0024 ENASLT
+                defs #0028-$,#ff
+                jp unsupported_call             ; 0028 GETYPR
+
+; International character set, D-M-Y date order, 60 Hz, US keyboard/BASIC.
+                db #21                          ; 002B IDBYT1
+                db #11                          ; 002C IDBYT2
+                db #00                          ; 002D MSX generation: MSX1
+                db #00                          ; 002E reserved
+                db #00                          ; 002F reserved
+
+                jp unsupported_inline_call      ; 0030 CALLF
+                defs #0038-$,#ff
+                jp empty_interrupt              ; 0038 KEYINT
+                jp unsupported_call             ; 003B INITIO
+                jp unsupported_call             ; 003E INIFNK
+                jp disscr                       ; 0041 DISSCR
+                jp enascr                       ; 0044 ENASCR
+                jp wrtvdp                       ; 0047 WRTVDP
+                jp rdvrm                        ; 004A RDVRM
+                jp wrtvrm                       ; 004D WRTVRM
+                jp setrd                        ; 0050 SETRD
+                jp setwrt                       ; 0053 SETWRT
+                jp filvrm                       ; 0056 FILVRM
+                jp ldirmv                       ; 0059 LDIRMV
+                jp ldirvm                       ; 005C LDIRVM
+                jp unsupported_call             ; 005F CHGMOD
+                jp unsupported_call             ; 0062 CHGCLR
+                defs #0066-$,#ff
+                jp nmi_handler                  ; 0066 NMI
+                jp unsupported_call             ; 0069 CLRSPR
+                jp unsupported_call             ; 006C INITXT
+                jp unsupported_call             ; 006F INIT32
+                jp unsupported_call             ; 0072 INITGRP
+                jp unsupported_call             ; 0075 INIMLT
+                jp unsupported_call             ; 0078 SETTXT
+                jp unsupported_call             ; 007B SETT32
+                jp unsupported_call             ; 007E SETGRP
+                jp unsupported_call             ; 0081 SETMLT
+                jp unsupported_call             ; 0084 CALPAT
+                jp unsupported_call             ; 0087 CALATR
+                jp unsupported_call             ; 008A GSPSIZ
+                jp unsupported_call             ; 008D GRPPRT
+                jp unsupported_call             ; 0090 GICINI
+                jp wrtpsg                       ; 0093 WRTPSG
+                jp rdpsg                        ; 0096 RDPSG
+                jp unsupported_call             ; 0099 STRTMS
+                jp unsupported_call             ; 009C CHSNS
+                jp unsupported_call             ; 009F CHGET
+                jp unsupported_call             ; 00A2 CHPUT
+                jp unsupported_call             ; 00A5 LPTOUT
+                jp unsupported_call             ; 00A8 LPTSTT
+                jp unsupported_call             ; 00AB CNVCHR
+                jp unsupported_call             ; 00AE PINLIN
+                jp unsupported_call             ; 00B1 INLIN
+                jp unsupported_call             ; 00B4 QINLIN
+                jp unsupported_call             ; 00B7 BREAKX
+                jp unsupported_call             ; 00BA ISCNTC
+                jp unsupported_call             ; 00BD CKCNTC
+                jp unsupported_call             ; 00C0 BEEP
+                jp unsupported_call             ; 00C3 CLS
+                jp unsupported_call             ; 00C6 POSIT
+                jp unsupported_call             ; 00C9 FNKSB
+                jp unsupported_call             ; 00CC ERAFNK
+                jp unsupported_call             ; 00CF DSPFNK
+                jp unsupported_call             ; 00D2 TOTEXT
+                jp unsupported_call             ; 00D5 GTSTCK
+                jp unsupported_call             ; 00D8 GTTRIG
+                jp unsupported_call             ; 00DB GTPAD
+                jp unsupported_call             ; 00DE GTPDL
+                jp unsupported_call             ; 00E1 TAPION
+                jp unsupported_call             ; 00E4 TAPIN
+                jp unsupported_call             ; 00E7 TAPIOF
+                jp unsupported_call             ; 00EA TAPOON
+                jp unsupported_call             ; 00ED TAPOUT
+                jp unsupported_call             ; 00F0 TAPOOF
+                jp unsupported_call             ; 00F3 STMOTR
+                jp unsupported_call             ; 00F6 LFTQ
+                jp unsupported_call             ; 00F9 PUTQ
+                jp unsupported_call             ; 00FC RIGHTC
+                jp unsupported_call             ; 00FF LEFTC
+                jp unsupported_call             ; 0102 UPC
+                jp unsupported_call             ; 0105 TUPC
+                jp unsupported_call             ; 0108 DOWNC
+                jp unsupported_call             ; 010B TDOWNC
+                jp unsupported_call             ; 010E SCALXY
+                jp unsupported_call             ; 0111 MAPXY
+                jp unsupported_call             ; 0114 FETCHC
+                jp unsupported_call             ; 0117 STOREC
+                jp unsupported_call             ; 011A SETATR
+                jp unsupported_call             ; 011D READC
+                jp unsupported_call             ; 0120 SETC
+                jp unsupported_call             ; 0123 NSETCX
+                jp unsupported_call             ; 0126 GTASPC
+                jp unsupported_call             ; 0129 PNTINI
+                jp unsupported_call             ; 012C SCANR
+                jp unsupported_call             ; 012F SCANL
+                jp unsupported_call             ; 0132 CHGCAP
+                jp unsupported_call             ; 0135 CHGSND
+                jp rslreg                       ; 0138 RSLREG
+                jp wslreg                       ; 013B WSLREG
+                jp rdvdp                        ; 013E RDVDP
+                jp snsmat                       ; 0141 SNSMAT
+                jp unsupported_call             ; 0144 PHYDIO
+                jp unsupported_call             ; 0147 FORMAT
+                jp unsupported_call             ; 014A ISFLIO
+                jp unsupported_call             ; 014D OUTDLP
+                jp unsupported_call             ; 0150 GETVCP
+                jp unsupported_call             ; 0153 GETVC2
+                jp unsupported_call             ; 0156 KILBUF
+                jp unsupported_call             ; 0159 CALBAS
+                defs #015f-$,#ff
+                ret                             ; 015F MSX1 compatibility
+
+; Keep implementation code away from the fixed ABI area.
+                defs #0200-$,#ff
+
+cold_boot:
+                di
+
+; Initialize Graphics II with the display disabled. This path deliberately
+; avoids CALL, PUSH, and RAM because M1 has not selected or tested RAM yet.
+                ld a,#82
+                out (PPI_CONTROL),a             ; PPI mode 0, keyboard input
+                xor a
+                out (PPI_SLOT),a                ; main ROM in all four pages
+                ld a,#02
+                out (VDP_CONTROL),a
+                ld a,#80
+                out (VDP_CONTROL),a             ; R0: Graphics II
+                ld a,#80
+                out (VDP_CONTROL),a
+                ld a,#81
+                out (VDP_CONTROL),a             ; R1: 16K VRAM, display off
+                ld a,#06
+                out (VDP_CONTROL),a
+                ld a,#82
+                out (VDP_CONTROL),a             ; R2: name table at 1800h
+                ld a,#ff
+                out (VDP_CONTROL),a
+                ld a,#83
+                out (VDP_CONTROL),a             ; R3: color table at 2000h
+                ld a,#03
+                out (VDP_CONTROL),a
+                ld a,#84
+                out (VDP_CONTROL),a             ; R4: patterns at 0000h
+                ld a,#36
+                out (VDP_CONTROL),a
+                ld a,#85
+                out (VDP_CONTROL),a             ; R5: sprites at 1B00h
+                ld a,#07
+                out (VDP_CONTROL),a
+                ld a,#86
+                out (VDP_CONTROL),a             ; R6: sprite patterns at 3800h
+                ld a,#01
+                out (VDP_CONTROL),a
+                ld a,#87
+                out (VDP_CONTROL),a             ; R7: black backdrop
+
+; Upload the 6K pattern table at 0000h.
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#40
+                out (VDP_CONTROL),a
+                ld hl,logo_pattern
+                ld d,24
+                ld c,VDP_DATA
+cold_boot_pattern_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_pattern_block
+
+; The VDP address is now 1800h; upload the 768-byte name table.
+                ld hl,logo_name
+                ld d,3
+cold_boot_name_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_name_block
+
+; The VDP address is now 1B00h. A terminator hides all sprites.
+                ld a,#d0
+                out (VDP_DATA),a
+
+; Upload the 6K color table at 2000h.
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#60
+                out (VDP_CONTROL),a
+                ld hl,logo_color
+                ld d,24
+cold_boot_color_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_color_block
+
+; Enable the display. VDP interrupts remain disabled during M0 bring-up.
+                ld a,#c0
+                out (VDP_CONTROL),a
+                ld a,#81
+                out (VDP_CONTROL),a
+
+; Play a four-note startup motif on PSG channel A. The standard MSX mixer
+; value keeps PSG port A as input and port B as output. Channel B/C volumes
+; remain zero. The routine is deliberately inline and stackless.
+                ld a,#08
+                out (PSG_ADDRESS),a
+                xor a
+                out (PSG_WRITE),a
+                ld a,#09
+                out (PSG_ADDRESS),a
+                xor a
+                out (PSG_WRITE),a
+                ld a,#0a
+                out (PSG_ADDRESS),a
+                xor a
+                out (PSG_WRITE),a
+                ld a,#07
+                out (PSG_ADDRESS),a
+                ld a,#b8
+                out (PSG_WRITE),a
+                ld hl,jingle_notes
+                ld d,4
+cold_boot_jingle_note:
+                ld a,#00
+                out (PSG_ADDRESS),a
+                ld a,(hl)
+                inc hl
+                out (PSG_WRITE),a
+                ld a,#01
+                out (PSG_ADDRESS),a
+                ld a,(hl)
+                inc hl
+                out (PSG_WRITE),a
+                ld a,#08
+                out (PSG_ADDRESS),a
+                ld a,#0c
+                out (PSG_WRITE),a
+                ld bc,#3000
+cold_boot_jingle_delay:
+                dec bc
+                ld a,b
+                or c
+                jr nz,cold_boot_jingle_delay
+                ld a,#08
+                out (PSG_ADDRESS),a
+                xor a
+                out (PSG_WRITE),a
+                ld bc,#0400
+cold_boot_jingle_gap:
+                dec bc
+                ld a,b
+                or c
+                jr nz,cold_boot_jingle_gap
+                dec d
+                jr nz,cold_boot_jingle_note
+
+; Poll keyboard matrix row 8. MSX keys are active-low, and bit 0 is Space.
+cold_boot_wait:
+                in a,(PPI_CONTROL_C)
+                and #f0
+                or #08
+                out (PPI_CONTROL_C),a
+                in a,(PPI_KEYBOARD)
+                bit 0,a
+                jr nz,cold_boot_wait
+
+; Space opens a compact Screen 1 options/information page. Its static state is
+; intentionally honest about M0: editing starts after RAM/slot initialization.
+cold_boot_options:
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#80
+                out (VDP_CONTROL),a             ; R0: Screen 1
+                ld a,#80
+                out (VDP_CONTROL),a
+                ld a,#81
+                out (VDP_CONTROL),a             ; display off
+                ld a,#06
+                out (VDP_CONTROL),a
+                ld a,#82
+                out (VDP_CONTROL),a             ; name table at 1800h
+                ld a,#80
+                out (VDP_CONTROL),a
+                ld a,#83
+                out (VDP_CONTROL),a             ; color table at 2000h
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#84
+                out (VDP_CONTROL),a             ; patterns at 0000h
+                ld a,#04
+                out (VDP_CONTROL),a
+                ld a,#87
+                out (VDP_CONTROL),a             ; dark-blue backdrop
+
+; Upload the 2K font, then the 768-byte name table.
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#40
+                out (VDP_CONTROL),a
+                ld hl,boot_font
+                ld d,8
+                ld c,VDP_DATA
+cold_boot_font_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_font_block
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#58
+                out (VDP_CONTROL),a
+                ld hl,options_name
+                ld d,3
+cold_boot_options_name_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_options_name_block
+
+; Upload the 32-byte Screen 1 color table and enable the display.
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#60
+                out (VDP_CONTROL),a
+                ld hl,options_color
+                ld b,32
+                otir
+                ld a,#c0
+                out (VDP_CONTROL),a
+                ld a,#81
+                out (VDP_CONTROL),a
+cold_boot_options_wait:
+                jr cold_boot_options_wait
+
+; Ordinary unimplemented calls return carry set. This is a bring-up contract,
+; not an assertion about compatible error behavior.
+unsupported_call:
+                scf
+                ret
+
+; CALLF embeds operands after the call site, so returning as if it were an
+; ordinary routine would execute those operands. Fail closed until M1.
+unsupported_inline_call:
+                di
+unsupported_inline_halt:
+                halt
+                jr unsupported_inline_halt
+
+empty_interrupt:
+                ei
+                reti
+
+nmi_handler:
+                retn
+
+; Partial: compare HL with DE while preserving both operands.
+dcompr:
+                ld a,h
+                sub d
+                ret nz
+                ld a,l
+                sub e
+                ret
+
+; Partial MSX1 VDP primitives.
+disscr:
+                ld a,(RG1SAV)
+                and #bf
+                ld c,a
+                ld b,#01
+                jp wrtvdp
+
+enascr:
+                ld a,(RG1SAV)
+                or #40
+                ld c,a
+                ld b,#01
+                jp wrtvdp
+
+wrtvdp:
+                push af
+                push hl
+                ld a,b
+                and #07
+                add a,#df
+                ld l,a
+                ld h,#f3
+                ld (hl),c
+                ld a,c
+                out (VDP_CONTROL),a
+                ld a,b
+                or #80
+                out (VDP_CONTROL),a
+                pop hl
+                pop af
+                ret
+
+setrd:
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                out (VDP_CONTROL),a
+                ret
+
+setwrt:
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                or #40
+                out (VDP_CONTROL),a
+                ret
+
+rdvrm:
+                call setrd
+                in a,(VDP_DATA)
+                ret
+
+wrtvrm:
+                push af
+                call setwrt
+                pop af
+                out (VDP_DATA),a
+                ret
+
+filvrm:
+                push af
+                call setwrt
+                pop af
+filvrm_loop:
+                out (VDP_DATA),a
+                dec bc
+                push af
+                ld a,b
+                or c
+                jr z,filvrm_done
+                pop af
+                jr filvrm_loop
+filvrm_done:
+                pop af
+                ret
+
+ldirmv:
+                call setrd
+ldirmv_loop:
+                in a,(VDP_DATA)
+                ld (de),a
+                inc de
+                dec bc
+                ld a,b
+                or c
+                jr nz,ldirmv_loop
+                ret
+
+ldirvm:
+                ex de,hl
+                call setwrt
+                ex de,hl
+ldirvm_loop:
+                ld a,(hl)
+                out (VDP_DATA),a
+                inc hl
+                dec bc
+                ld a,b
+                or c
+                jr nz,ldirvm_loop
+                ret
+
+; Partial PSG primitives.
+wrtpsg:
+                out (PSG_ADDRESS),a
+                ld a,e
+                out (PSG_WRITE),a
+                ret
+
+rdpsg:
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                ret
+
+; Partial PPI and slot-register primitives.
+rslreg:
+                in a,(PPI_SLOT)
+                ret
+
+wslreg:
+                out (PPI_SLOT),a
+                ret
+
+rdvdp:
+                in a,(VDP_CONTROL)
+                ld (STATFL),a
+                ret
+
+snsmat:
+                and #0f
+                ld b,a
+                in a,(PPI_CONTROL_C)
+                and #f0
+                or b
+                out (PPI_CONTROL_C),a
+                in a,(PPI_KEYBOARD)
+                ret
+
+jingle_notes:
+                db #d6,#00                     ; C5
+                db #aa,#00                     ; E5
+                db #8f,#00                     ; G5
+                db #6b,#00                     ; C6
+
+boot_font:
+                incbin "boot_font.bin"
+options_name:
+                incbin "options_name.bin"
+options_color:
+                incbin "options_color.bin"
+
+logo_pattern:
+                incbin "logo_pattern.bin"
+logo_name:
+                incbin "logo_name.bin"
+logo_color:
+                incbin "logo_color.bin"
+
+                defs #8000-$,#ff
