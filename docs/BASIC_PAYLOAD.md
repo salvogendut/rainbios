@@ -4,8 +4,8 @@ RainBIOS offers `START BBC BASIC` as a boot-menu entry. The MSX
 payload works both as a standalone cartridge on compatible firmware and
 through RainBIOS's descriptor-aware menu. RainBIOS establishes slot RAM,
 validates the payload and its required services, and performs a dedicated
-non-returning transfer. The complete editing, language, error, clock, and
-timed-input smoke sequence passes through that menu path.
+non-returning transfer. The complete editing, language, error, clock,
+timed-input, graphics, and cassette-program paths are executable.
 
 ## Selected project
 
@@ -75,16 +75,23 @@ payload with interpreter state at `8000h` plausible.
 
 The P1 build places its cartridge veneer at `4000h`, independently written
 console adapter at `4013h-423Ah`, unchanged core at `4400h-74C1h`, Graphics II
-adapter at `74C2h-77AAh`, fixed state at `8000h-8311h`, and user memory from
-`8312h`. Its deterministic 16 KiB ROM
+adapter at `74C2h-77AAh`, cassette adapter at `77ABh-794Eh`, fixed state at
+`8000h-8321h`, and user memory from `8322h`. Its deterministic 16 KiB ROM
 ends with payload descriptor v1 at `7FF0h-7FFFh` and has SHA-256
-`5ef2f2b1…`. A guarded openMSX test exercises editing, integer and
+`14733ea4ae0b7956dfcf9ab9ec4d6f1be838ec1f6efc6da83887fb0c69a7b817`.
+A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983
 emulator independently confirms that the banner and prompt render visibly.
 An executable graphics example adds mode and colour selection, lines,
 absolute plotting, and pixel readback; it passes on C-BIOS and through
 RainBIOS in openMSX, with rendered output independently confirmed in 1983.
+The sequential storage adapter writes the public MSX binary-tape envelope:
+ten `D0h` bytes and a case-insensitive six-character filename, followed by
+start/end/execute metadata and the tokenized program. `LOAD` and `RUN` pass
+against a standard CAS fixture in 1983; `SAVE` returns successfully in
+openMSX, whose recorded WAV is decoded back to the expected type/name header.
+Random-access channels remain unsupported.
 
 SE BASIC IV remains useful open-source prior art and a possible future
 alternative payload. Its adjacent upstream checkout remains unmodified; no
@@ -96,7 +103,8 @@ The BBC BASIC project owns:
 
 - the interpreter and its retained upstream license;
 - the standalone cartridge startup adapter;
-- console, keyboard, cursor, centisecond-clock, and Graphics II services;
+- console, keyboard, cursor, centisecond-clock, Graphics II, and sequential
+  cassette program services;
 - a replacement for the CP/M-specific file/operating-system layer;
 - its writable memory map and minimum-RAM requirements;
 - standalone payload builds and interpreter smoke tests.
@@ -161,12 +169,15 @@ make check-bbcbasic-artifact \
   boundary and checks ROM-core assumptions on every `make check`.
 - **Port P0c (complete):** deterministic link proof validates the 16 KiB
   page-1 ROM and aligned page-2 state layout.
-- **Port P1 (complete):** bootable MSX console cartridge with storage
-  explicitly unsupported, guarded runtime tests in openMSX, and independent
-  rendered-prompt confirmation in 1983.
+- **Port P1 (complete):** bootable MSX console cartridge with random-access
+  storage explicitly unsupported, guarded runtime tests in openMSX, and
+  independent rendered-prompt confirmation in 1983.
 - **Port P2 graphics (complete):** initial TMS9918 Graphics II subset with
   `MODE 2/7`, `CLG`, `GCOL 0,c`, `MOVE`, `DRAW`, absolute `PLOT` 4/5/69,
   and `POINT`, exercised by a real stored BASIC program.
+- **Port P3 cassette (complete for sequential CAS):** program `SAVE`/`LOAD`
+  through the published MSX tape calls, with deterministic fixture,
+  two-emulator input coverage, and semantically decoded SAVE output.
 - **M2/M3:** console, keyboard, and timing services pass the interactive smoke
   and graphics tests; complete console controls, keyboard behavior, and
   optional PSG services remain.

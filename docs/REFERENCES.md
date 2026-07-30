@@ -75,7 +75,8 @@ open-source implementation difference is not copied.
   initialization; Chapter 5 cartridge headers, section 3 international
   keyboard/character input, and section 7 inter-slot call interfaces;
   Appendix 1 interrupt/VDP/mode/console call contracts; Appendix 4 MAIN-ROM
-  work-area and hook listings; and Appendix 8 control-character assignments
+  work-area and hook listings; Appendix 8 control-character assignments; and
+  the published cassette motor, leader, framed-byte, and tape-format behavior
 - Purpose: define the M1 slot-call register contract and the documented
   `F380h-FFCAh` work-area layout
 - RainBIOS use: interface and behavioral facts only
@@ -120,6 +121,11 @@ circular buffer pointers, `OLDKEY`/`NEWKEY` state, editing control characters,
 and the `SNSMAT`, `CHSNS`, `CHGET`, and `KILBUF` contracts. The edge-triggered
 scanner, translation tables, circular-buffer implementation, printable font
 additions, and conformance probe are original RainBIOS work.
+
+M3B uses the published PSG/PPI cassette wiring and `TAP*`/`STMOTR` contracts.
+The adaptive input decoder, FSK output, CAS/WAV fixtures, BBC BASIC sequential
+storage adapter, and emulator probes are original project work. No
+proprietary BIOS source or ROM disassembly was consulted for this milestone.
 
 M1G/M4A use the published normal cartridge header, primary-slot memory access,
 five-byte hook, and interrupt contracts. The `RBP1` validation rules, menu
@@ -188,6 +194,8 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
   `b97a838020cc6ad053b8fa1cd1ec5efc00e0d975`
 - MSX Graphics II revision:
   `88ebf44284db5951ad6cb433ca3ad7650d56bc92`
+- MSX cassette storage revision:
+  `186b2cc7fcbfa8bf21d1dfa7ce8987d4f0c4711f`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -215,13 +223,14 @@ places state at `8000h-82FFh`, and produces a nonfunctional 16 KiB layout ROM
 with SHA-256
 `b92d38754db7451e3e14acd0c1ae05efea2c50c99a2b920ee36e35bfc906be11`.
 The current cartridge uses published MSX BIOS calls and work-area variables
-for console, keyboard, cursor, timing, and Graphics II services. It places the
-unchanged core at `4400h-74C1h`, the independently written graphics adapter at
-`74C2h-77AAh`, fixed and adapter state at `8000h-8311h`, and user memory from
-`8312h`. Its 16 KiB ROM has SHA-256
-`5ef2f2b17709832c5a3ee59892dba806953cd0b5ec032e43df5dcd7f24f254a5`
+for console, keyboard, cursor, timing, Graphics II, and sequential cassette
+services. It places the unchanged core at `4400h-74C1h`, the independently
+written graphics adapter at `74C2h-77AAh`, the cassette adapter at
+`77ABh-794Eh`, fixed and adapter state at `8000h-8321h`, and user memory from
+`8322h`. Its 16 KiB ROM has SHA-256
+`14733ea4ae0b7956dfcf9ab9ec4d6f1be838ec1f6efc6da83887fb0c69a7b817`
 and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`, requiring the
-console, keyboard, timing, and graphics capability bits.
+console, keyboard, timing, graphics, and cassette capability bits.
 An openMSX smoke test exercises language, editing, error, clock, and timeout
 paths with zero writes to the selected ROM window. The adjacent 1983 emulator
 separately renders the banner and prompt, avoiding reliance on openMSX raw
@@ -236,6 +245,10 @@ MSX code for `MODE 2/7`, `CLG`, `GCOL 0,c`, `MOVE`, `DRAW`, absolute `PLOT`
 in openMSX with zero cartridge writes; 1983 separately confirms the rendered
 multicolour frame. No proprietary BIOS source was consulted for this
 milestone.
+The cassette revision adds only original MSX platform code. A deterministic
+CAS fixture loads and runs under RainBIOS in 1983, while openMSX records and
+the host checker decodes BBC BASIC SAVE output. Slow sampled-WAV replay is
+recorded as follow-up decoder work rather than claimed compatibility.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 

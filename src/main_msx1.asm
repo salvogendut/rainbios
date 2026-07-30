@@ -58,6 +58,9 @@ CART_SCAN_SLOT  equ #f392
 PAYLOAD_SLOT    equ #f393
 PAYLOAD_ENTRY   equ #f394
 PAYLOAD_RAM_END equ #f396
+TAPE_PERIOD     equ #f398
+TAPE_LEVEL      equ #f399
+TAPE_SYNC       equ #f39a
 STACK_TOP       equ #f380
 
                 org #0000
@@ -154,13 +157,13 @@ STACK_TOP       equ #f380
                 jp unsupported_call             ; 00D8 GTTRIG
                 jp unsupported_call             ; 00DB GTPAD
                 jp unsupported_call             ; 00DE GTPDL
-                jp unsupported_call             ; 00E1 TAPION
-                jp unsupported_call             ; 00E4 TAPIN
-                jp unsupported_call             ; 00E7 TAPIOF
-                jp unsupported_call             ; 00EA TAPOON
-                jp unsupported_call             ; 00ED TAPOUT
-                jp unsupported_call             ; 00F0 TAPOOF
-                jp unsupported_call             ; 00F3 STMOTR
+                jp tapion                       ; 00E1 TAPION
+                jp tapin                        ; 00E4 TAPIN
+                jp tapiof                       ; 00E7 TAPIOF
+                jp tapoon                       ; 00EA TAPOON
+                jp tapout                       ; 00ED TAPOUT
+                jp tapoof                       ; 00F0 TAPOOF
+                jp stmotr                       ; 00F3 STMOTR
                 jp unsupported_call             ; 00F6 LFTQ
                 jp unsupported_call             ; 00F9 PUTQ
                 jp unsupported_call             ; 00FC RIGHTC
@@ -211,6 +214,10 @@ cold_boot:
 ; ROM remains visible throughout.
                 ld a,#82
                 out (PPI_CONTROL),a             ; PPI mode 0, keyboard input
+                ld a,#09
+                out (PPI_CONTROL),a             ; cassette motor off
+                ld a,#0b
+                out (PPI_CONTROL),a             ; cassette output high
                 in a,(PPI_SLOT)
                 ld d,a                          ; original primary-slot map
                 ld e,0                          ; candidate primary RAM slot
@@ -858,7 +865,7 @@ cold_boot_payload_checksum:
                 inc hl
                 ld a,(CART_SCAN_SLOT)
                 call rdslt                       ; required service bits
-                and #f0
+                and #e0
                 jp nz,cold_boot_payload_claimed
 
 ; Record and validate a page-1 entry address.
@@ -1598,6 +1605,304 @@ wrtpsg:
 rdpsg:
                 out (PSG_ADDRESS),a
                 in a,(PSG_READ)
+                ret
+
+; MSX cassette input. TAPION starts the motor, waits through the initial
+; silence, and measures the leader's transition period. TAPIN decodes the
+; asynchronous start bit, eight LSB-first data bits, and two stop bits. The
+; measured threshold tolerates both standard baud rates and moderate tape
+; speed variation. Interrupts remain disabled until TAPIOF, as required by
+; the published cassette-call contract.
+tapion:
+                di
+                ld a,1
+                call stmotr
+                ld a,14
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                and #80
+                ld e,a
+                ld d,12
+                call tape_wait_transition_long
+                jr c,tape_input_fail
+                ld c,#ff
+                ld h,64
+tapion_measure:
+                call tape_measure_transition
+                jr c,tape_input_fail
+                ld a,b
+                cp c
+                jr nc,tapion_measure_next
+                ld c,a
+tapion_measure_next:
+                dec h
+                jr nz,tapion_measure
+                ld a,c
+                or a
+                jr z,tape_input_fail
+                ld (TAPE_PERIOD),a
+                ld a,e
+                ld (TAPE_LEVEL),a
+                xor a
+                ld (TAPE_SYNC),a
+                or a
+                ret
+
+tape_input_fail:
+                xor a
+                ld (TAPE_SYNC),a
+                call stmotr
+                ei
+                scf
+                ret
+
+tapin:
+                ld a,(TAPE_LEVEL)
+                ld e,a
+                ld a,(TAPE_SYNC)
+                or a
+                jr z,tapin_find_start
+; Consecutive TAPIN calls are already aligned to the next start-bit boundary.
+; Consume its two transitions directly. Reclassifying the shortened first
+; interval after caller overhead would otherwise lose byte synchronization.
+                call tape_measure_transition
+                jr c,tape_input_fail
+                call tape_measure_transition
+                jr c,tape_input_fail
+                jr tapin_data_boundary
+tapin_find_start:
+                call tape_measure_transition
+                jr c,tape_input_fail
+                call tape_interval_is_long
+                jr c,tapin_start_middle
+                jr tapin_find_start
+tapin_start_middle:
+                call tape_measure_transition    ; middle to next bit boundary
+                jr c,tape_input_fail
+                call tape_interval_is_long
+                jr nc,tapin_find_start
+tapin_data_boundary:
+                ld h,0
+                ld l,1
+                ld d,8
+tapin_data_bit:
+                push de
+                call tape_read_bit
+                pop bc
+                jr c,tape_input_fail
+                ld d,b
+                or a
+                jr z,tapin_data_next
+                ld a,h
+                or l
+                ld h,a
+tapin_data_next:
+                sla l
+                dec d
+                jr nz,tapin_data_bit
+                call tape_read_bit
+                jr c,tape_input_fail
+                or a
+                jr z,tape_input_fail
+                call tape_read_bit
+                jr c,tape_input_fail
+                or a
+                jr z,tape_input_fail
+                ld a,e
+                ld (TAPE_LEVEL),a
+                ld a,1
+                ld (TAPE_SYNC),a
+                ld a,h
+                or a
+                ret
+
+tapiof:
+                xor a
+                ld (TAPE_SYNC),a
+                xor a
+                call stmotr
+                ei
+                ret
+
+; Wait for the first transition with a multi-second timeout. E contains the
+; current comparator state and receives the new state.
+tape_wait_transition_long:
+                ld bc,0
+tape_wait_transition_loop:
+                in a,(PSG_READ)
+                and #80
+                cp e
+                jr nz,tape_transition_found
+                dec bc
+                ld a,b
+                or c
+                jr nz,tape_wait_transition_loop
+                dec d
+                jr nz,tape_wait_transition_long
+                scf
+                ret
+tape_transition_found:
+                ld e,a
+                or a
+                ret
+
+; Measure one comparator transition in B polling iterations.
+tape_measure_transition:
+                ld b,0
+tape_measure_loop:
+                inc b
+                jr z,tape_measure_timeout
+                in a,(PSG_READ)
+                and #80
+                cp e
+                jr z,tape_measure_loop
+                ld e,a
+                or a
+                ret
+tape_measure_timeout:
+                scf
+                ret
+
+; Carry is set when B is at least twice the shortest interval sampled from
+; the leader. A real zero/start bit supplies two such intervals in a row;
+; TAPIN checks that pair to reject isolated timing jitter in the leader.
+tape_interval_is_long:
+                ld a,(TAPE_PERIOD)
+                add a,a
+                ld c,a
+                ld a,b
+                cp c
+                ccf
+                ret
+
+; Read one FSK bit while maintaining E as the current comparator level.
+; A returns zero or one. The routine consumes through the next bit boundary.
+tape_read_bit:
+                push hl
+                call tape_measure_transition
+                jr c,tape_read_bit_fail
+                call tape_interval_is_long
+                jr c,tape_read_zero
+                ld c,1
+                ld d,3
+                jr tape_read_consume
+tape_read_zero:
+                ld c,0
+                ld d,1
+tape_read_consume:
+                call tape_measure_transition
+                jr c,tape_read_bit_fail
+                dec d
+                jr nz,tape_read_consume
+                ld a,c
+                pop hl
+                or a
+                ret
+tape_read_bit_fail:
+                pop hl
+                scf
+                ret
+
+; MSX cassette output. The first milestone emits conservative 1200-baud FSK:
+; a zero is one 1200 Hz cycle and a one is two 2400 Hz cycles. TAPOON writes
+; an approximately two-second long leader or half-second short leader.
+tapoon:
+                ld c,a
+                di
+                ld a,1
+                call stmotr
+                ld a,#0a
+                out (PPI_CONTROL),a             ; known low starting phase
+                ld hl,600
+                ld a,c
+                or a
+                jr z,tapoon_header
+                ld hl,2400
+tapoon_header:
+                ld a,1
+                call tape_write_bit
+                dec hl
+                ld a,h
+                or l
+                jr nz,tapoon_header
+                or a
+                ret
+
+tapout:
+                ld c,a
+                xor a
+                call tape_write_bit             ; start bit
+                ld d,8
+tapout_data:
+                rr c
+                ld a,0
+                adc a,0
+                call tape_write_bit
+                dec d
+                jr nz,tapout_data
+                ld a,1
+                call tape_write_bit
+                ld a,1
+                call tape_write_bit
+                or a
+                ret
+
+tapoof:
+                ld a,#0b
+                out (PPI_CONTROL),a             ; idle high
+                xor a
+                call stmotr
+                ei
+                ret
+
+tape_write_bit:
+                or a
+                jr z,tape_write_zero
+                ld b,2
+tape_write_one_cycle:
+                ld a,#0b
+                out (PPI_CONTROL),a
+                ld a,44
+                call tape_delay
+                ld a,#0a
+                out (PPI_CONTROL),a
+                ld a,44
+                call tape_delay
+                djnz tape_write_one_cycle
+                ret
+tape_write_zero:
+                ld a,#0b
+                out (PPI_CONTROL),a
+                ld a,90
+                call tape_delay
+                ld a,#0a
+                out (PPI_CONTROL),a
+                ld a,90
+tape_delay:
+                dec a
+                jr nz,tape_delay
+                ret
+
+; A=0 stops, A=1 starts, and A=FFh toggles the active-low motor relay.
+stmotr:
+                or a
+                jr z,stmotr_off
+                inc a
+                jr z,stmotr_toggle
+                dec a
+                cp 1
+                ret nz
+                ld a,#08
+                out (PPI_CONTROL),a
+                ret
+stmotr_off:
+                ld a,#09
+                out (PPI_CONTROL),a
+                ret
+stmotr_toggle:
+                in a,(PPI_CONTROL_C)
+                xor #10
+                out (PPI_CONTROL_C),a
                 ret
 
 ; Detect the four primary-slot expanders after page-3 RAM and its stack have

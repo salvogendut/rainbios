@@ -8,6 +8,9 @@ from tools.run_1983_bbcbasic import validate_state
 from tools.run_1983_bbcbasic_graphics import (
     validate_state as validate_graphics_state,
 )
+from tools.run_1983_bbcbasic_tape import (
+    validate_state as validate_tape_state,
+)
 
 
 VALID_STATE = (
@@ -48,6 +51,15 @@ class Emulator1983BbcBasicTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "vdp_r0"):
             validate_graphics_state(state)
+
+    def test_tape_program_success_state_is_accepted(self) -> None:
+        state = (
+            "state frame=1801 pc=4400 sp=F200 slot=F8 subslot=00 "
+            "mapper=00,00,00,00 vram_nonzero=9553 vdp_r0=00 vdp_r1=F0\n"
+        )
+        self.assertEqual(validate_tape_state(state)["slot"], "F8")
+        with self.assertRaisesRegex(ValueError, "expected success"):
+            validate_tape_state(state.replace("pc=4400", "pc=4300"))
 
 
 if __name__ == "__main__":

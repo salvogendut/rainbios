@@ -15,7 +15,7 @@ All 16-bit fields are little-endian:
 | `04h` | 1 | descriptor version | `01h` |
 | `05h` | 1 | descriptor length | `10h` |
 | `06h` | 1 | payload type (`01h` = BASIC) | `01h` |
-| `07h` | 1 | required firmware services | `0Fh` |
+| `07h` | 1 | required firmware services | `1Fh` |
 | `08h` | 2 | entry address | `4010h` |
 | `0Ah` | 2 | first payload RAM address | `8000h` |
 | `0Ch` | 2 | exclusive payload RAM limit | `F300h` |
@@ -28,7 +28,8 @@ Required-service bits are:
 - bit 1: keyboard BIOS calls;
 - bit 2: 50/60 Hz timing and `JIFFY`;
 - bit 3: Graphics II VDP and VRAM BIOS calls;
-- bits 4-7: reserved and zero.
+- bit 4: cassette input/output and motor BIOS calls;
+- bits 5-7: reserved and zero.
 
 The descriptor describes requirements; successful validation authorizes the
 menu entry, not immediate cartridge startup. RainBIOS also verifies that pages

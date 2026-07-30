@@ -41,6 +41,14 @@ MENU_INPUT_CART := $(BUILD_DIR)/cartridges/menu_input.rom
 MENU_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_input.sym
 GRAPHICS_INPUT_CART := $(BUILD_DIR)/cartridges/graphics_input.rom
 GRAPHICS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/graphics_input.sym
+TAPE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_input.rom
+TAPE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_input.sym
+TAPE_PROBE_IMAGE := $(BUILD_DIR)/cassettes/tape-probe.cas
+TAPE_LOAD_INPUT_CART := $(BUILD_DIR)/cartridges/tape_load_input.rom
+TAPE_LOAD_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_load_input.sym
+TAPE_SAVE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_save_input.rom
+TAPE_SAVE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_save_input.sym
+BBC_TAPE_IMAGE := $(BUILD_DIR)/cassettes/bbcbasic-tape.cas
 INVALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/invalid_payload.rom
 INVALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/invalid_payload.sym
 OPENMSX_CART_MACHINE := \
@@ -63,6 +71,15 @@ OPENMSX_BBC_GRAPHICS_SCREEN := \
 	$(OPENMSX_ROOT)/bbcbasic-graphics.png
 OPENMSX_BBC_BASIC_MENU_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-menu.txt
+OPENMSX_TAPE_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_TAPE.xml
+OPENMSX_TAPE_REPORT := $(OPENMSX_M1_REPORT_DIR)/tape.txt
+OPENMSX_BBC_TAPE_SAVE_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_TAPE_SAVE.xml
+OPENMSX_BBC_TAPE_SAVE_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-tape-save.txt
+OPENMSX_BBC_TAPE_SAVE_IMAGE := \
+	$(OPENMSX_ROOT)/bbcbasic-tape-save.wav
 OPENMSX_EXPANDED_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_EXPANDED_BBC_BASIC.xml
 OPENMSX_EXPANDED_BBC_BASIC_MENU_REPORT := \
@@ -93,6 +110,8 @@ EMULATOR_1983_BBC_BASIC_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-prompt.ppm
 EMULATOR_1983_BBC_GRAPHICS_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-graphics.ppm
+EMULATOR_1983_BBC_TAPE_SCREEN := \
+	$(EMULATOR_1983_DIR)/bbcbasic-tape.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -104,11 +123,15 @@ SOURCES := src/main_msx1.asm
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots \
-	test-openmsx-services test-openmsx-keyboard test-openmsx-cartridge test-1983 \
+	test-openmsx-services test-openmsx-keyboard test-openmsx-tape \
+	test-1983-tape \
+	test-openmsx-cartridge test-1983 \
 	test-openmsx-expanded-cartridge \
 	test-1983-expanded \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
+	test-openmsx-bbcbasic-tape-save \
+	test-1983-bbcbasic-tape \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
@@ -141,6 +164,24 @@ $(MENU_INPUT_CART): tests/cartridges/menu_input.asm | $(BUILD_DIR)
 $(GRAPHICS_INPUT_CART): tests/cartridges/graphics_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(GRAPHICS_INPUT_CART_SYM)
+
+$(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(TAPE_INPUT_CART_SYM)
+
+$(TAPE_PROBE_IMAGE): tools/make_test_cassette.py | $(BUILD_DIR)
+	$(PYTHON) $< $@
+
+$(TAPE_LOAD_INPUT_CART): tests/cartridges/tape_load_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(TAPE_LOAD_INPUT_CART_SYM)
+
+$(TAPE_SAVE_INPUT_CART): tests/cartridges/tape_save_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(TAPE_SAVE_INPUT_CART_SYM)
+
+$(BBC_TAPE_IMAGE): $(BBC_BASIC_DIR)/tools/make_msx_tape_fixture.py | $(BUILD_DIR)
+	$(PYTHON) $< $@
 
 $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -371,6 +412,53 @@ test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
 	$(PYTHON) $(BBC_BASIC_DIR)/tools/check_openmsx_graphics.py \
 		$(OPENMSX_BBC_GRAPHICS_REPORT)
 
+$(OPENMSX_TAPE_MACHINE): \
+		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(TAPE_INPUT_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(TAPE_INPUT_CART))|' \
+		-e 's|RainBIOS-MSX1-M1-CARTRIDGE|RainBIOS-TAPE|' \
+		-e 's|RainBIOS Diagnostic Cartridge|Tape Input Probe|' \
+		$< > $@
+
+test-openmsx-tape: $(OPENMSX_TAPE_MACHINE) $(TAPE_PROBE_IMAGE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_TAPE \
+		-cassetteplayer "$(abspath $(TAPE_PROBE_IMAGE))" \
+		-command "set tape_output {$(abspath $(OPENMSX_TAPE_REPORT))}" \
+		-script "$(abspath tests/openmsx/tape_probe.tcl)"
+	$(PYTHON) tools/check_tape_probe.py $(OPENMSX_TAPE_REPORT)
+
+$(OPENMSX_BBC_TAPE_SAVE_MACHINE): \
+		tests/openmsx/RainBIOS_M1_TWO_CARTRIDGES.xml.in \
+		$(MSX1_ROM) $(BBC_BASIC_ROM) $(TAPE_SAVE_INPUT_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE1_ROM@|$(abspath $(BBC_BASIC_ROM))|' \
+		-e 's|@CARTRIDGE2_ROM@|$(abspath $(TAPE_SAVE_INPUT_CART))|' \
+		-e 's|RainBIOS-MSX1-M1-TWO-CARTRIDGES|RainBIOS-BBC-TAPE-SAVE|' \
+		$< > $@
+
+test-openmsx-bbcbasic-tape-save: $(OPENMSX_BBC_TAPE_SAVE_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_BBC_TAPE_SAVE \
+		-command "set tape_save_output {$(abspath $(OPENMSX_BBC_TAPE_SAVE_REPORT))}; set tape_save_image {$(abspath $(OPENMSX_BBC_TAPE_SAVE_IMAGE))}" \
+		-script "$(abspath tests/openmsx/tape_save_probe.tcl)"
+	$(PYTHON) tools/check_tape_save_probe.py \
+		--tape $(OPENMSX_BBC_TAPE_SAVE_IMAGE) \
+		$(OPENMSX_BBC_TAPE_SAVE_REPORT)
+
+test-1983-tape: $(MSX1_ROM) $(TAPE_INPUT_CART) $(TAPE_PROBE_IMAGE)
+	$(PYTHON) tools/run_1983_tape.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(TAPE_INPUT_CART)" \
+		--cassette "$(TAPE_PROBE_IMAGE)"
+
 $(OPENMSX_INVALID_PAYLOAD_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
 		$(MSX1_ROM) $(INVALID_PAYLOAD_CART)
@@ -484,6 +572,18 @@ test-1983-bbcbasic-graphics: \
 		--screenshot "$(EMULATOR_1983_BBC_GRAPHICS_SCREEN)"
 	$(PYTHON) tools/check_graphics_screenshot.py \
 		$(EMULATOR_1983_BBC_GRAPHICS_SCREEN)
+
+test-1983-bbcbasic-tape: \
+		$(MSX1_ROM) $(BBC_BASIC_ROM) $(TAPE_LOAD_INPUT_CART) $(BBC_TAPE_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bbcbasic_tape.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(BBC_BASIC_ROM)" \
+		--input-cartridge "$(TAPE_LOAD_INPUT_CART)" \
+		--cassette "$(BBC_TAPE_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_BBC_TAPE_SCREEN)"
+	$(PYTHON) tools/check_bbcbasic_screenshot.py \
+		$(EMULATOR_1983_BBC_TAPE_SCREEN)
 
 test-1983-external-cartridges: test-1983-external-arkano \
 		test-1983-external-diagnostics

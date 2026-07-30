@@ -122,10 +122,16 @@ Shift+A and blocking Return input. The pinned BBC BASIC payload then passes
 its editing, expression, program, error, timing, and timeout sequence with
 zero ROM writes; 1983 independently renders its banner and prompt.
 
+M3B implements the cassette motor plus long/short leader and framed-byte
+input/output calls. Original fixtures confirm raw CAS input in openMSX and
+1983, BBC BASIC `LOAD`/`RUN` in 1983, and a semantically decoded WAV recording
+from BBC BASIC `SAVE` in openMSX. Standard CAS input is the current baseline;
+slow sampled-WAV replay remains pending.
+
 - complete auto-repeat, lock/dead-key state, function-key expansion, key click,
   and break handling;
 - implement PSG initialization, joystick, trigger, and paddle calls;
-- implement or explicitly classify printer, cassette, and motor behavior;
+- implement or explicitly classify printer and remaining basic-device calls;
 - make interrupt frequency and locale selectable build properties.
 
 Exit criterion: interactive cartridge diagnostics pass for keyboard, sound,

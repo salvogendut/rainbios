@@ -2,16 +2,16 @@
 <!--
   SPDX-License-Identifier: BSD-2-Clause
 
-  Cartridge probe fixture adapted from the C-BIOS 0.29a openMSX MSX1
+  Two-cartridge fixture adapted from the C-BIOS 0.29a openMSX MSX1
   configuration. See LICENSES/CBIOS.txt and docs/REFERENCES.md.
 -->
 <!DOCTYPE msxconfig SYSTEM "msxconfig2.dtd">
 <msxconfig>
   <info>
     <manufacturer>RainBIOS contributors</manufacturer>
-    <code>RainBIOS-MSX1-M1-CARTRIDGE</code>
+    <code>RainBIOS-MSX1-M1-TWO-CARTRIDGES</code>
     <release_year>2026</release_year>
-    <description>RainBIOS M1 primary-slot cartridge probe fixture</description>
+    <description>RainBIOS M1 cassette output probe fixture</description>
     <type>MSX</type>
   </info>
 
@@ -28,10 +28,19 @@
     </primary>
 
     <primary slot="1">
-      <ROM id="RainBIOS Diagnostic Cartridge">
+      <ROM id="BBC BASIC Payload">
         <mem base="0x4000" size="0x4000"/>
         <rom>
-          <filename>@CARTRIDGE_ROM@</filename>
+          <filename>@CARTRIDGE1_ROM@</filename>
+        </rom>
+      </ROM>
+    </primary>
+
+    <primary slot="2">
+      <ROM id="Cassette Save Input">
+        <mem base="0x4000" size="0x4000"/>
+        <rom>
+          <filename>@CARTRIDGE2_ROM@</filename>
         </rom>
       </ROM>
     </primary>

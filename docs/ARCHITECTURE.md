@@ -99,6 +99,13 @@ character, and `KILBUF` resets both pointers. Shift, Ctrl, printable ASCII,
 and editing keys are supported; repeat, lock/dead-key state, key click,
 function-key expansion, and break handling remain separate work.
 
+M3B implements the published `TAPION`, `TAPIN`, `TAPIOF`, `TAPOON`,
+`TAPOUT`, `TAPOOF`, and `STMOTR` interface over PSG port A and PPI port C.
+Input measures the leader and decodes framed, LSB-first bytes; output emits
+long/short leaders and 1200-baud FSK. Standard CAS input is confirmed in
+openMSX and 1983. Slow sampled-WAV replay remains a separate decoder-hardening
+task.
+
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 checks primary cartridges before waiting through the buffered keyboard path.
@@ -119,11 +126,12 @@ only through the versioned descriptor in
 `docs/abi/payload-v1.md`. Keeping the payload outside the 32 KiB main BIOS
 also preserves ROM space and allows either project to be released
 independently. The current port profile keeps the 12,492-byte language core
-and an independently written Graphics II adapter in a 16 KiB page-1 payload
-ROM, places its aligned state at `8000h-8311h`, and begins user memory at
-`8312h`. Guarded openMSX tests record zero cartridge writes for the console
-and graphics programs, and 1983 independently renders both the live prompt
-and the multicolour graphics frame. See `docs/BASIC_PAYLOAD.md`.
+and independently written Graphics II and sequential cassette adapters in a
+16 KiB page-1 payload ROM. The cassette adapter ends at `794Eh`, aligned
+state occupies `8000h-8321h`, and user memory begins at `8322h`. Guarded
+openMSX tests record zero cartridge writes for the console and graphics
+programs; 1983 independently renders the prompt, multicolour graphics frame,
+and cassette-loaded program. See `docs/BASIC_PAYLOAD.md`.
 
 ## Failure behavior during bring-up
 
@@ -155,6 +163,9 @@ hardware.
 - The BBC BASIC graphics workload checks Graphics II mode registers, VRAM
   reference pixels and colours, cursor state, `POINT()` readback, zero ROM
   writes, and a separately rendered 1983 frame.
+- Cassette probes decode public CAS data through the BIOS in openMSX and 1983,
+  load and run a tokenized BBC BASIC program in 1983, and decode the header of
+  a BBC BASIC SAVE waveform recorded by openMSX.
 - Positive and corrupt descriptor probes check menu state, fail-closed
   handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before

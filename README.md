@@ -17,9 +17,11 @@ displays the boot UI. It also discovers public `AB` cartridge headers in
 primary and secondary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
 0/1/2 initialization, Screen 0/1 text output, interrupt-driven international
 keyboard scan, buffered character-input services, and descriptor-driven BBC
-BASIC menu launch are present. Complete keyboard behavior, memory-mapper
-allocation, broad cartridge compatibility, and most firmware services remain
-pending.
+BASIC menu launch are present. The standard cassette motor, input/output
+leader, and framed-byte calls are also implemented, and BBC BASIC can save
+and load sequential program files through them. Complete keyboard behavior,
+memory-mapper allocation, broad cartridge compatibility, and most firmware
+services remain pending.
 
 ## Build
 
@@ -54,11 +56,11 @@ The menu launches the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
 payload when its versioned descriptor and requirements validate. Invalid
 descriptors are not advertised or entered. The console, keyboard, timing,
-Graphics II, and menu paths pass executable BASIC tests. Its open-source core
-and new BSD-3-Clause MSX port can be distributed with RainBIOS while remaining
-a distinct build artifact. The cartridge is pinned by source revision, size,
-and SHA-256 digest. The dependency, license, packaging, and platform boundary
-are described in
+Graphics II, cassette-load, and menu paths pass executable BASIC tests. Its
+open-source core and new BSD-3-Clause MSX port can be distributed with
+RainBIOS while remaining a distinct build artifact. The cartridge is pinned
+by source revision, size, and SHA-256 digest. The dependency, license,
+packaging, and platform boundary are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
@@ -107,6 +109,22 @@ blocking `CHGET` which wakes on Return:
 ```sh
 make test-openmsx-keyboard OPENMSX='flatpak run org.openmsx.openMSX'
 ```
+
+The cassette probes exercise only the public `TAP*` calls. The first decodes
+a raw data block in both openMSX and 1983. The second loads and runs a
+tokenized BBC BASIC program in 1983. The SAVE probe records a WAV in openMSX
+and independently decodes its binary type and filename header:
+
+```sh
+make test-openmsx-tape OPENMSX='flatpak run org.openmsx.openMSX'
+make test-1983-tape
+make test-1983-bbcbasic-tape
+make test-openmsx-bbcbasic-tape-save \
+  OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+Standard CAS streams are the supported input baseline. Replay of slow sampled
+WAV recordings still needs decoder hardening and is not claimed yet.
 
 An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
 `INIT` transfer in openMSX:
