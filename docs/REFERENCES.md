@@ -94,6 +94,8 @@ implementation inputs. They remain quarantined under
   `f926bd6fb40ed6ca17da1ecae27274a7fac956f0`
 - Static core-audit revision:
   `f318ab09dcb30158843b2e6fba9386ed4956ca69`
+- MSX link-layout revision:
+  `0b5979efed97ac5e557a43daed0916acdcb5d5f1`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -117,6 +119,10 @@ Its subsequent static audit records a 12,492-byte core, a 768-byte aligned RAM
 module, 26 required platform symbols, 21 direct symbolic writes confined to
 RAM exports, and two intentional user-facing port instructions. Runtime
 write-guard testing remains required before treating the core as ROM-safe.
+The link-layout revision relocates that unchanged core to `4100h-71CBh`,
+places state at `8000h-82FFh`, and produces a nonfunctional 16 KiB layout ROM
+with SHA-256
+`b92d38754db7451e3e14acd0c1ae05efea2c50c99a2b920ee36e35bfc906be11`.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 

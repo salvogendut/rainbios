@@ -58,6 +58,12 @@ payload with interpreter state at `8000h` and user memory from `8300h`
 plausible. A runtime read-only write guard is still required before that
 layout becomes a compatibility promise.
 
+The subsequent link proof places the cartridge veneer at `4000h`, the
+unchanged core at `4100h-71CBh`, and state at `8000h-82FFh`. It produces a
+deterministic 16 KiB layout ROM with SHA-256 `b92d3875…`. Its 26 service
+entries are intentionally nonfunctional, so it is not recorded as a launchable
+artifact in the dependency lock.
+
 SE BASIC IV remains useful open-source prior art and a possible future
 alternative payload. Its adjacent upstream checkout remains unmodified; no
 SE BASIC fork or source change is part of this integration.
@@ -123,6 +129,8 @@ size, and SHA-256 digest.
   `ld80` sources are recorded.
 - **Port P0b (complete):** static audit fixes the 26-symbol MSX platform
   boundary and checks ROM-core assumptions on every `make check`.
+- **Port P0c (complete):** deterministic link proof validates the 16 KiB
+  page-1 ROM and aligned page-2 state layout.
 - **Port P1:** MSX console-only prompt with storage explicitly unsupported.
 - **M2/M3:** enough console, keyboard, timing, and optional PSG services for
   interactive smoke tests.
