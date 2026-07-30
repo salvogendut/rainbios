@@ -32,6 +32,16 @@ class SlotCallsProbeTests(unittest.TestCase):
                 )
             )
 
+    def test_nested_call_must_restore_outer_map(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        with self.assertRaisesRegex(ValueError, "CALSLTNEST"):
+            validate_report(
+                report.replace(
+                    "CALSLTNEST=5A,1234,5678,9ABC,5100,0300,F0,1",
+                    "CALSLTNEST=5A,1234,5678,9ABC,5100,0300,FC,1",
+                )
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

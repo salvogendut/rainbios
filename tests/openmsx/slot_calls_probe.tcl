@@ -234,6 +234,70 @@ proc wrslt_expanded_done {} {
             [debug read "Probe RAM" 0x1234] [reg HL] [reg E] \
             [primary_map] [expr {[reg F] & 1}]
     ]
+
+    foreach {offset value} {
+        0x5000 0xDD  0x5001 0x21  0x5002 0x00  0x5003 0x51
+        0x5004 0xFD  0x5005 0x21  0x5006 0x00  0x5007 0x03
+        0x5008 0xCD  0x5009 0x1C  0x500A 0x00  0x500B 0xC9
+        0x5100 0x3E  0x5101 0x5A
+        0x5102 0x01  0x5103 0x34  0x5104 0x12
+        0x5105 0x11  0x5106 0x78  0x5107 0x56
+        0x5108 0x21  0x5109 0xBC  0x510A 0x9A
+        0x510B 0x37  0x510C 0xC9
+        0x9000 0x3E  0x9001 0xA5
+        0x9002 0x01  0x9003 0x43  0x9004 0x21
+        0x9005 0x11  0x9006 0x87  0x9007 0x65
+        0x9008 0x21  0x9009 0xCB  0x900A 0xA9
+        0x900B 0xB7  0x900C 0xC9
+    } {
+        debug write "Probe RAM" $offset $value
+    }
+    reg IX 0x5000
+    reg IY 0x0300
+    reg F 0
+    invoke_bios 0x001C calslt1_done
+}
+
+proc calslt1_done {} {
+    puts $::slot_handle [
+        format "CALSLTNEST=%02X,%04X,%04X,%04X,%04X,%04X,%02X,%d" \
+            [reg A] [reg BC] [reg DE] [reg HL] [reg IX] [reg IY] \
+            [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg IX 0x9000
+    reg IY 0x0300
+    reg F 1
+    invoke_bios 0x001C calslt2_done
+}
+
+proc calslt2_done {} {
+    puts $::slot_handle [
+        format "CALSLT2=%02X,%04X,%04X,%04X,%04X,%04X,%02X,%d" \
+            [reg A] [reg BC] [reg DE] [reg HL] [reg IX] [reg IY] \
+            [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg IX 0x5000
+    reg IY 0x8300
+    reg F 0
+    invoke_bios 0x001C calslt_expanded_done
+}
+
+proc calslt_expanded_done {} {
+    puts $::slot_handle [
+        format "CALSLTEXP=%04X,%04X,%02X,%d" \
+            [reg IX] [reg IY] [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg IX 0x1000
+    reg IY 0x0300
+    reg F 0
+    invoke_bios 0x001C calslt_page0_done
+}
+
+proc calslt_page0_done {} {
+    puts $::slot_handle [
+        format "CALSLT0=%04X,%04X,%02X,%d" \
+            [reg IX] [reg IY] [primary_map] [expr {[reg F] & 1}]
+    ]
     close $::slot_handle
     exit
 }

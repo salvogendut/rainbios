@@ -62,8 +62,9 @@ open-source implementation difference is not copied.
 
 - Public English transcription:
   `https://konamiman.github.io/MSX2-Technical-Handbook/`
-- Material consulted: Chapter 5 section 7 inter-slot call interfaces and
-  Appendix 4 MAIN-ROM work-area and hook listings
+- Material consulted: Chapter 3 slot initialization, Chapter 5 cartridge
+  headers and section 7 inter-slot call interfaces, and Appendix 4 MAIN-ROM
+  work-area and hook listings
 - Purpose: define the M1 slot-call register contract and the documented
   `F380h-FFCAh` work-area layout
 - RainBIOS use: interface and behavioral facts only
@@ -71,8 +72,7 @@ open-source implementation difference is not copied.
 The handbook identifies `BOTTOM`/`HIMEM`, `BIOSSLT`, `EXPTBL`, `SLTTBL`, and
 the five-byte hook table, and documents that `FFFFh` is the expanded-slot
 selection register. The first M1 slice initializes only the primary-slot state
-it can represent truthfully; expanded-slot entries and inter-slot primitives
-remain pending.
+it can represent truthfully; expanded-slot entries remain pending.
 
 M1B uses the published `RSLREG`, `WSLREG`, and `ENASLT` inputs, outputs, and
 clobber declarations. The page-switch implementation and its RAM helper are
@@ -81,6 +81,12 @@ original RainBIOS code covered by host and openMSX conformance probes.
 M1C likewise uses the published `RDSLT` and `WRSLT` register contracts. Its
 temporary map construction, page-0 helpers, restoration paths, and physical
 RAM probe are original RainBIOS work.
+
+M1D uses the published IX/IY `CALSLT` contract. M1E uses the documented
+`41h,42h` cartridge signature, following little-endian INIT pointer, and
+`RET`-or-retain-control behavior. The map-restoring call path, boot scanner,
+diagnostic cartridge, RAM marker, and two-emulator probes are original
+RainBIOS work.
 
 ## Proprietary source trees
 

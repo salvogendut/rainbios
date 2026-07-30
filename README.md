@@ -11,8 +11,10 @@ Milestone M1 is in progress. The project builds a deliberately incomplete
 low-level hardware routines. Cold boot now finds and tests 32 KiB of RAM in a
 primary slot, maps it into pages 2 and 3, establishes the stack and minimal
 MAIN-ROM work area, initializes primary-slot control and memory read/write
-calls, and then displays the boot UI. Expanded-slot discovery, inter-slot
-calls, interrupts, and cartridge startup remain pending.
+calls, and then displays the boot UI. It also discovers public `AB` cartridge
+headers in primary slots and can invoke page-1/page-2 `INIT` routines.
+Expanded-slot discovery, interrupts, broad cartridge compatibility, and most
+firmware services remain pending.
 
 ## Build
 
@@ -67,12 +69,24 @@ page map, stack, work-area bounds, slot tables, and hook initialization:
 make test-openmsx-m1 OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
-The M1C call probe verifies `RSLREG`, `WSLREG`, primary-slot `ENASLT`, and
-primary-slot `RDSLT`/`WRSLT`, including safe page-0 and page-3 operations:
+The M1D call probe verifies `RSLREG`, `WSLREG`, primary-slot `ENASLT`,
+primary-slot `RDSLT`/`WRSLT`, and returning page-1/page-2 `CALSLT` calls,
+including exact slot-map restoration:
 
 ```sh
 make test-openmsx-slots OPENMSX='flatpak run org.openmsx.openMSX'
 ```
+
+An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
+`INIT` transfer in openMSX:
+
+```sh
+make test-openmsx-cartridge OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+The test requires the CPU to be executing from cartridge page 1, the correct
+primary slot to be mapped, a cartridge-written RAM signature to exist, and
+the rendered screen to remain nonblank.
 
 When openMSX is installed as a Flatpak, use:
 
@@ -109,11 +123,13 @@ The adjacent `1983` emulator provides a second, fully headless boot check:
 
 ```sh
 make test-1983
+make test-1983-cartridge
 ```
 
-That target runs 120 NTSC frames, requires the M1 stack and page-2/page-3 slot
-map, validates the rendered screen, and writes
-`build/1983/rainbios_logo.ppm`. Override
+The first target runs 120 NTSC frames and requires the M1 stack and
+page-2/page-3 slot map. The second independently requires execution in the
+diagnostic cartridge with slot 1 mapped into page 1. Both validate the
+rendered screen and write captures below `build/1983/`. Override
 `EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
 
 The optional sibling BBC BASIC checkout can be checked against RainBIOS's

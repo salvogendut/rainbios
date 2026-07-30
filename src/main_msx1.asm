@@ -30,6 +30,7 @@ RAM_TEST3       equ #f380
 PAGE0_SLOT_HELPER equ #f380
 PAGE0_READ_HELPER equ #f383
 PAGE0_WRITE_HELPER equ #f38b
+CART_SCAN_SLOT  equ #f392
 STACK_TOP       equ #f380
 
                 org #0000
@@ -52,7 +53,7 @@ STACK_TOP       equ #f380
                 defs #0018-$,#ff
                 jp unsupported_call             ; 0018 OUTDO
                 defs #001c-$,#ff
-                jp unsupported_call             ; 001C CALSLT
+                jp calslt                       ; 001C CALSLT
                 defs #0020-$,#ff
                 jp dcompr                       ; 0020 DCOMPR
                 defs #0024-$,#ff
@@ -422,6 +423,13 @@ cold_boot_jingle_gap:
                 dec d
                 jr nz,cold_boot_jingle_note
 
+; Discover simple primary-slot cartridges after RAM, video, and sound are
+; initialized. A public MSX cartridge header begins with "AB", followed by the
+; little-endian INIT address. An INIT routine that returns lets scanning
+; continue; a game may keep control instead. M1E scans 4000h and 8000h in each
+; non-BIOS primary slot and can invoke INIT in page 1 or page 2.
+                call cold_boot_scan_cartridges
+
 ; Poll keyboard matrix row 8. MSX keys are active-low, and bit 0 is Space.
 cold_boot_wait:
                 in a,(PPI_CONTROL_C)
@@ -499,6 +507,71 @@ cold_boot_options_name_block:
                 out (VDP_CONTROL),a
 cold_boot_options_wait:
                 jr cold_boot_options_wait
+
+cold_boot_scan_cartridges:
+                xor a
+                ld (CART_SCAN_SLOT),a
+cold_boot_scan_slot:
+                ld a,(CART_SCAN_SLOT)
+                cp 4
+                ret z
+                ld b,a
+                ld a,(BIOSSLT)
+                and #03
+                cp b
+                jr z,cold_boot_scan_next_slot
+                ld hl,#4000
+                call cold_boot_try_cartridge
+                ld hl,#8000
+                call cold_boot_try_cartridge
+cold_boot_scan_next_slot:
+                ld a,(CART_SCAN_SLOT)
+                inc a
+                ld (CART_SCAN_SLOT),a
+                jr cold_boot_scan_slot
+
+; Input HL is a possible header address. RDSLT preserves HL and E. The low
+; INIT byte is kept on the page-3 stack while the high byte is read because
+; RDSLT is allowed to replace the other normal registers.
+cold_boot_try_cartridge:
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp #41
+                ret nz
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp #42
+                ret nz
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                push af
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                ld d,a
+                pop af
+                ld e,a
+                ld a,d
+                or e
+                ret z
+                ld a,d
+                and #c0
+                cp #40
+                jr z,cold_boot_call_cartridge
+                cp #80
+                ret nz
+cold_boot_call_cartridge:
+                push de
+                pop ix
+                ld a,(CART_SCAN_SLOT)
+                ld b,a
+                ld c,0
+                push bc
+                pop iy
+                call calslt
+                ret
 
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
 ; not an assertion about compatible error behavior.
@@ -738,6 +811,47 @@ primary_slot_map_page0:
                 ld a,d
                 and #fc
                 or c
+                ret
+
+; Partial inter-slot call. M1D accepts non-expanded primary slots when the
+; target in IX is in page 1 or page 2. Both pages leave this page-0 routine and
+; the page-3 stack visible. The exact previous primary map is kept in this
+; call's stack frame because the called routine may destroy every normal
+; register.
+calslt:
+                push iy
+                pop bc
+                bit 7,b
+                jp nz,unsupported_call
+                push ix
+                pop hl
+                ld a,h
+                and #c0
+                cp #40
+                jr z,calslt_page_supported
+                cp #80
+                jp nz,unsupported_call
+calslt_page_supported:
+                ld a,b
+                and #03
+                ld c,a
+                call primary_slot_map
+                push de
+                out (PPI_SLOT),a
+                ld hl,calslt_return
+                push hl
+                jp (ix)
+
+; Preserve the called routine's normal AF/BC/DE/HL results while recovering
+; the saved map through the alternate register set. IX and IY are untouched.
+calslt_return:
+                ex af,af'
+                exx
+                pop bc
+                ld a,b
+                out (PPI_SLOT),a
+                exx
+                ex af,af'
                 ret
 
 ; Primary-slot control. RSLREG and WSLREG map directly to the PPI register.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Validate the RainBIOS M1C openMSX slot-call report."""
+"""Validate the RainBIOS M1D openMSX slot-call report."""
 
 from __future__ import annotations
 
@@ -29,6 +29,10 @@ EXPECTED = {
     "WRSLT3": "88,D234,88,F0,0",
     "RDSLTEXP": "83,1234,F0,1",
     "WRSLTEXP": "55,1234,99,F0,1",
+    "CALSLTNEST": "5A,1234,5678,9ABC,5100,0300,F0,1",
+    "CALSLT2": "A5,2143,6587,A9CB,9000,0300,F0,0",
+    "CALSLTEXP": "5000,8300,F0,1",
+    "CALSLT0": "1000,0300,F0,1",
 }
 
 
@@ -53,7 +57,7 @@ def main() -> int:
         validate_report(arguments.report.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         parser.error(str(error))
-    print(f"validated M1C primary-slot calls: {arguments.report}")
+    print(f"validated M1D primary-slot calls: {arguments.report}")
     return 0
 
 

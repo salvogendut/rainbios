@@ -34,8 +34,8 @@ The cold-boot bootstrap remains stackless until it has located RAM. The first
 M1 slice preserves the reset-selected ROM mapping and requires complementary
 write patterns to stick in both pages 2 and 3 of one primary-slot candidate.
 It then establishes the stack, minimal MAIN-ROM work-area bounds, primary slot
-tables, and empty hooks. Expanded-slot RAM, inter-slot primitives, and
-interrupts remain later M1 work.
+tables, and empty hooks. Expanded-slot RAM and interrupts remain later M1
+work.
 
 M1B adds direct `RSLREG`/`WSLREG` access and primary-slot `ENASLT`. Because
 switching page 0 removes the routine performing the switch, cold boot installs
@@ -48,11 +48,27 @@ write/restore operations. `RDSLT` and `WRSLT` handle pages 1–3 from visible
 page-0 code and restore page 3 before touching its stack. These calls are
 primary-slot-only until expanded-slot state is initialized.
 
+M1D implements the primary-slot page-1/page-2 subset of `CALSLT`. IX supplies
+the target and the high byte of IY supplies the slot ID. The old PPI map lives
+in that call's page-3 stack frame while cartridge code runs, because the
+target is permitted to replace the normal registers. If it returns, a page-0
+continuation uses the alternate register set to restore the exact map while
+preserving the target's normal register and flag results. Separate stack
+frames also allow returning primary calls to nest.
+
+M1E scans the public cartridge header locations at `4000h` and `8000h` in
+each non-BIOS primary slot. A header beginning `41h,42h` with a nonzero
+page-1/page-2 INIT pointer is entered through `CALSLT`. A returning INIT lets
+the scan continue; a game may retain control. This is deliberately the first
+simple primary-cartridge slice, not a claim of expanded-slot, mapper, or
+full-service compatibility.
+
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
-polls the keyboard. Space switches to a fixed Screen 1 boot-menu preview built
-from the project-owned partial font. Menu selection and payload launch remain
-disabled until the remaining firmware services and launch checks exist.
+checks primary cartridges before polling the keyboard. Space switches to a
+fixed Screen 1 boot-menu preview built from the project-owned partial font.
+Menu selection and payload launch remain disabled until the remaining firmware
+services and launch checks exist.
 
 The 13,056-byte logo payload is temporarily embedded in the main ROM. It will
 move to a compressed or separate, independently discoverable ROM before
@@ -79,17 +95,18 @@ in its boot UI, and interrupt vectors return safely. This makes the M1 ROM usefu
 for layout validation without suggesting that unsupported behavior is
 compatible. Each such entry remains marked `stub` in the ABI table.
 
-Before the first cartridge-boot milestone, unsupported calls will optionally
-emit structured diagnostics to an emulator debug device in development builds.
-Release builds must not depend on emulator-only hardware.
+Unsupported calls may later emit structured diagnostics to an emulator debug
+device in development builds. Release builds must not depend on emulator-only
+hardware.
 
 ## Testing strategy
 
 - Host-side structural tests validate ROM sizes, entry-point opcodes, metadata,
   and address bounds.
 - Z80 unit tests will execute one BIOS call in a controlled memory/port model.
-- Emulator integration tests will boot a minimal, original test cartridge and
-  report results over a debug port or serial channel.
+- Emulator integration tests boot a minimal, original test cartridge, inspect
+  its RAM proof marker and execution state, and require a rendered nonblank
+  frame in both openMSX and 1983.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before
   a compatibility milestone is released.
 - Differential tests may compare public behavior against authorized reference

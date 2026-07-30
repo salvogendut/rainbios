@@ -42,12 +42,23 @@ through the public BIOS entries, requires documented register preservation,
 and checks that every call restores the exact previous map. Expanded-slot
 forms remain pending.
 
+M1D adds returning primary-slot `CALSLT` calls for page 1 and page 2. The
+called code can replace all normal result registers and flags; RainBIOS keeps
+the old map in the call's page-3 stack frame and restores it exactly after
+`RET`. Expanded slots and page-0/page-3 targets still fail closed.
+
+M1E scans `4000h` and `8000h` in each non-BIOS primary slot for the public
+`AB` header and invokes a nonzero page-1/page-2 `INIT` address. An original
+BSD-3-Clause cartridge fixture reaches its loop, writes a proof marker to
+RAM, and leaves the logo visibly rendered in both openMSX and 1983.
+
 - enumerate primary and expanded slots without assuming a machine layout;
 - select and test RAM, establish the stack, and initialize BIOS work areas;
-- complete expanded-slot `ENASLT`, `RDSLT`, and `WRSLT`, then implement
-  `CALSLT` and `CALLF`; the primary forms and `RSLREG`/`WSLREG` are complete;
+- complete expanded-slot `ENASLT`, `RDSLT`, `WRSLT`, and `CALSLT`, then
+  implement `CALLF`; the primary forms used by M1E and `RSLREG`/`WSLREG` are
+  complete;
 - initialize hooks and an IM 1 interrupt handler;
-- run an original diagnostic cartridge;
+- run the original diagnostic cartridge on hardware;
 - define payload discovery and launch state for the optional BBC BASIC menu
   entry.
 
@@ -77,7 +88,7 @@ and controllers.
 
 ## M4 — Cartridge compatibility
 
-- enumerate cartridge slots and validate cartridge headers;
+- extend primary header discovery to expanded cartridge slots;
 - define and test startup register and work-area state;
 - support common slot and mapper arrangements needed before cartridge code
   installs its own mapper;

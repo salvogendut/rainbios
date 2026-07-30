@@ -24,14 +24,23 @@ OPENMSX_M1_SPLIT_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_SPLIT.xml
 OPENMSX_M1_REPORT_DIR := $(OPENMSX_ROOT)/m1
 OPENMSX_SLOT_REPORT := $(OPENMSX_M1_REPORT_DIR)/slot-calls.txt
+DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
+DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
+OPENMSX_CART_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
+OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
+OPENMSX_CART_SCREEN := $(OPENMSX_ROOT)/rainbios_cartridge.png
 EMULATOR_1983_DIR := $(BUILD_DIR)/1983
 EMULATOR_1983_SCREEN := $(EMULATOR_1983_DIR)/rainbios_logo.ppm
+EMULATOR_1983_CART_SCREEN := \
+	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
 LOGO_DIR := $(BUILD_DIR)/logo
 LOGO_STAMP := $(LOGO_DIR)/.converted
 SOURCES := src/main_msx1.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
-	test-openmsx-audio test-openmsx-m1 test-openmsx-slots test-1983 check-bbcbasic \
+	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
+	test-openmsx-cartridge test-1983 test-1983-cartridge check-bbcbasic \
 	check-bbcbasic-artifact clean
 
 all: $(MSX1_ROM)
@@ -46,6 +55,10 @@ $(LOGO_STAMP): src/logo.png tools/png_to_screen2.py | $(BUILD_DIR)
 
 $(MSX1_ROM): $(SOURCES) $(LOGO_STAMP) | $(BUILD_DIR)
 	$(RASM) $< -I$(LOGO_DIR) -ob $@ -s -os $(MSX1_SYM)
+
+$(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DIAGNOSTIC_CART_SYM)
 
 test: $(MSX1_ROM)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
@@ -126,6 +139,24 @@ test-openmsx-slots: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-script "$(abspath tests/openmsx/slot_calls_probe.tcl)"
 	$(PYTHON) tools/check_slot_calls_probe.py $(OPENMSX_SLOT_REPORT)
 
+$(OPENMSX_CART_MACHINE): \
+		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(DIAGNOSTIC_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(DIAGNOSTIC_CART))|' \
+		$< > $@
+
+test-openmsx-cartridge: $(OPENMSX_CART_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_CARTRIDGE \
+		-command "set cartridge_output {$(abspath $(OPENMSX_CART_REPORT))}; set cartridge_screenshot {$(abspath $(OPENMSX_CART_SCREEN))}" \
+		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
+	$(PYTHON) tools/check_cartridge_probe.py $(OPENMSX_CART_REPORT)
+	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_CART_SCREEN)
+
 test-1983: $(MSX1_ROM)
 	mkdir -p $(EMULATOR_1983_DIR)
 	$(PYTHON) tools/run_1983_m1.py \
@@ -133,6 +164,15 @@ test-1983: $(MSX1_ROM)
 		--bios "$(MSX1_ROM)" --screenshot "$(EMULATOR_1983_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_SCREEN)
+
+test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_cartridge.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(DIAGNOSTIC_CART)" \
+		--screenshot "$(EMULATOR_1983_CART_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_CART_SCREEN)
 
 check-bbcbasic:
 	$(PYTHON) tools/check_bbcbasic_dependency.py \
