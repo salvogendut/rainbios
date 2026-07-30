@@ -43,8 +43,8 @@ proc inspect_menu {} {
     set ::payload_entry_breakpoint [
         debug set_bp 0x4010 {} {payload_entry_reached}
     ]
-    keymatrixdown 0 0x08
-    after time 0.10 {keymatrixup 0 0x08}
+    keymatrixdown 0 0x02
+    after time 0.10 {keymatrixup 0 0x02}
     after time 0.50 inspect_selection_stall
 }
 

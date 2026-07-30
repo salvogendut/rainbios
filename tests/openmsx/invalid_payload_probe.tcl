@@ -37,8 +37,8 @@ proc inspect_invalid_menu {} {
             [peek 0xFCAF] \
             [expr {[string first "NO VALID BASIC PAYLOAD" $text] >= 0}]
     ]
-    keymatrixdown 0 0x08
-    after time 0.10 {keymatrixup 0 0x08}
+    keymatrixdown 0 0x02
+    after time 0.10 {keymatrixup 0 0x02}
     after time 0.40 inspect_invalid_guard
 }
 

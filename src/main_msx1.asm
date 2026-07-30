@@ -2707,19 +2707,19 @@ graphics2_vdp_registers:
 ; International keyboard matrix rows 0-5, bit 0 first. A zero entry is not
 ; translated in this first keyboard slice.
 keymap_unshifted:
-                db ',', 'x', 's', '1', '/', 0,   'l', 'b'
-                db 'n', 'c', 'a', 'q', ']', '^', 'j', 'v'
-                db 'm', 'z', 'f', 'w', '[', '0', '8', 'g'
-                db #5c, 'u', 'd', '2', ';', '~', 'i', 't'
-                db 'h', '7', 'r', '3', ':', 'p', 'k', '6'
-                db '.', 'y', 'e', '4', '@', '9', 'o', '5'
+                db '0', '1', '2', '3', '4', '5', '6', '7'
+                db '8', '9', '-', '=', #5c, '[', ']', ';'
+                db #27, '`', ',', '.', '/', 0,   'a', 'b'
+                db 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'
+                db 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'
+                db 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
 keymap_shifted:
-                db '<', 'X', 'S', '!', '?', 0,   'L', 'B'
-                db 'N', 'C', 'A', 'Q', '}', '^', 'J', 'V'
-                db 'M', 'Z', 'F', 'W', '{', ')', '*', 'G'
-                db '|', 'U', 'D', '"', '+', '~', 'I', 'T'
-                db 'H', '&', 'R', '#', '*', 'P', 'K', '^'
-                db '>', 'Y', 'E', '$', '`', '(', 'O', '%'
+                db ')', '!', '@', '#', '$', '%', '^', '&'
+                db '*', '(', '_', '+', '|', '{', '}', ':'
+                db '"', '~', '<', '>', '?', 0,   'A', 'B'
+                db 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
+                db 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
+                db 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
 keymap_row7:
                 db 0,0,#1b,#09,#03,#08,0,#0d
 keymap_row8:

@@ -398,7 +398,7 @@ test-openmsx-bbcbasic: test-openmsx-bbcbasic-menu
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
-		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x08}; after time 2.10 {keymatrixup 0 0x08}" \
+		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x02}; after time 2.10 {keymatrixup 0 0x02}" \
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_smoke.tcl)"
 	$(PYTHON) tools/check_bbcbasic_smoke.py $(OPENMSX_BBC_BASIC_REPORT)
 
@@ -407,7 +407,7 @@ test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
-		-command "set graphics_output {$(abspath $(OPENMSX_BBC_GRAPHICS_REPORT))}; set graphics_screenshot {$(abspath $(OPENMSX_BBC_GRAPHICS_SCREEN))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x08}; after time 2.10 {keymatrixup 0 0x08}" \
+		-command "set graphics_output {$(abspath $(OPENMSX_BBC_GRAPHICS_REPORT))}; set graphics_screenshot {$(abspath $(OPENMSX_BBC_GRAPHICS_SCREEN))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x02}; after time 2.10 {keymatrixup 0 0x02}" \
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_graphics.tcl)"
 	$(PYTHON) $(BBC_BASIC_DIR)/tools/check_openmsx_graphics.py \
 		$(OPENMSX_BBC_GRAPHICS_REPORT)
