@@ -78,6 +78,10 @@ M1B uses the published `RSLREG`, `WSLREG`, and `ENASLT` inputs, outputs, and
 clobber declarations. The page-switch implementation and its RAM helper are
 original RainBIOS code covered by host and openMSX conformance probes.
 
+M1C likewise uses the published `RDSLT` and `WRSLT` register contracts. Its
+temporary map construction, page-0 helpers, restoration paths, and physical
+RAM probe are original RainBIOS work.
+
 ## Proprietary source trees
 
 The adjacent `msx-system` and `msxsyssrc20260412` trees were identified by

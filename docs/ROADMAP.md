@@ -36,10 +36,16 @@ switch from a RAM helper; page 3 removes the return address from the old stack
 before replacing that stack's slot. Expanded IDs currently fail closed without
 changing the map. See `docs/abi/slot-calls.md`.
 
+M1C adds primary-slot `RDSLT` and `WRSLT` on every page. The probe seeds the
+physical RAM device with distinct page values, verifies reads and writes
+through the public BIOS entries, requires documented register preservation,
+and checks that every call restores the exact previous map. Expanded-slot
+forms remain pending.
+
 - enumerate primary and expanded slots without assuming a machine layout;
 - select and test RAM, establish the stack, and initialize BIOS work areas;
-- complete expanded-slot `ENASLT` and implement `RDSLT`, `WRSLT`, `CALSLT`,
-  and `CALLF`; `RSLREG` and `WSLREG` are complete;
+- complete expanded-slot `ENASLT`, `RDSLT`, and `WRSLT`, then implement
+  `CALSLT` and `CALLF`; the primary forms and `RSLREG`/`WSLREG` are complete;
 - initialize hooks and an IM 1 interrupt handler;
 - run an original diagnostic cartridge;
 - define payload discovery and launch state for the optional BBC BASIC menu

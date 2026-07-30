@@ -43,6 +43,11 @@ a three-byte `OUT (A8h),A`/`RET` helper at `F380h`. Switching page 3 instead
 pops the return address before replacing the page that contains the stack.
 Expanded-slot IDs remain an explicit unsupported case.
 
+M1C extends the RAM-resident helper block with page-0 read/restore and
+write/restore operations. `RDSLT` and `WRSLT` handle pages 1–3 from visible
+page-0 code and restore page 3 before touching its stack. These calls are
+primary-slot-only until expanded-slot state is initialized.
+
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 polls the keyboard. Space switches to a fixed Screen 1 boot-menu preview built

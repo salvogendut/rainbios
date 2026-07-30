@@ -4,9 +4,9 @@ address,name,kind,status,milestone,notes
 0006,VDP_DR,data,partial,M0,MSX1 VDP data port
 0007,VDP_DW,data,partial,M0,MSX1 VDP data port
 0008,SYNCHR,jump,stub,M6,
-000C,RDSLT,jump,stub,M1,
+000C,RDSLT,jump,partial,M1,Reads from non-expanded primary slots on all four pages and restores the exact prior map
 0010,CHRGTR,jump,stub,M6,
-0014,WRSLT,jump,stub,M1,
+0014,WRSLT,jump,partial,M1,Writes non-expanded primary slots on all four pages and restores the exact prior map
 0018,OUTDO,jump,stub,M6,
 001C,CALSLT,jump,stub,M1,
 0020,DCOMPR,jump,partial,M0,Needs flag and clobber conformance tests

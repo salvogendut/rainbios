@@ -28,6 +28,8 @@ HOOKBASE        equ #fd9a
 RAM_TEST2       equ #bfff
 RAM_TEST3       equ #f380
 PAGE0_SLOT_HELPER equ #f380
+PAGE0_READ_HELPER equ #f383
+PAGE0_WRITE_HELPER equ #f38b
 STACK_TOP       equ #f380
 
                 org #0000
@@ -42,11 +44,11 @@ STACK_TOP       equ #f380
 ; MSX1 main BIOS ABI.
                 jp unsupported_call             ; 0008 SYNCHR
                 defs #000c-$,#ff
-                jp unsupported_call             ; 000C RDSLT
+                jp rdslt                        ; 000C RDSLT
                 defs #0010-$,#ff
                 jp unsupported_call             ; 0010 CHRGTR
                 defs #0014-$,#ff
-                jp unsupported_call             ; 0014 WRSLT
+                jp wrslt                        ; 0014 WRSLT
                 defs #0018-$,#ff
                 jp unsupported_call             ; 0018 OUTDO
                 defs #001c-$,#ff
@@ -252,17 +254,16 @@ bootstrap_primary_ram_found:
                 ld de,RAM_TEST3+1
                 ld bc,#0c7e                    ; clear F381h through FFFEh
                 ldir
-                pop de
 
-; A page-0 slot switch must finish from mapped RAM because the BIOS disappears
-; immediately after the PPI write. JP here leaves the caller's return address
-; on the stack, so this three-byte helper returns directly to that caller.
-                ld hl,PAGE0_SLOT_HELPER
-                ld (hl),#d3                    ; OUT (A8h),A
-                inc hl
-                ld (hl),PPI_SLOT
-                inc hl
-                ld (hl),#c9                    ; RET
+; Page-0 slot operations must finish from mapped RAM because the BIOS
+; disappears immediately after the PPI write. Install original switch,
+; read/restore, and write/restore helpers before recovering the saved reset
+; mapping and selected RAM slot.
+                ld hl,slot_helpers_image
+                ld de,PAGE0_SLOT_HELPER
+                ld bc,slot_helpers_image_end-slot_helpers_image
+                ldir
+                pop de
 
 ; Record the minimal MAIN-ROM state. The RAMAD0-RAMAD3 bytes at F341h-F344h
 ; belong to the Disk-ROM communication area and are deliberately not claimed.
@@ -646,7 +647,100 @@ rdpsg:
                 in a,(PSG_READ)
                 ret
 
-; Primary-slot primitives. RSLREG and WSLREG map directly to the PPI register.
+; Primary-slot memory calls. The page-0 cases execute the access and exact map
+; restoration from RAM. Other pages can be changed while this page-0 code
+; remains visible; page 3 is restored before any stack operation.
+rdslt:
+                bit 7,a
+                jp nz,unsupported_call
+                and #03
+                ld c,a
+                call primary_slot_map
+                bit 7,h
+                jr nz,rdslt_direct
+                bit 6,h
+                jr nz,rdslt_direct
+                call PAGE0_READ_HELPER
+                ret
+rdslt_direct:
+                out (PPI_SLOT),a
+                ld b,(hl)
+                ld a,d
+                out (PPI_SLOT),a
+                ld a,b
+                ret
+
+wrslt:
+                bit 7,a
+                jp nz,unsupported_call
+                and #03
+                ld c,a
+                call primary_slot_map
+                bit 7,h
+                jr nz,wrslt_direct
+                bit 6,h
+                jr nz,wrslt_direct
+                call PAGE0_WRITE_HELPER
+                ret
+wrslt_direct:
+                out (PPI_SLOT),a
+                ld (hl),e
+                ld a,d
+                out (PPI_SLOT),a
+                ret
+
+; Input C is a primary slot and the top two bits of H select the page. Return
+; the complete new primary map in A and the exact previous map in D. HL and E
+; are preserved for the public read/write contracts.
+primary_slot_map:
+                in a,(PPI_SLOT)
+                ld d,a
+                ld a,h
+                and #c0
+                jr z,primary_slot_map_page0
+                cp #40
+                jr z,primary_slot_map_page1
+                cp #80
+                jr z,primary_slot_map_page2
+                ld a,c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld b,a
+                ld a,d
+                and #3f
+                or b
+                ret
+primary_slot_map_page2:
+                ld a,c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld b,a
+                ld a,d
+                and #cf
+                or b
+                ret
+primary_slot_map_page1:
+                ld a,c
+                add a,a
+                add a,a
+                ld b,a
+                ld a,d
+                and #f3
+                or b
+                ret
+primary_slot_map_page0:
+                ld a,d
+                and #fc
+                or c
+                ret
+
+; Primary-slot control. RSLREG and WSLREG map directly to the PPI register.
 ; ENASLT deliberately rejects expanded-slot IDs until EXPTBL/SLTTBL and the
 ; secondary-slot register have complete M1 support.
 enaslt:
@@ -733,6 +827,16 @@ snsmat:
                 out (PPI_CONTROL_C),a
                 in a,(PPI_KEYBOARD)
                 ret
+
+; Copied to F380h-F391h during cold boot. These instructions are original
+; RainBIOS code for operations that temporarily remove page-0 BIOS visibility.
+slot_helpers_image:
+                db #d3,PPI_SLOT,#c9             ; switch page 0, return caller
+                db #d3,PPI_SLOT,#46,#7a         ; read byte, restore old map
+                db #d3,PPI_SLOT,#78,#c9
+                db #d3,PPI_SLOT,#73,#7a         ; write byte, restore old map
+                db #d3,PPI_SLOT,#c9
+slot_helpers_image_end:
 
 jingle_notes:
                 db #d6,#00                     ; C5

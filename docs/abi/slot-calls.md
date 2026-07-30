@@ -2,9 +2,9 @@
 
 # Slot-call status
 
-RainBIOS M1B implements the public primary-slot register calls and the
-non-expanded portion of `ENASLT`. The register contract follows Chapter 5,
-section 7 of the public MSX2 Technical Handbook.
+RainBIOS M1C implements the public primary-slot register calls and the
+non-expanded portions of `RDSLT`, `WRSLT`, and `ENASLT`. The register contract
+follows Chapter 5, section 7 of the public MSX2 Technical Handbook.
 
 ## Implemented calls
 
@@ -25,16 +25,27 @@ Page 0 switching finishes through an `OUT (A8h),A`/`RET` helper installed at
 Page 3 switching pops the return address before replacing the page that
 normally contains the stack, then jumps directly to that address.
 
+`RDSLT` at `000Ch` reads the byte addressed by HL from the non-expanded primary
+slot in A bits 0–1 and returns it in A. HL is preserved. `WRSLT` at `0014h`
+writes E to that address and preserves both HL and E. Both calls restore the
+exact previous primary-slot map before returning.
+
+Page-0 reads and writes use dedicated RAM helpers at `F383h` and `F38Bh`.
+Pages 1–3 execute from page 0; a page-3 access restores the old page before
+executing `RET`, so the original stack is visible again.
+
 ## Temporary expanded-slot behavior
 
-An `ENASLT` input with A bit 7 set is not implemented yet. M1B leaves the slot
-map unchanged and returns with carry set. Carry is clear after a successful
-primary-slot selection. This failure convention is a RainBIOS bring-up
+An `ENASLT`, `RDSLT`, or `WRSLT` input with A bit 7 set is not implemented yet.
+M1C leaves the slot map unchanged and returns with carry set; an expanded
+`WRSLT` also leaves memory unchanged. Carry is clear after a successful
+primary-slot operation. This failure convention is a RainBIOS bring-up
 extension, not a claim about the standard BIOS contract, and will disappear
 when expanded-slot handling is implemented.
 
-`RDSLT`, `WRSLT`, `CALSLT`, and `CALLF` remain stubs.
+`CALSLT` and `CALLF` remain stubs. Slot calls are not yet tested with interrupts
+enabled.
 
 The `test-openmsx-slots` target verifies register preservation, every primary
-page selection, the page-0 RAM helper, the page-3 return path, and the
-expanded-ID failure behavior.
+page selection, physical-RAM reads and writes, exact map restoration, all
+three page-0 RAM helpers, the page-3 stack paths, and expanded-ID failure.

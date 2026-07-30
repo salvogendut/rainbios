@@ -32,6 +32,8 @@ proc slot_call_returned {} {
 proc start_probe {} {
     set ::slot_handle [open $::slot_output w]
     puts $::slot_handle "HELPER=[format %02X [peek 0xF380]],[format %02X [peek 0xF381]],[format %02X [peek 0xF382]]"
+    puts $::slot_handle "READHELPER=[format %02X [peek 0xF383]],[format %02X [peek 0xF384]],[format %02X [peek 0xF385]],[format %02X [peek 0xF386]],[format %02X [peek 0xF387]],[format %02X [peek 0xF388]],[format %02X [peek 0xF389]],[format %02X [peek 0xF38A]]"
+    puts $::slot_handle "WRITEHELPER=[format %02X [peek 0xF38B]],[format %02X [peek 0xF38C]],[format %02X [peek 0xF38D]],[format %02X [peek 0xF38E]],[format %02X [peek 0xF38F]],[format %02X [peek 0xF390]],[format %02X [peek 0xF391]]"
 
     debug write "ioports" 0xA8 0xE4
     reg A 0x11
@@ -106,6 +108,131 @@ proc enaslt3_done {} {
 proc expanded_done {} {
     puts $::slot_handle [
         format "EXPANDED=%02X,%d" [primary_map] [expr {[reg F] & 1}]
+    ]
+
+    debug write "Probe RAM" 0x1234 0x11
+    debug write "Probe RAM" 0x5234 0x22
+    debug write "Probe RAM" 0x9234 0x33
+    debug write "Probe RAM" 0xD234 0x44
+    reg A 3
+    reg F 0
+    reg HL 0x1234
+    invoke_bios 0x000C rdslt0_done
+}
+
+proc rdslt0_done {} {
+    puts $::slot_handle [
+        format "RDSLT0=%02X,%04X,%02X,%d" \
+            [reg A] [reg HL] [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg F 0
+    reg HL 0x5234
+    invoke_bios 0x000C rdslt1_done
+}
+
+proc rdslt1_done {} {
+    puts $::slot_handle [
+        format "RDSLT1=%02X,%04X,%02X,%d" \
+            [reg A] [reg HL] [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg F 0
+    reg HL 0x9234
+    invoke_bios 0x000C rdslt2_done
+}
+
+proc rdslt2_done {} {
+    puts $::slot_handle [
+        format "RDSLT2=%02X,%04X,%02X,%d" \
+            [reg A] [reg HL] [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg F 0
+    reg HL 0xD234
+    invoke_bios 0x000C rdslt3_done
+}
+
+proc rdslt3_done {} {
+    puts $::slot_handle [
+        format "RDSLT3=%02X,%04X,%02X,%d" \
+            [reg A] [reg HL] [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg E 0x55
+    reg F 0
+    reg HL 0x1234
+    invoke_bios 0x0014 wrslt0_done
+}
+
+proc wrslt0_done {} {
+    puts $::slot_handle [
+        format "WRSLT0=%02X,%04X,%02X,%02X,%d" \
+            [debug read "Probe RAM" 0x1234] [reg HL] [reg E] \
+            [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg E 0x66
+    reg F 0
+    reg HL 0x5234
+    invoke_bios 0x0014 wrslt1_done
+}
+
+proc wrslt1_done {} {
+    puts $::slot_handle [
+        format "WRSLT1=%02X,%04X,%02X,%02X,%d" \
+            [debug read "Probe RAM" 0x5234] [reg HL] [reg E] \
+            [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg E 0x77
+    reg F 0
+    reg HL 0x9234
+    invoke_bios 0x0014 wrslt2_done
+}
+
+proc wrslt2_done {} {
+    puts $::slot_handle [
+        format "WRSLT2=%02X,%04X,%02X,%02X,%d" \
+            [debug read "Probe RAM" 0x9234] [reg HL] [reg E] \
+            [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 3
+    reg E 0x88
+    reg F 0
+    reg HL 0xD234
+    invoke_bios 0x0014 wrslt3_done
+}
+
+proc wrslt3_done {} {
+    puts $::slot_handle [
+        format "WRSLT3=%02X,%04X,%02X,%02X,%d" \
+            [debug read "Probe RAM" 0xD234] [reg HL] [reg E] \
+            [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 0x83
+    reg F 0
+    reg HL 0x1234
+    invoke_bios 0x000C rdslt_expanded_done
+}
+
+proc rdslt_expanded_done {} {
+    puts $::slot_handle [
+        format "RDSLTEXP=%02X,%04X,%02X,%d" \
+            [reg A] [reg HL] [primary_map] [expr {[reg F] & 1}]
+    ]
+    reg A 0x83
+    reg E 0x99
+    reg F 0
+    reg HL 0x1234
+    invoke_bios 0x0014 wrslt_expanded_done
+}
+
+proc wrslt_expanded_done {} {
+    puts $::slot_handle [
+        format "WRSLTEXP=%02X,%04X,%02X,%02X,%d" \
+            [debug read "Probe RAM" 0x1234] [reg HL] [reg E] \
+            [primary_map] [expr {[reg F] & 1}]
     ]
     close $::slot_handle
     exit
