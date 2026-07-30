@@ -169,6 +169,61 @@ proc graphics_scroll_done {} {
             [debug read VRAM 0x1700] [debug read VRAM 0x3700] \
             [peek 0xF3DD] [peek 0xF3DC]
     ]
+    reg B 0x03
+    reg C 0x01
+    reg DE 0x1234
+    reg HL 0x9000
+    invoke_bios 0x0144 disk_phyio_done
+}
+
+proc disk_phyio_done {} {
+    puts $::services_handle [
+        format "PHYDIO=%01X" [expr {[reg F] & 1}]
+    ]
+    reg B 0x02
+    reg C 0x00
+    reg DE 0x1111
+    reg HL 0x2222
+    invoke_bios 0x0147 disk_format_done
+}
+
+proc disk_format_done {} {
+    puts $::services_handle [
+        format "FORMAT=%01X" [expr {[reg F] & 1}]
+    ]
+    reg A 0xFF
+    invoke_bios 0x014A isflio_done
+}
+
+proc isflio_done {} {
+    puts $::services_handle [
+        format "ISFLIO=%02X,%01X" [reg A] [expr {[reg F] & 1}]
+    ]
+    reg A 0x2B
+    invoke_bios 0x014D outdlp_done
+}
+
+proc outdlp_done {} {
+    puts $::services_handle [
+        format "OUTDLP=%01X" [expr {[reg F] & 1}]
+    ]
+    reg A 0x02
+    invoke_bios 0x0150 getvcp_done
+}
+
+proc getvcp_done {} {
+    puts $::services_handle [
+        format "GETVCP=%01X" [expr {[reg F] & 1}]
+    ]
+    reg A 0x03
+    reg L 0x08
+    invoke_bios 0x0153 getvc2_done
+}
+
+proc getvc2_done {} {
+    puts $::services_handle [
+        format "GETVC2=%01X" [expr {[reg F] & 1}]
+    ]
     close $::services_handle
     exit
 }

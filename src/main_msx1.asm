@@ -190,12 +190,12 @@ STACK_TOP       equ #f380
                 jp wslreg                       ; 013B WSLREG
                 jp rdvdp                        ; 013E RDVDP
                 jp snsmat                       ; 0141 SNSMAT
-                jp unsupported_call             ; 0144 PHYDIO
-                jp unsupported_call             ; 0147 FORMAT
-                jp unsupported_call             ; 014A ISFLIO
-                jp unsupported_call             ; 014D OUTDLP
-                jp unsupported_call             ; 0150 GETVCP
-                jp unsupported_call             ; 0153 GETVC2
+                jp disk_phyio                   ; 0144 PHYDIO
+                jp disk_format                  ; 0147 FORMAT
+                jp disk_isflio                  ; 014A ISFLIO
+                jp disk_outdlp                  ; 014D OUTDLP
+                jp disk_getvcp                  ; 0150 GETVCP
+                jp disk_getvc2                  ; 0153 GETVC2
                 jp kilbuf                       ; 0156 KILBUF
                 jp unsupported_call             ; 0159 CALBAS
                 defs #015f-$,#ff
@@ -936,6 +936,34 @@ cold_boot_payload_expect:
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
 ; not an assertion about compatible error behavior.
 unsupported_call:
+                scf
+                ret
+
+; MSX1 mass-storage stubs.
+; These interfaces are intentionally unsupported in this BIOS slice.
+disk_phyio:
+                scf
+                ret
+
+disk_format:
+                scf
+                ret
+
+; Return #00 and clear carry to report no active storage I/O and
+; no active transfer context.
+disk_isflio:
+                xor a
+                ret
+
+disk_outdlp:
+                scf
+                ret
+
+disk_getvcp:
+                scf
+                ret
+
+disk_getvc2:
                 scf
                 ret
 

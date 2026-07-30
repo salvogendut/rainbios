@@ -177,6 +177,8 @@ emulated machine layouts and real hardware.
   behavior;
 - scope independently implemented BASIC and disk firmware as separate
   components with their own tests and provenance;
+- add a read-only-safe disk baseline for `PHYDIO`, `FORMAT`, `ISFLIO`, `OUTDLP`,
+  `GETVCP`, and `GETVC2` before adding writable media support;
 - publish reproducible releases, symbols, compatibility results, and known
   deviations.
 
