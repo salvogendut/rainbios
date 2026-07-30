@@ -68,9 +68,10 @@ open-source implementation difference is not copied.
 - Public English transcription:
   `https://konamiman.github.io/MSX2-Technical-Handbook/`
 - Material consulted: Chapter 2 interrupt model; Chapter 3 slot
-  initialization; Chapter 5 cartridge headers and section 7 inter-slot call
-  interfaces; Appendix 1 interrupt/VDP/mode/console call contracts; and
-  Appendix 4 MAIN-ROM work-area and hook listings
+  initialization; Chapter 5 cartridge headers, section 3 international
+  keyboard/character input, and section 7 inter-slot call interfaces;
+  Appendix 1 interrupt/VDP/mode/console call contracts; Appendix 4 MAIN-ROM
+  work-area and hook listings; and Appendix 8 control-character assignments
 - Purpose: define the M1 slot-call register contract and the documented
   `F380h-FFCAh` work-area layout
 - RainBIOS use: interface and behavioral facts only
@@ -101,6 +102,12 @@ screen, table-base, color, line-length, and cursor work variables; and the
 `CHPUT`, `CLS`, and `POSIT` interfaces. The handler, mode tables, console
 implementation, font expansion, and conformance probe are original RainBIOS
 work.
+
+M3A uses the published active-low international keyboard matrix, the 40-byte
+circular buffer pointers, `OLDKEY`/`NEWKEY` state, editing control characters,
+and the `SNSMAT`, `CHSNS`, `CHGET`, and `KILBUF` contracts. The edge-triggered
+scanner, translation tables, circular-buffer implementation, printable font
+additions, and conformance probe are original RainBIOS work.
 
 ## Proprietary source trees
 
@@ -198,6 +205,10 @@ An openMSX smoke test exercises language, editing, error, clock, and timeout
 paths with zero writes to the selected ROM window. The adjacent 1983 emulator
 separately renders the banner and prompt, avoiding reliance on openMSX raw
 screenshot capture.
+The same pinned BBC BASIC binary now passes that complete smoke sequence under
+RainBIOS with zero ROM writes. The 1983 test independently confirms the
+blocking `CHGET` wait state, the page-1 cartridge mapping, Text 40 mode, and a
+visible BBC BASIC banner and prompt.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 

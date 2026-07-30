@@ -52,6 +52,15 @@ class LogoConversionTest(unittest.TestCase):
                     font[ord(uppercase) * 8 : (ord(uppercase) + 1) * 8],
                 )
 
+    def test_printable_ascii_has_a_visible_glyph(self):
+        font = (OUTPUT / "boot_font.bin").read_bytes()
+        for character in (chr(code) for code in range(0x21, 0x7F)):
+            with self.subTest(character=character):
+                self.assertNotEqual(
+                    font[ord(character) * 8 : (ord(character) + 1) * 8],
+                    bytes(8),
+                )
+
     def test_name_table_selects_all_patterns_in_each_screen_third(self):
         expected = bytes(range(256)) * 3
         self.assertEqual((OUTPUT / "logo_name.bin").read_bytes(), expected)

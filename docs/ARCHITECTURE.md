@@ -77,6 +77,14 @@ supports one-based cursor positioning, text name-table output, carriage
 return, line feed, wrapping, and clearing; scrolling and the complete control
 character set remain pending.
 
+M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
+`NEWKEY` retain active-low row state, while new press edges are translated
+into the standard 40-byte circular `KEYBUF`. `CHSNS` tests its read/write
+pointers, `CHGET` blocks under `HALT` with interrupts enabled and consumes one
+character, and `KILBUF` resets both pointers. Shift, Ctrl, printable ASCII,
+and editing keys are supported; repeat, lock/dead-key state, key click,
+function-key expansion, and break handling remain separate work.
+
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 checks primary cartridges before polling the keyboard. Space switches to a
@@ -125,6 +133,10 @@ hardware.
   through their fixed public addresses. Optional opaque-cartridge probes
   require cartridge execution, the expected slot/video state, and a rendered
   frame in both openMSX and 1983.
+- A physical-matrix keyboard probe checks translation and blocking input. The
+  pinned BBC BASIC payload supplies the end-to-end console/keyboard/timing
+  workload, guarded against writes to its ROM; 1983 separately requires its
+  banner and prompt to be visibly rendered.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before
   a compatibility milestone is released.
 - Differential tests may compare public behavior against authorized reference

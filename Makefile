@@ -6,6 +6,7 @@ MODELS_1983 ?= ../1983/1983-models.conf
 BBC_BASIC_DIR ?= ../bbcbasic-z80-msx
 BBC_ZMAC ?= zmac
 BBC_LD80 ?= ld80
+BBC_BASIC_ROM ?= $(BBC_BASIC_DIR)/build/msx-console/bbcbasic_msx_console.rom
 ARKANO_ROM ?= ../1983/ROMS/Arkano.rom
 MSX_DIAGNOSTICS_ROM ?= ../1983/ROMS/diag.rom
 
@@ -27,12 +28,17 @@ OPENMSX_M1_SPLIT_MACHINE := \
 OPENMSX_M1_REPORT_DIR := $(OPENMSX_ROOT)/m1
 OPENMSX_SLOT_REPORT := $(OPENMSX_M1_REPORT_DIR)/slot-calls.txt
 OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
+OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
 OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
 OPENMSX_CART_SCREEN := $(OPENMSX_ROOT)/rainbios_cartridge.png
+OPENMSX_BBC_BASIC_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
+OPENMSX_BBC_BASIC_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-smoke.txt
 OPENMSX_EXTERNAL_ARKANO_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_EXTERNAL_ARKANO.xml
 OPENMSX_EXTERNAL_DIAGNOSTICS_MACHINE := \
@@ -49,6 +55,8 @@ EMULATOR_1983_DIR := $(BUILD_DIR)/1983
 EMULATOR_1983_SCREEN := $(EMULATOR_1983_DIR)/rainbios_logo.ppm
 EMULATOR_1983_CART_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
+EMULATOR_1983_BBC_BASIC_SCREEN := \
+	$(EMULATOR_1983_DIR)/bbcbasic-prompt.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -59,7 +67,8 @@ SOURCES := src/main_msx1.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
-	test-openmsx-services test-openmsx-cartridge test-1983 \
+	test-openmsx-services test-openmsx-keyboard test-openmsx-cartridge test-1983 \
+	test-openmsx-bbcbasic test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
@@ -171,6 +180,15 @@ test-openmsx-services: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-script "$(abspath tests/openmsx/services_probe.tcl)"
 	$(PYTHON) tools/check_services_probe.py $(OPENMSX_SERVICES_REPORT)
 
+test-openmsx-keyboard: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set keyboard_output {$(abspath $(OPENMSX_KEYBOARD_REPORT))}" \
+		-script "$(abspath tests/openmsx/keyboard_probe.tcl)"
+	$(PYTHON) tools/check_keyboard_probe.py $(OPENMSX_KEYBOARD_REPORT)
+
 $(OPENMSX_CART_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
 		$(MSX1_ROM) $(DIAGNOSTIC_CART)
@@ -188,6 +206,25 @@ test-openmsx-cartridge: $(OPENMSX_CART_MACHINE)
 		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
 	$(PYTHON) tools/check_cartridge_probe.py $(OPENMSX_CART_REPORT)
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_CART_SCREEN)
+
+$(OPENMSX_BBC_BASIC_MACHINE): \
+		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(BBC_BASIC_ROM)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(BBC_BASIC_ROM))|' \
+		-e 's|RainBIOS-MSX1-M1-CARTRIDGE|RainBIOS-BBC-BASIC|' \
+		-e 's|RainBIOS Diagnostic Cartridge|BBC BASIC Payload|' \
+		$< > $@
+
+test-openmsx-bbcbasic: $(OPENMSX_BBC_BASIC_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
+		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}" \
+		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_smoke.tcl)"
+	$(PYTHON) tools/check_bbcbasic_smoke.py $(OPENMSX_BBC_BASIC_REPORT)
 
 $(OPENMSX_EXTERNAL_ARKANO_MACHINE): \
 		tests/openmsx/RainBIOS_M1_EXTERNAL_CARTRIDGE.xml.in \
@@ -252,6 +289,15 @@ test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 		--screenshot "$(EMULATOR_1983_CART_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_CART_SCREEN)
+
+test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bbcbasic.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(BBC_BASIC_ROM)" \
+		--screenshot "$(EMULATOR_1983_BBC_BASIC_SCREEN)"
+	$(PYTHON) tools/check_bbcbasic_screenshot.py \
+		$(EMULATOR_1983_BBC_BASIC_SCREEN)
 
 test-1983-external-cartridges: test-1983-external-arkano \
 		test-1983-external-diagnostics

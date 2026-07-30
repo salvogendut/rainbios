@@ -4,7 +4,8 @@ RainBIOS intends to offer `START BBC BASIC` as a boot-menu entry. The
 console-only MSX payload now boots as a standalone cartridge, while the
 current menu remains a truthful preview. RainBIOS now establishes primary-slot
 RAM, a stack, a minimal work area, and simple primary-cartridge INIT transfer.
-BBC BASIC menu launch stays disabled until its required firmware services,
+Its required console, keyboard, and timing services now pass the complete
+interactive payload smoke test. BBC BASIC menu launch stays disabled until
 descriptor discovery, capability checks, and the dedicated transfer contract
 are implemented.
 
@@ -41,6 +42,20 @@ compatible firmware launcher.
 
 No proprietary MSX BIOS or BASIC source, ROM data, or disassembly may be
 copied into either project.
+
+## Release packaging
+
+The primary release model keeps `rainbios_msx1.rom` and
+`bbcbasic_msx_console.rom` as separately built ROMs and distributes them in
+the same release archive with both projects' license notices. Users can
+install RainBIOS without BASIC, and either component can be updated and tested
+independently.
+
+An optional combined 32 KiB MAIN-ROM remains feasible and matches the
+traditional MSX organization of BIOS and BASIC in one address space. RainBIOS
+currently lets raw logo tables extend slightly into the upper 16 KiB, so that
+variant first requires compacting or relocating the boot assets. It will be
+an additional output, not a replacement for the separate artifacts.
 
 ## Why BBC BASIC
 
@@ -135,8 +150,8 @@ make check-bbcbasic-artifact \
 - **M0:** visible BBC BASIC menu entry; launcher truthfully marked as requiring
   M1.
 - **M1:** payload descriptor complete; primary RAM/stack state and simple
-  primary-cartridge INIT implemented; expanded-slot discovery, interrupts,
-  payload discovery, required services, and transfer state remain.
+  primary-cartridge INIT implemented; expanded-slot discovery, payload
+  discovery, and transfer state remain.
 - **Port P0 (complete):** standalone build driver reproduces the 15,616-byte
   CP/M baseline with SHA-256 `8f65a0a8…`; the externally supplied `zmac` and
   `ld80` sources are recorded.
@@ -147,7 +162,8 @@ make check-bbcbasic-artifact \
 - **Port P1 (complete):** bootable MSX console cartridge with storage
   explicitly unsupported, guarded runtime tests in openMSX, and independent
   rendered-prompt confirmation in 1983.
-- **M2/M3:** enough console, keyboard, timing, and optional PSG services for
-  interactive smoke tests.
+- **M2/M3:** console, keyboard, and timing services pass the interactive smoke
+  tests; complete console controls, keyboard behavior, and optional PSG
+  services remain.
 - **M4:** launch the pinned payload and run BBC BASIC expression, editing, and
   example-program tests.

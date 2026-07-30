@@ -6,7 +6,15 @@ if {![info exists m1_output]} {
     set m1_output /tmp/rainbios-m1-probe.txt
 }
 
-after time 1.00 {
+proc capture_m1_state {attempts} {
+    # A timed debugger callback can land between KEYINT's register pushes.
+    # This probe describes the initialized idle state, so wait for the main
+    # loop's documented stack pointer instead of recording a transient frame.
+    if {[reg SP] != 0xF380 && $attempts > 0} {
+        after time 0.001 [list capture_m1_state [expr {$attempts - 1}]]
+        return
+    }
+
     set handle [open $::m1_output w]
     puts $handle "SP=[format %04X [reg SP]]"
     puts $handle "SLOTS=[lindex [get_selected_slot 0] 0]/[lindex [get_selected_slot 1] 0]/[lindex [get_selected_slot 2] 0]/[lindex [get_selected_slot 3] 0]"
@@ -19,3 +27,5 @@ after time 1.00 {
     close $handle
     exit
 }
+
+after time 1.00 {capture_m1_state 100}

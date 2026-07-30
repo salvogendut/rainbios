@@ -14,8 +14,9 @@ MAIN-ROM work area, initializes primary-slot control and memory read/write
 calls, enables an IM 1 VBlank path with standard hooks and `JIFFY`, and then
 displays the boot UI. It also discovers public `AB` cartridge headers in
 primary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
-0/1/2 initialization and Screen 0/1 text-output services are present.
-Expanded-slot discovery, keyboard services, broad cartridge compatibility,
+0/1/2 initialization, Screen 0/1 text output, interrupt-driven international
+keyboard scan, and buffered character-input services are present. Expanded
+slot discovery, complete keyboard behavior, broad cartridge compatibility,
 and most firmware services remain pending.
 
 ## Build
@@ -50,11 +51,13 @@ are tracked in
 The menu is intended to launch the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
 payload once slot/RAM initialization and the required firmware services
-exist. Its open-source core and new BSD-3-Clause MSX port can be bundled with
-RainBIOS while remaining a distinct build artifact. Its console-only
-standalone cartridge now boots, publishes a versioned RainBIOS payload
-descriptor, and is pinned by source revision, size, and SHA-256 digest. The
-dependency, license, and platform boundary are described in
+exist. Those console, keyboard, and timing services now pass the payload's
+interactive smoke test; descriptor-driven menu launch remains pending. Its
+open-source core and new BSD-3-Clause MSX port can be distributed with
+RainBIOS while remaining a distinct build artifact. The console-only
+standalone cartridge publishes a versioned RainBIOS payload descriptor and is
+pinned by source revision, size, and SHA-256 digest. The dependency, license,
+packaging, and platform boundary are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
@@ -84,6 +87,14 @@ The interrupt/video service probe checks `CALLF`, `H.TIMI`, `JIFFY`,
 
 ```sh
 make test-openmsx-services OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+The M3 keyboard probe uses physical openMSX matrix events to verify Shift+A,
+raw `SNSMAT`, `CHSNS`, register-preserving `CHGET`, `KILBUF`, and an empty
+blocking `CHGET` which wakes on Return:
+
+```sh
+make test-openmsx-keyboard OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
 An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
@@ -140,6 +151,15 @@ page-2/page-3 slot map. The second independently requires execution in the
 diagnostic cartridge with slot 1 mapped into page 1. Both validate the
 rendered screen and write captures below `build/1983/`. Override
 `EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
+
+With the pinned BBC BASIC artifact already built, its complete editing,
+language, error, clock, and timed-input sequence can run directly on RainBIOS.
+The second target independently requires a visible banner and prompt in 1983:
+
+```sh
+make test-openmsx-bbcbasic OPENMSX='flatpak run org.openmsx.openMSX'
+make test-1983-bbcbasic
+```
 
 Optional black-box tests cover the locally supplied 32 KiB Arkanoid and MSX
 Diagnostics cartridges in both emulators:

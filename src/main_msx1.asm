@@ -28,10 +28,18 @@ LINLEN          equ #f3b0
 CRTCNT          equ #f3b1
 CSRY            equ #f3dc
 CSRX            equ #f3dd
+SCNCNT          equ #f3f6
+REPCNT          equ #f3f7
+PUTPNT          equ #f3f8
+GETPNT          equ #f3fa
 NAMBAS          equ #f922
 CGPBAS          equ #f924
 PATBAS          equ #f926
 ATRBAS          equ #f928
+OLDKEY          equ #fbda
+NEWKEY          equ #fbe5
+KEYBUF          equ #fbf0
+KEYBUF_END      equ #fc18
 JIFFY           equ #fc9e
 SCRMOD          equ #fcaf
 BOTTOM          equ #fc48
@@ -120,8 +128,8 @@ STACK_TOP       equ #f380
                 jp wrtpsg                       ; 0093 WRTPSG
                 jp rdpsg                        ; 0096 RDPSG
                 jp unsupported_call             ; 0099 STRTMS
-                jp unsupported_call             ; 009C CHSNS
-                jp unsupported_call             ; 009F CHGET
+                jp chsns                        ; 009C CHSNS
+                jp chget                        ; 009F CHGET
                 jp chput                        ; 00A2 CHPUT
                 jp unsupported_call             ; 00A5 LPTOUT
                 jp unsupported_call             ; 00A8 LPTSTT
@@ -182,7 +190,7 @@ STACK_TOP       equ #f380
                 jp unsupported_call             ; 014D OUTDLP
                 jp unsupported_call             ; 0150 GETVCP
                 jp unsupported_call             ; 0153 GETVC2
-                jp unsupported_call             ; 0156 KILBUF
+                jp kilbuf                       ; 0156 KILBUF
                 jp unsupported_call             ; 0159 CALBAS
                 defs #015f-$,#ff
                 ret                             ; 015F MSX1 compatibility
@@ -333,6 +341,18 @@ bootstrap_empty_hook:
                 ld (PATBAS),hl
                 ld hl,#1b00
                 ld (ATRBAS),hl
+                ld a,1
+                ld (SCNCNT),a
+                ld a,50
+                ld (REPCNT),a
+                ld hl,KEYBUF
+                ld (PUTPNT),hl
+                ld (GETPNT),hl
+                ld hl,OLDKEY
+                ld de,OLDKEY+1
+                ld bc,21
+                ld (hl),#ff
+                ldir
 
                 ld sp,STACK_TOP
 
@@ -657,8 +677,8 @@ callf:
                 jp calslt
 
 ; Partial MSX1 IM 1 handler. Preserve every normal register, run the device
-; and VBlank hooks, acknowledge VDP status zero, and advance the public JIFFY
-; counter once per VBlank. Keyboard processing remains a later M3 slice.
+; and VBlank hooks, acknowledge VDP status zero, scan the keyboard, and
+; advance the public JIFFY counter once per VBlank.
 keyint:
                 push af
                 push bc
@@ -671,6 +691,7 @@ keyint:
                 bit 7,a
                 jr z,keyint_done
                 push af
+                call keyboard_scan
                 call HOOKBASE+5                  ; H.TIMI
                 pop af
                 ld (STATFL),a
@@ -879,6 +900,8 @@ chput:
                 jr z,chput_carriage_return
                 cp #0a
                 jr z,chput_line_feed
+                cp #08
+                jr z,chput_backspace
                 cp #20
                 jr c,chput_done
                 push de
@@ -902,6 +925,13 @@ chput_store_x:
                 jr chput_done
 chput_carriage_return:
                 ld a,1
+                ld (CSRX),a
+                jr chput_done
+chput_backspace:
+                ld a,(CSRX)
+                cp 1
+                jr z,chput_done
+                dec a
                 ld (CSRX),a
                 jr chput_done
 chput_line_feed:
@@ -975,6 +1005,204 @@ posit:
                 ld (CSRX),a
                 ld a,l
                 ld (CSRY),a
+                ret
+
+; Partial international-keyboard input. KEYINT records newly pressed matrix
+; positions in the standard 40-byte circular buffer. Lock states, function-key
+; expansion, dead keys, key click, and auto-repeat remain later M3 work.
+keyboard_scan:
+                ld a,6
+                call snsmat
+                ld d,a                          ; current modifier row
+                ld hl,OLDKEY
+                ld ix,NEWKEY
+                ld b,0
+keyboard_scan_row:
+                ld a,b
+                call snsmat
+                ld e,(hl)                       ; previous active-low row
+                ld (hl),a
+                ld (ix),a
+                cpl
+                and e                           ; one bits are new presses
+                ld c,a
+                ld a,b
+                cp 6
+                jr z,keyboard_scan_next
+                ld a,c
+                or a
+                jr z,keyboard_scan_next
+                push bc
+                push de
+                push hl
+                push ix
+                call keyboard_enqueue_edges
+                pop ix
+                pop hl
+                pop de
+                pop bc
+keyboard_scan_next:
+                inc hl
+                inc ix
+                inc b
+                ld a,b
+                cp 9
+                jr nz,keyboard_scan_row
+                ret
+
+; B is the matrix row, C contains newly pressed bits, and D contains the
+; active-low Shift/Ctrl row. Enqueue every translatable edge from low to high
+; bit number.
+keyboard_enqueue_edges:
+                ld e,0
+keyboard_enqueue_edge:
+                srl c
+                jr nc,keyboard_enqueue_next
+                push bc
+                push de
+                call keyboard_translate
+                or a
+                call nz,keyboard_buffer_put
+                pop de
+                pop bc
+keyboard_enqueue_next:
+                inc e
+                ld a,e
+                cp 8
+                jr nz,keyboard_enqueue_edge
+                ret
+
+; Translate rows 0-5 through original tables derived from the published
+; international matrix. Rows 7 and 8 contain editing/control keys.
+keyboard_translate:
+                ld a,b
+                cp 6
+                jr c,keyboard_translate_printable
+                cp 7
+                jr z,keyboard_translate_row7
+                cp 8
+                jr z,keyboard_translate_row8
+                xor a
+                ret
+keyboard_translate_printable:
+                add a,a
+                add a,a
+                add a,a
+                add a,e
+                ld c,a
+                ld b,0
+                ld hl,keymap_unshifted
+                bit 0,d
+                jr nz,keyboard_translate_table
+                ld hl,keymap_shifted
+keyboard_translate_table:
+                add hl,bc
+                ld a,(hl)
+                bit 1,d
+                ret nz
+                cp 'a'
+                ret c
+                cp 'z'+1
+                ret nc
+                and #1f                         ; Ctrl+A through Ctrl+Z
+                ret
+keyboard_translate_row7:
+                ld hl,keymap_row7
+                jr keyboard_translate_special
+keyboard_translate_row8:
+                ld hl,keymap_row8
+keyboard_translate_special:
+                ld d,0
+                add hl,de
+                ld a,(hl)
+                ret
+
+; Add A to the circular buffer unless advancing PUTPNT would collide with
+; GETPNT. This private interrupt helper may use all normal registers.
+keyboard_buffer_put:
+                push af
+                ld hl,(PUTPNT)
+                ld d,h
+                ld e,l
+                inc hl
+                ld a,h
+                cp KEYBUF_END/256
+                jr nz,keyboard_buffer_put_compare
+                ld a,l
+                cp KEYBUF_END&255
+                jr nz,keyboard_buffer_put_compare
+                ld hl,KEYBUF
+keyboard_buffer_put_compare:
+                push hl
+                ld bc,(GETPNT)
+                or a
+                sbc hl,bc
+                pop hl
+                jr z,keyboard_buffer_put_full
+                pop af
+                ld (de),a
+                ld (PUTPNT),hl
+                ret
+keyboard_buffer_put_full:
+                pop af
+                ret
+
+; Return Z when the keyboard buffer is empty and NZ when input is ready.
+; Only AF is changed, matching the public entry contract.
+chsns:
+                push hl
+                ld hl,(GETPNT)
+                ld a,(PUTPNT)
+                cp l
+                jr nz,chsns_done
+                ld a,(PUTPNT+1)
+                cp h
+chsns_done:
+                pop hl
+                ret
+
+; Wait for and remove one buffered character. All registers other than AF are
+; preserved. Interrupts are enabled while waiting so KEYINT can fill the
+; buffer.
+chget:
+                push bc
+                push de
+                push hl
+chget_wait:
+                call chsns
+                jr nz,chget_ready
+                ei
+                halt
+                jr chget_wait
+chget_ready:
+                di
+                ld hl,(GETPNT)
+                ld a,(hl)
+                inc hl
+                ld d,a
+                ld a,h
+                cp KEYBUF_END/256
+                jr nz,chget_store_pointer
+                ld a,l
+                cp KEYBUF_END&255
+                jr nz,chget_store_pointer
+                ld hl,KEYBUF
+chget_store_pointer:
+                ld (GETPNT),hl
+                ld a,d
+                ei
+                pop hl
+                pop de
+                pop bc
+                ret
+
+; Empty the standard key buffer. The public contract permits HL to change.
+kilbuf:
+                di
+                ld hl,KEYBUF
+                ld (PUTPNT),hl
+                ld (GETPNT),hl
+                ei
                 ret
 
 setrd:
@@ -1279,10 +1507,10 @@ rdvdp:
 
 snsmat:
                 and #0f
-                ld b,a
+                ld c,a
                 in a,(PPI_CONTROL_C)
                 and #f0
-                or b
+                or c
                 out (PPI_CONTROL_C),a
                 in a,(PPI_KEYBOARD)
                 ret
@@ -1306,6 +1534,27 @@ text32_vdp_registers:
                 db #00,#a0,#06,#80,#00,#36,#07,#f1
 graphics2_vdp_registers:
                 db #02,#a0,#06,#ff,#03,#36,#07,#01
+
+; International keyboard matrix rows 0-5, bit 0 first. A zero entry is not
+; translated in this first keyboard slice.
+keymap_unshifted:
+                db ',', 'x', 's', '1', '/', 0,   'l', 'b'
+                db 'n', 'c', 'a', 'q', ']', '^', 'j', 'v'
+                db 'm', 'z', 'f', 'w', '[', '0', '8', 'g'
+                db #5c, 'u', 'd', '2', ';', '~', 'i', 't'
+                db 'h', '7', 'r', '3', ':', 'p', 'k', '6'
+                db '.', 'y', 'e', '4', '@', '9', 'o', '5'
+keymap_shifted:
+                db '<', 'X', 'S', '!', '?', 0,   'L', 'B'
+                db 'N', 'C', 'A', 'Q', '}', '^', 'J', 'V'
+                db 'M', 'Z', 'F', 'W', '{', ')', '*', 'G'
+                db '|', 'U', 'D', '"', '+', '~', 'I', 'T'
+                db 'H', '&', 'R', '#', '*', 'P', 'K', '^'
+                db '>', 'Y', 'E', '$', '`', '(', 'O', '%'
+keymap_row7:
+                db 0,0,#1b,#09,#03,#08,0,#0d
+keymap_row8:
+                db #20,#0b,#12,#7f,#1d,#1e,#1f,#1c
 
 jingle_notes:
                 db #d6,#00                     ; C5

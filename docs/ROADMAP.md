@@ -80,8 +80,8 @@ M2A corrects the published `WRTVDP` B=data/C=register contract, makes VDP
 control-port pairs interrupt-atomic, initializes register shadows and the
 current table-base work variables, and provides partial Screen 0/1/2 mode
 setup. A minimal Screen 0/1 console implements `POSIT`, printable `CHPUT`,
-carriage return, line feed, wrapping, and `CLS`. The project-owned font now
-contains matching lowercase glyph slots. The public service probe and two
+backspace, carriage return, line feed, wrapping, and `CLS`. The project-owned
+font now covers printable ASCII. The public service probe and two
 opaque cartridge smoke tests cover this slice.
 
 - initialize TMS9918-compatible VDP state;
@@ -95,7 +95,18 @@ BIOS calls alone.
 
 ## M3 — Keyboard, PSG, and basic devices
 
-- scan the keyboard matrix and implement the key buffer and break handling;
+Status: in progress.
+
+M3A initializes the standard 40-byte key buffer and matrix work areas, scans
+international rows 0-8 from `KEYINT`, translates new printable and editing-key
+presses with Shift/Ctrl, and implements partial `CHSNS`/`CHGET` plus complete
+buffer clearing through `KILBUF`. A physical-matrix openMSX probe covers
+Shift+A and blocking Return input. The pinned BBC BASIC payload then passes
+its editing, expression, program, error, timing, and timeout sequence with
+zero ROM writes; 1983 independently renders its banner and prompt.
+
+- complete auto-repeat, lock/dead-key state, function-key expansion, key click,
+  and break handling;
 - implement PSG initialization, joystick, trigger, and paddle calls;
 - implement or explicitly classify printer, cassette, and motor behavior;
 - make interrupt frequency and locale selectable build properties.
