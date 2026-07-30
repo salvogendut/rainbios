@@ -20,3 +20,25 @@ opaque palette colors.
 The source logo and the converted pattern, color, and name data embedded in
 RainBIOS are dedicated to the public domain under CC0-1.0. The full legal
 text is in `LICENSES/CC0-1.0.txt`.
+
+## `rainbios.png`
+
+- Purpose: project artwork displayed at the top of `README.md`
+- Dimensions: 1448×1086 RGB PNG
+- SHA-256:
+  `5c90b60168ebdfa50ee2a90fb5fec3c3847b504a64cdef253da56052d0d126bb`
+- Added by: repository owner
+- License: CC0-1.0
+
+## `screenshots/`
+
+The selected screenshots show RainBIOS running in the 1983 emulator. They were
+captured and added by the repository owner and are licensed CC0-1.0.
+
+| File | Dimensions | SHA-256 |
+| --- | --- | --- |
+| `Screenshot From 2026-07-30 11-38-10.png` | 1280×1000 | `3cf8e6f5bfbd9bdfc3171cd35a7460f63cdff146768ffd5f28fffbf6622d7786` |
+| `Screenshot From 2026-07-30 11-46-22.png` | 1280×1000 | `11030bfc57eb5cca1857e10b4a07e87bf98b1651d3087f73bd79f45aa4d2db73` |
+
+Each binary image has an adjacent SPDX `.license` file. The full CC0-1.0
+legal text is in `LICENSES/CC0-1.0.txt`.

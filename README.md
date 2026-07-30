@@ -1,3 +1,5 @@
+![RainBIOS project artwork](rainbios.png)
+
 # RainBIOS
 
 RainBIOS is an independent, open-source firmware project for MSX and MSX2
@@ -42,8 +44,9 @@ The menu is intended to launch the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
 payload once slot/RAM initialization and the required firmware services
 exist. Its open-source core and new BSD-3-Clause MSX port can be bundled with
-RainBIOS while remaining a distinct build artifact. The pinned dependency,
-license, and platform boundary are described in
+RainBIOS while remaining a distinct build artifact. Its console-only
+standalone cartridge now boots and is pinned by source revision, size, and
+SHA-256 digest. The dependency, license, and platform boundary are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
@@ -67,6 +70,9 @@ make test-openmsx-boot OPENMSX='flatpak run org.openmsx.openMSX'
 
 The captured hardware rendering is written to
 `build/openmsx/rainbios_logo.png`.
+
+Repository screenshots from supported emulators are collected in
+[`screenshots/`](screenshots/).
 
 The Space-key route and boot-menu rendering have a separate integration test:
 
@@ -97,6 +103,9 @@ pinned revision with:
 make check-bbcbasic
 ```
 
+With the legacy assemblers available, `make check-bbcbasic-artifact` also
+builds and byte-verifies the pinned 16 KiB console payload.
+
 ## Project boundaries
 
 RainBIOS follows a source-isolated development policy. Do not use proprietary
@@ -124,6 +133,7 @@ criteria.
 
 Original RainBIOS code and documentation are licensed under the BSD 3-Clause
 License.
-The boot logo and its converted visual data are CC0-1.0. The adapted C-BIOS
-openMSX machine fixture remains under the C-BIOS two-clause license. Full
-third-party and asset terms are in `LICENSES/` and `docs/ASSETS.md`.
+The boot logo, project artwork, and selected screenshots are CC0-1.0. The
+adapted C-BIOS openMSX machine fixture remains under the C-BIOS two-clause
+license. Full third-party and asset terms are in `LICENSES/` and
+`docs/ASSETS.md`.

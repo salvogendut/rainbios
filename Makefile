@@ -4,6 +4,8 @@ OPENMSX ?= openmsx
 EMULATOR_1983 ?= ../1983/1983
 MODELS_1983 ?= ../1983/1983-models.conf
 BBC_BASIC_DIR ?= ../bbcbasic-z80-msx
+BBC_ZMAC ?= zmac
+BBC_LD80 ?= ld80
 
 BUILD_DIR := build
 MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
@@ -22,7 +24,7 @@ LOGO_STAMP := $(LOGO_DIR)/.converted
 SOURCES := src/main_msx1.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
-	test-openmsx-audio test-1983 check-bbcbasic clean
+	test-openmsx-audio test-1983 check-bbcbasic check-bbcbasic-artifact clean
 
 all: $(MSX1_ROM)
 
@@ -89,6 +91,15 @@ check-bbcbasic:
 	$(PYTHON) tools/check_bbcbasic_dependency.py \
 		--repository $(BBC_BASIC_DIR)
 	$(MAKE) -C $(BBC_BASIC_DIR) check
+
+check-bbcbasic-artifact:
+	$(PYTHON) tools/check_bbcbasic_dependency.py \
+		--repository $(BBC_BASIC_DIR) --skip-artifact
+	$(MAKE) -C $(BBC_BASIC_DIR) check
+	$(MAKE) -C $(BBC_BASIC_DIR) msx-console \
+		ZMAC="$(BBC_ZMAC)" LD80="$(BBC_LD80)"
+	$(PYTHON) tools/check_bbcbasic_dependency.py \
+		--repository $(BBC_BASIC_DIR) --require-artifact
 
 clean:
 	rm -rf $(BUILD_DIR)

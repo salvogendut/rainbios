@@ -96,6 +96,8 @@ implementation inputs. They remain quarantined under
   `f318ab09dcb30158843b2e6fba9386ed4956ca69`
 - MSX link-layout revision:
   `0b5979efed97ac5e557a43daed0916acdcb5d5f1`
+- MSX console P1 revision:
+  `439b86aff3ba81eb4bc152852c98424f22f22004`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -117,12 +119,20 @@ The port repository now contains a standalone build driver and records the
 historical licensing uncertainty around `zmac`; the tool is not vendored.
 Its subsequent static audit records a 12,492-byte core, a 768-byte aligned RAM
 module, 26 required platform symbols, 21 direct symbolic writes confined to
-RAM exports, and two intentional user-facing port instructions. Runtime
-write-guard testing remains required before treating the core as ROM-safe.
+RAM exports, and two intentional user-facing port instructions.
 The link-layout revision relocates that unchanged core to `4100h-71CBh`,
 places state at `8000h-82FFh`, and produces a nonfunctional 16 KiB layout ROM
 with SHA-256
 `b92d38754db7451e3e14acd0c1ae05efea2c50c99a2b920ee36e35bfc906be11`.
+The subsequent P1 cartridge uses published MSX BIOS calls and work-area
+variables for console, keyboard, cursor, and timing services. It places the
+unchanged core at `4400h-74CBh`, fixed and adapter state at `8000h-8307h`, and
+user memory from `8308h`. Its 16 KiB ROM has SHA-256
+`709e7a5fad4fe8faf244bbf6579adb5d7a116bf06263d80533a1254a8fca9bde`.
+An openMSX smoke test exercises language, editing, error, clock, and timeout
+paths with zero writes to the selected ROM window. The adjacent 1983 emulator
+separately renders the banner and prompt, avoiding reliance on openMSX raw
+screenshot capture.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 

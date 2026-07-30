@@ -1,8 +1,10 @@
 # BASIC payload integration
 
-RainBIOS intends to offer `START BBC BASIC` as a boot-menu entry. The current
-M0 menu is a truthful preview: there is no MSX payload binary and launch stays
-disabled until M1 establishes slots, RAM, a stack, and work areas.
+RainBIOS intends to offer `START BBC BASIC` as a boot-menu entry. The
+console-only MSX payload now boots as a standalone cartridge, while the
+current M0 menu remains a truthful preview: launch stays disabled until M1
+establishes slots, RAM, a stack, work areas, discovery, and the transfer
+contract.
 
 ## Selected project
 
@@ -54,15 +56,15 @@ Spectrum-family paging and video hardware.
 The first static audit found a 12,492-byte language core with no CP/M calls,
 reserved storage, or interrupt-control opcodes. All 21 direct symbolic writes
 target the separate 768-byte RAM module. This makes a 16 KiB page-1 ROM
-payload with interpreter state at `8000h` and user memory from `8300h`
-plausible. A runtime read-only write guard is still required before that
-layout becomes a compatibility promise.
+payload with interpreter state at `8000h` plausible.
 
-The subsequent link proof places the cartridge veneer at `4000h`, the
-unchanged core at `4100h-71CBh`, and state at `8000h-82FFh`. It produces a
-deterministic 16 KiB layout ROM with SHA-256 `b92d3875…`. Its 26 service
-entries are intentionally nonfunctional, so it is not recorded as a launchable
-artifact in the dependency lock.
+The P1 console build places its cartridge veneer at `4000h`, independently
+written adapter at `4013h-4230h`, unchanged core at `4400h-74CBh`, fixed state
+at `8000h-8307h`, and user memory from `8308h`. Its deterministic 16 KiB ROM
+has SHA-256 `709e7a5f…`. A guarded openMSX test exercises editing, integer and
+floating-point expressions, strings, a stored program, error handling, time,
+and timed input with zero writes to the selected cartridge window. The 1983
+emulator independently confirms that the banner and prompt render visibly.
 
 SE BASIC IV remains useful open-source prior art and a possible future
 alternative payload. Its adjacent upstream checkout remains unmodified; no
@@ -70,10 +72,10 @@ SE BASIC fork or source change is part of this integration.
 
 ## Payload responsibilities
 
-The BBC BASIC project will own:
+The BBC BASIC project owns:
 
 - the interpreter and its retained upstream license;
-- an MSX startup and return adapter;
+- the standalone cartridge startup adapter;
 - console, keyboard, cursor, and centisecond-clock services;
 - a replacement for the CP/M-specific file/operating-system layer;
 - its writable memory map and minimum-RAM requirements;
@@ -95,8 +97,8 @@ After M1, RainBIOS will:
 2. discover a payload through a versioned descriptor, not a hard-coded slot;
 3. validate descriptor size, version, addresses, RAM requirement, and required
    firmware capabilities;
-4. copy a ROM-resident interpreter image into its selected writable layout if
-   the final port requires it;
+4. keep the payload ROM mapped in page 1 and reserve its documented page-2/3
+   RAM layout;
 5. establish the documented register and interrupt state;
 6. transfer control through inter-slot code and diagnose an unexpected return.
 
@@ -114,10 +116,15 @@ make check-bbcbasic
 ```
 
 This verifies the checked-out commit, preserved upstream tag/tree, and the BBC
-repository's own tests. The lock currently records `"artifact": null`, so
-RainBIOS cannot accidentally claim that an unbuilt payload is available. Once
-the MSX build is reproducible, the lock will also record the artifact name,
-size, and SHA-256 digest.
+repository's own tests. The lock records the exact P1 source revision,
+artifact path, 16,384-byte size, and SHA-256 digest. If the artifact exists,
+the check validates its bytes too. To build and require the pinned artifact,
+use:
+
+```sh
+make check-bbcbasic-artifact \
+  BBC_ZMAC=/path/to/zmac BBC_LD80=/path/to/ld80
+```
 
 ## Milestones
 
@@ -131,7 +138,9 @@ size, and SHA-256 digest.
   boundary and checks ROM-core assumptions on every `make check`.
 - **Port P0c (complete):** deterministic link proof validates the 16 KiB
   page-1 ROM and aligned page-2 state layout.
-- **Port P1:** MSX console-only prompt with storage explicitly unsupported.
+- **Port P1 (complete):** bootable MSX console cartridge with storage
+  explicitly unsupported, guarded runtime tests in openMSX, and independent
+  rendered-prompt confirmation in 1983.
 - **M2/M3:** enough console, keyboard, timing, and optional PSG services for
   interactive smoke tests.
 - **M4:** launch the pinned payload and run BBC BASIC expression, editing, and

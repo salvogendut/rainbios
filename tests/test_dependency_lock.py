@@ -18,9 +18,18 @@ class BasicDependencyLockTests(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertRegex(lock[field], r"^[0-9a-f]{40}$")
 
-    def test_no_unbuilt_artifact_is_claimed(self) -> None:
+    def test_console_payload_identity_is_pinned(self) -> None:
         lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
-        self.assertIsNone(lock["artifact"])
+        artifact = lock["artifact"]
+        self.assertEqual(
+            artifact["path"],
+            "build/msx-console/bbcbasic_msx_console.rom",
+        )
+        self.assertEqual(artifact["size"], 16_384)
+        self.assertEqual(
+            artifact["sha256"],
+            "709e7a5fad4fe8faf244bbf6579adb5d7a116bf06263d80533a1254a8fca9bde",
+        )
 
     def test_boot_menu_names_the_pinned_interpreter(self) -> None:
         from tools.png_to_screen2 import OPTIONS_LINES

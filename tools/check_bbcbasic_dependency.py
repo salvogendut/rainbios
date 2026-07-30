@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -28,6 +29,17 @@ def git(repository: Path, *arguments: str) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", type=Path, required=True)
+    artifact_mode = parser.add_mutually_exclusive_group()
+    artifact_mode.add_argument(
+        "--require-artifact",
+        action="store_true",
+        help="fail unless the pinned payload has been built and matches",
+    )
+    artifact_mode.add_argument(
+        "--skip-artifact",
+        action="store_true",
+        help="verify source identities without inspecting an existing build",
+    )
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
@@ -60,8 +72,31 @@ def main() -> int:
         "verified BBC BASIC dependency "
         f"{lock['revision'][:12]} and tree {lock['upstream_tree']}"
     )
-    if lock["artifact"] is None:
-        print("MSX payload artifact: not available yet")
+    if arguments.skip_artifact:
+        return 0
+
+    artifact = lock["artifact"]
+    artifact_path = repository / artifact["path"]
+    if not artifact_path.is_file():
+        if arguments.require_artifact:
+            print(f"error: missing payload artifact: {artifact_path}", file=sys.stderr)
+            return 1
+        print(
+            "pinned MSX payload is not built in this checkout; "
+            f"expected {artifact['path']}"
+        )
+        return 0
+
+    payload = artifact_path.read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
+    if len(payload) != artifact["size"] or digest != artifact["sha256"]:
+        print(
+            "error: BBC BASIC payload mismatch: "
+            f"{len(payload)} bytes, SHA-256 {digest}",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"verified MSX payload {len(payload)} bytes, SHA-256 {digest}")
     return 0
 
 

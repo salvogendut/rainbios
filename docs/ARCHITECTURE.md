@@ -50,8 +50,9 @@ and enter the payload only through a documented descriptor after M1
 initialization. Keeping the payload outside the 32 KiB main BIOS also preserves
 ROM space and allows either project to be released independently. The initial
 port profile keeps the 12,492-byte language core in a 16 KiB page-1 payload
-ROM and places its aligned state plus user memory in RAM pages 2 and 3. A
-runtime read-only write guard must validate that static-audit result. See
+ROM, places its aligned state at `8000h-8307h`, and begins user memory at
+`8308h`. A guarded interactive openMSX test records zero cartridge writes for
+the P1 cases, and 1983 independently renders the live prompt. See
 `docs/BASIC_PAYLOAD.md`.
 
 ## Failure behavior during bring-up
