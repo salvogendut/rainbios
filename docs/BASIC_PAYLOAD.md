@@ -1,13 +1,11 @@
 # BASIC payload integration
 
-RainBIOS intends to offer `START BBC BASIC` as a boot-menu entry. The
-console-only MSX payload now boots as a standalone cartridge, while the
-current menu remains a truthful preview. RainBIOS now establishes primary-slot
-RAM, a stack, a minimal work area, and simple primary-cartridge INIT transfer.
-Its required console, keyboard, and timing services now pass the complete
-interactive payload smoke test. BBC BASIC menu launch stays disabled until
-descriptor discovery, capability checks, and the dedicated transfer contract
-are implemented.
+RainBIOS offers `START BBC BASIC` as a boot-menu entry. The console-only MSX
+payload works both as a standalone cartridge on compatible firmware and
+through RainBIOS's descriptor-aware menu. RainBIOS establishes primary-slot
+RAM, validates the payload and its required services, and performs a dedicated
+non-returning transfer. The complete editing, language, error, clock, and
+timed-input smoke sequence passes through that menu path.
 
 ## Selected project
 
@@ -99,17 +97,17 @@ The BBC BASIC project owns:
 - its writable memory map and minimum-RAM requirements;
 - standalone payload builds and interpreter smoke tests.
 
-RainBIOS will own:
+RainBIOS owns:
 
 - descriptor discovery across initialized slots;
 - RAM and slot state supplied to the launcher;
 - version and capability checks;
-- inter-slot transfer and defined failure/return handling;
+- the page-1 transfer and defined non-returning entry contract;
 - the menu state shown when no compatible payload is present.
 
 ## Launch sequence
 
-During the remaining M1 and later cartridge work, RainBIOS will:
+RainBIOS now:
 
 1. initialize slots, RAM, the stack, interrupts, and documented work areas;
 2. discover a payload through a versioned descriptor, not a hard-coded slot;
@@ -118,13 +116,13 @@ During the remaining M1 and later cartridge work, RainBIOS will:
 4. keep the payload ROM mapped in page 1 and reserve its documented page-2/3
    RAM layout;
 5. establish the documented register and interrupt state;
-6. transfer control through inter-slot code and diagnose an unexpected return.
+6. transfer control without placing a return address on the payload stack.
 
 The descriptor bytes and validation rules are fixed in
-`docs/abi/payload-v1.md` and covered by original host tests. Entry registers,
-memory ownership during transfer, and the return convention remain to be fixed
-by tests before launcher code is enabled. The descriptor does not alter the
-ordinary MSX cartridge header or standalone startup.
+`docs/abi/payload-v1.md` and covered by original host and emulator tests. A
+claimed `RBP1` descriptor which fails validation is withheld from ordinary
+cartridge `INIT` processing. The descriptor does not alter the ordinary MSX
+cartridge header or standalone startup on other compatible firmware.
 
 ## Dependency workflow
 
@@ -149,9 +147,9 @@ make check-bbcbasic-artifact \
 
 - **M0:** visible BBC BASIC menu entry; launcher truthfully marked as requiring
   M1.
-- **M1:** payload descriptor complete; primary RAM/stack state and simple
-  primary-cartridge INIT implemented; expanded-slot discovery, payload
-  discovery, and transfer state remain.
+- **M1:** payload descriptor, primary discovery, RAM/stack state, ordinary
+  primary-cartridge INIT, and payload transfer are implemented; expanded-slot
+  discovery remains.
 - **Port P0 (complete):** standalone build driver reproduces the 15,616-byte
   CP/M baseline with SHA-256 `8f65a0a8…`; the externally supplied `zmac` and
   `ld80` sources are recorded.
@@ -165,5 +163,5 @@ make check-bbcbasic-artifact \
 - **M2/M3:** console, keyboard, and timing services pass the interactive smoke
   tests; complete console controls, keyboard behavior, and optional PSG
   services remain.
-- **M4:** launch the pinned payload and run BBC BASIC expression, editing, and
-  example-program tests.
+- **M4 (first slice complete):** launch the pinned payload from the boot menu
+  and run BBC BASIC expression, editing, and example-program tests.

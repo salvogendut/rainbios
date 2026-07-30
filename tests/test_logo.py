@@ -14,6 +14,7 @@ from tools.png_to_screen2 import (
     FONT_SIZE,
     NAME_SIZE,
     OPTIONS_LINES,
+    OPTIONS_LINES_MISSING,
     PATTERN_SIZE,
     SCREEN1_COLOR_SIZE,
 )
@@ -36,7 +37,14 @@ class LogoConversionTest(unittest.TestCase):
 
     def test_early_text_assets_have_expected_sizes(self):
         self.assertEqual((OUTPUT / "boot_font.bin").stat().st_size, FONT_SIZE)
-        self.assertEqual((OUTPUT / "options_name.bin").stat().st_size, NAME_SIZE)
+        self.assertEqual(
+            (OUTPUT / "options_name_ready.bin").stat().st_size,
+            NAME_SIZE,
+        )
+        self.assertEqual(
+            (OUTPUT / "options_name_missing.bin").stat().st_size,
+            NAME_SIZE,
+        )
         self.assertEqual(
             (OUTPUT / "options_color.bin").stat().st_size,
             SCREEN1_COLOR_SIZE,
@@ -95,10 +103,17 @@ class LogoConversionTest(unittest.TestCase):
             self.assertEqual(notice_colors, {(0, 0, 0), (255, 255, 255)})
 
     def test_options_name_table_contains_all_documented_lines(self):
-        name = (OUTPUT / "options_name.bin").read_bytes()
-        for row, text in OPTIONS_LINES.items():
-            with self.subTest(row=row, text=text):
-                self.assertIn(text.encode("ascii"), name[row * 32 : (row + 1) * 32])
+        for filename, lines in (
+            ("options_name_ready.bin", OPTIONS_LINES),
+            ("options_name_missing.bin", OPTIONS_LINES_MISSING),
+        ):
+            name = (OUTPUT / filename).read_bytes()
+            for row, text in lines.items():
+                with self.subTest(filename=filename, row=row, text=text):
+                    self.assertIn(
+                        text.encode("ascii"),
+                        name[row * 32 : (row + 1) * 32],
+                    )
 
     def test_converted_tables_are_embedded_in_the_main_rom(self):
         rom = (ROOT / "build" / "rainbios_msx1.rom").read_bytes()
@@ -107,7 +122,8 @@ class LogoConversionTest(unittest.TestCase):
             "logo_name.bin",
             "logo_color.bin",
             "boot_font.bin",
-            "options_name.bin",
+            "options_name_ready.bin",
+            "options_name_missing.bin",
             "options_color.bin",
         ):
             with self.subTest(filename=filename):

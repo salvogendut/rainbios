@@ -31,6 +31,10 @@ OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
 OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
+MENU_INPUT_CART := $(BUILD_DIR)/cartridges/menu_input.rom
+MENU_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_input.sym
+INVALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/invalid_payload.rom
+INVALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/invalid_payload.sym
 OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
@@ -39,6 +43,12 @@ OPENMSX_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
 OPENMSX_BBC_BASIC_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-smoke.txt
+OPENMSX_BBC_BASIC_MENU_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-menu.txt
+OPENMSX_INVALID_PAYLOAD_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_INVALID_PAYLOAD.xml
+OPENMSX_INVALID_PAYLOAD_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/invalid-payload.txt
 OPENMSX_EXTERNAL_ARKANO_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_EXTERNAL_ARKANO.xml
 OPENMSX_EXTERNAL_DIAGNOSTICS_MACHINE := \
@@ -68,7 +78,8 @@ SOURCES := src/main_msx1.asm
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-services test-openmsx-keyboard test-openmsx-cartridge test-1983 \
-	test-openmsx-bbcbasic test-1983-bbcbasic \
+	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
+	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
@@ -91,6 +102,14 @@ $(MSX1_ROM): $(SOURCES) $(LOGO_STAMP) | $(BUILD_DIR)
 $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(DIAGNOSTIC_CART_SYM)
+
+$(MENU_INPUT_CART): tests/cartridges/menu_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(MENU_INPUT_CART_SYM)
+
+$(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
 test: $(MSX1_ROM)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
@@ -217,14 +236,44 @@ $(OPENMSX_BBC_BASIC_MACHINE): \
 		-e 's|RainBIOS Diagnostic Cartridge|BBC BASIC Payload|' \
 		$< > $@
 
-test-openmsx-bbcbasic: $(OPENMSX_BBC_BASIC_MACHINE)
+test-openmsx-bbcbasic-menu: $(OPENMSX_BBC_BASIC_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
-		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}" \
+		-command "set payload_menu_output {$(abspath $(OPENMSX_BBC_BASIC_MENU_REPORT))}" \
+		-script "$(abspath tests/openmsx/payload_menu_probe.tcl)"
+	$(PYTHON) tools/check_payload_menu_probe.py \
+		$(OPENMSX_BBC_BASIC_MENU_REPORT)
+
+test-openmsx-bbcbasic: test-openmsx-bbcbasic-menu
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
+		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x08}; after time 2.10 {keymatrixup 0 0x08}" \
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_smoke.tcl)"
 	$(PYTHON) tools/check_bbcbasic_smoke.py $(OPENMSX_BBC_BASIC_REPORT)
+
+$(OPENMSX_INVALID_PAYLOAD_MACHINE): \
+		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(INVALID_PAYLOAD_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(INVALID_PAYLOAD_CART))|' \
+		-e 's|RainBIOS-MSX1-M1-CARTRIDGE|RainBIOS-INVALID-PAYLOAD|' \
+		-e 's|RainBIOS Diagnostic Cartridge|Invalid Payload|' \
+		$< > $@
+
+test-openmsx-payload-invalid: $(OPENMSX_INVALID_PAYLOAD_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_INVALID_PAYLOAD \
+		-command "set invalid_payload_output {$(abspath $(OPENMSX_INVALID_PAYLOAD_REPORT))}" \
+		-script "$(abspath tests/openmsx/invalid_payload_probe.tcl)"
+	$(PYTHON) tools/check_invalid_payload_probe.py \
+		$(OPENMSX_INVALID_PAYLOAD_REPORT)
 
 $(OPENMSX_EXTERNAL_ARKANO_MACHINE): \
 		tests/openmsx/RainBIOS_M1_EXTERNAL_CARTRIDGE.xml.in \
@@ -290,11 +339,12 @@ test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_CART_SCREEN)
 
-test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM)
+test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM) $(MENU_INPUT_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
 	$(PYTHON) tools/run_1983_bbcbasic.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(BBC_BASIC_ROM)" \
+		--input-cartridge "$(MENU_INPUT_CART)" \
 		--screenshot "$(EMULATOR_1983_BBC_BASIC_SCREEN)"
 	$(PYTHON) tools/check_bbcbasic_screenshot.py \
 		$(EMULATOR_1983_BBC_BASIC_SCREEN)

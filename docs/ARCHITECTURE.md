@@ -69,6 +69,12 @@ use the partial `CALLF`, which parses its inline slot and address through the
 alternate register set and delegates primary page-1/page-2 targets to
 `CALSLT`.
 
+M1G recognizes a version-1 RainBIOS payload descriptor at `7FF0h` in normal
+16 KiB page-1 cartridges. It validates the checksum, type, required-service
+mask, entry, and RAM requirements before recording the first compatible
+primary-slot payload. A ROM which claims `RBP1` but fails validation is not
+entered through its ordinary cartridge `INIT`.
+
 M2A publishes the eight TMS9918 register shadows and current screen/table
 work variables. VDP register and address command pairs are protected from
 interrupt interleaving. Screen 0, Screen 1, and Screen 2 initialization use
@@ -87,10 +93,10 @@ function-key expansion, and break handling remain separate work.
 
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
-checks primary cartridges before polling the keyboard. Space switches to a
-fixed Screen 1 boot-menu preview built from the project-owned partial font.
-Menu selection and payload launch remain disabled until the remaining firmware
-services and launch checks exist.
+checks primary cartridges before waiting through the buffered keyboard path.
+Space switches to a Screen 1 menu which reports whether BBC BASIC is ready.
+When it is, option 1 maps the payload in page 1 and transfers to its descriptor
+entry under the contract in `docs/abi/payload-v1.md`.
 
 The 13,056-byte logo payload is temporarily embedded in the main ROM. It will
 move to a compressed or separate, independently discoverable ROM before
@@ -98,10 +104,10 @@ main-BIOS space becomes constrained.
 
 ## Optional BASIC payload
 
-The boot menu is intended to launch a separately built BBC BASIC for Z80
-payload. The imported interpreter source retains its permissive upstream
-notice, while new MSX platform code is BSD-3-Clause. RainBIOS will discover
-and enter the payload only through the versioned descriptor in
+The boot menu launches a separately built BBC BASIC for Z80 payload. The
+imported interpreter source retains its permissive upstream notice, while new
+MSX platform code is BSD-3-Clause. RainBIOS discovers and enters the payload
+only through the versioned descriptor in
 `docs/abi/payload-v1.md`. Keeping the payload outside the 32 KiB main BIOS
 also preserves ROM space and allows either project to be released
 independently. The initial port profile keeps the 12,492-byte language core in
@@ -137,6 +143,8 @@ hardware.
   pinned BBC BASIC payload supplies the end-to-end console/keyboard/timing
   workload, guarded against writes to its ROM; 1983 separately requires its
   banner and prompt to be visibly rendered.
+- Positive and corrupt descriptor probes check menu state, fail-closed
+  handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before
   a compatibility milestone is released.
 - Differential tests may compare public behavior against authorized reference

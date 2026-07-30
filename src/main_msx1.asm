@@ -55,6 +55,9 @@ PAGE0_SLOT_HELPER equ #f380
 PAGE0_READ_HELPER equ #f383
 PAGE0_WRITE_HELPER equ #f38b
 CART_SCAN_SLOT  equ #f392
+PAYLOAD_SLOT    equ #f393
+PAYLOAD_ENTRY   equ #f394
+PAYLOAD_RAM_END equ #f396
 STACK_TOP       equ #f380
 
                 org #0000
@@ -353,6 +356,11 @@ bootstrap_empty_hook:
                 ld bc,21
                 ld (hl),#ff
                 ldir
+                ld a,#ff
+                ld (PAYLOAD_SLOT),a
+                ld hl,0
+                ld (PAYLOAD_ENTRY),hl
+                ld (PAYLOAD_RAM_END),hl
 
                 ld sp,STACK_TOP
 
@@ -501,18 +509,20 @@ cold_boot_jingle_gap:
                 call cold_boot_scan_cartridges
                 ei
 
-; Poll keyboard matrix row 8. MSX keys are active-low, and bit 0 is Space.
+; Wait for the translated Space character through the standard input path.
 cold_boot_wait:
-                in a,(PPI_CONTROL_C)
-                and #f0
-                or #08
-                out (PPI_CONTROL_C),a
-                in a,(PPI_KEYBOARD)
-                bit 0,a
+                call chsns
+                jr nz,cold_boot_wait_read
+                ei
+                halt
+                jr cold_boot_wait
+cold_boot_wait_read:
+                call chget
+                cp #20
                 jr nz,cold_boot_wait
 
-; Space opens a compact Screen 1 options/information page. Its static state is
-; intentionally honest about the incomplete M1 cartridge path.
+; Space opens a compact Screen 1 menu. The name table selected below reports
+; whether a validated BASIC payload was discovered.
 cold_boot_options:
                 xor a
                 out (VDP_CONTROL),a
@@ -556,7 +566,12 @@ cold_boot_font_block:
                 out (VDP_CONTROL),a
                 ld a,#58
                 out (VDP_CONTROL),a
-                ld hl,options_name
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                ld hl,options_name_ready
+                jr nz,cold_boot_options_name_selected
+                ld hl,options_name_missing
+cold_boot_options_name_selected:
                 ld d,3
 cold_boot_options_name_block:
                 ld b,0
@@ -572,12 +587,46 @@ cold_boot_options_name_block:
                 ld hl,options_color
                 ld b,32
                 otir
-                ld a,#c0
+                ld a,#e0
                 out (VDP_CONTROL),a
                 ld a,#81
                 out (VDP_CONTROL),a
+                xor a
+                ld (R0SAV),a
+                ld a,#e0
+                ld (RG1SAV),a
+                ld a,1
+                ld (SCRMOD),a
+                ld a,(LINL32)
+                ld (LINLEN),a
+                call kilbuf
 cold_boot_options_wait:
-                jr cold_boot_options_wait
+                call chget
+                cp '1'
+                jr nz,cold_boot_options_wait
+
+; Enter a validated page-1 payload without a return address. Page 0 remains
+; the BIOS, pages 2/3 remain the selected contiguous RAM, SP is restored to
+; HIMEM, and all normal and index registers are zero. EI becomes effective
+; after RET transfers to the descriptor entry.
+cold_boot_launch_payload:
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                jr z,cold_boot_options_wait
+                di
+                ld h,#40
+                call enaslt
+                ld sp,STACK_TOP
+                ld hl,(PAYLOAD_ENTRY)
+                push hl
+                xor a
+                ld bc,0
+                ld de,0
+                ld hl,0
+                ld ix,0
+                ld iy,0
+                ei
+                ret
 
 cold_boot_scan_cartridges:
                 xor a
@@ -615,6 +664,13 @@ cold_boot_try_cartridge:
                 cp #42
                 ret nz
                 inc hl
+                ld a,h
+                cp #40
+                jr nz,cold_boot_read_cartridge_init
+                call cold_boot_try_payload
+                ret c                           ; valid or rejected RBP1
+                ld hl,#4002
+cold_boot_read_cartridge_init:
                 ld a,(CART_SCAN_SLOT)
                 call rdslt
                 push af
@@ -644,6 +700,133 @@ cold_boot_call_cartridge:
                 ei
                 call calslt
                 di
+                ret
+
+; Detect and validate a RainBIOS payload descriptor at 7FF0h. Carry is clear
+; only when the ROM does not claim the RBP1 magic and should retain ordinary
+; cartridge INIT behavior. Once the magic matches, invalid descriptors fail
+; closed with carry set. Version 1 accepts a BASIC page-1 entry, known service
+; bits, contiguous page-2/page-3 RAM, and an exclusive RAM limit in
+; 8001h-F380h. The first valid payload wins.
+cold_boot_try_payload:
+                ld hl,#7ff0
+                ld e,'R'
+                call cold_boot_payload_expect
+                jp nz,cold_boot_not_payload
+                inc hl
+                ld e,'B'
+                call cold_boot_payload_expect
+                jp nz,cold_boot_not_payload
+                inc hl
+                ld e,'P'
+                call cold_boot_payload_expect
+                jp nz,cold_boot_not_payload
+                inc hl
+                ld e,'1'
+                call cold_boot_payload_expect
+                jp nz,cold_boot_not_payload
+
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                jp nz,cold_boot_payload_claimed
+
+; Require the additive checksum across all 16 descriptor bytes to be zero.
+                ld hl,#7ff0
+                ld e,0
+cold_boot_payload_checksum:
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                add a,e
+                ld e,a
+                inc hl
+                ld a,h
+                cp #80
+                jr nz,cold_boot_payload_checksum
+                ld a,e
+                or a
+                jp nz,cold_boot_payload_claimed
+
+                ld hl,#7ff4
+                ld e,1
+                call cold_boot_payload_expect    ; descriptor version
+                jp nz,cold_boot_payload_claimed
+                inc hl
+                ld e,16
+                call cold_boot_payload_expect    ; descriptor length
+                jp nz,cold_boot_payload_claimed
+                inc hl
+                ld e,1
+                call cold_boot_payload_expect    ; BASIC payload type
+                jp nz,cold_boot_payload_claimed
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt                       ; required service bits
+                and #f8
+                jp nz,cold_boot_payload_claimed
+
+; Record and validate a page-1 entry address.
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                ld (PAYLOAD_ENTRY),a
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                ld (PAYLOAD_ENTRY+1),a
+                and #c0
+                cp #40
+                jp nz,cold_boot_payload_claimed
+
+; Version 1 requires RAM at 8000h and two contiguous pages.
+                inc hl
+                ld e,0
+                call cold_boot_payload_expect
+                jp nz,cold_boot_payload_claimed
+                inc hl
+                ld e,#80
+                call cold_boot_payload_expect
+                jp nz,cold_boot_payload_claimed
+
+; The exclusive RAM limit must be above 8000h and no higher than F380h.
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                ld (PAYLOAD_RAM_END),a
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                ld (PAYLOAD_RAM_END+1),a
+                ld hl,(PAYLOAD_RAM_END)
+                ld de,#8000
+                or a
+                sbc hl,de
+                jp z,cold_boot_payload_claimed
+                jp c,cold_boot_payload_claimed
+                ld hl,#f380
+                ld de,(PAYLOAD_RAM_END)
+                or a
+                sbc hl,de
+                jp c,cold_boot_payload_claimed
+
+                ld hl,#7ffe
+                ld e,2
+                call cold_boot_payload_expect
+                jp nz,cold_boot_payload_claimed
+                ld a,(CART_SCAN_SLOT)
+                ld (PAYLOAD_SLOT),a
+cold_boot_payload_claimed:
+                scf
+                ret
+cold_boot_not_payload:
+                or a
+                ret
+
+; Compare descriptor byte (HL) in the current scan slot with E. RDSLT
+; preserves both inputs.
+cold_boot_payload_expect:
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp e
                 ret
 
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
@@ -1564,8 +1747,10 @@ jingle_notes:
 
 boot_font:
                 incbin "boot_font.bin"
-options_name:
-                incbin "options_name.bin"
+options_name_ready:
+                incbin "options_name_ready.bin"
+options_name_missing:
+                incbin "options_name_missing.bin"
 options_color:
                 incbin "options_color.bin"
 

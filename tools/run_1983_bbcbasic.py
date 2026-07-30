@@ -44,6 +44,7 @@ def main() -> int:
     parser.add_argument("--models", type=pathlib.Path, required=True)
     parser.add_argument("--bios", type=pathlib.Path, required=True)
     parser.add_argument("--cartridge", type=pathlib.Path, required=True)
+    parser.add_argument("--input-cartridge", type=pathlib.Path, required=True)
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
     arguments = parser.parse_args()
     command = [
@@ -61,6 +62,10 @@ def main() -> int:
         "--cart",
         str(arguments.cartridge),
         "--mapper",
+        "linear",
+        "--cart2",
+        str(arguments.input_cartridge),
+        "--mapper2",
         "linear",
         "--headless",
         "--unthrottled",

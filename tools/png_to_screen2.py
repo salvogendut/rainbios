@@ -104,8 +104,8 @@ GLYPHS_5X7 = {
 OPTIONS_LINES = {
     2: "RAINBIOS BOOT MENU",
     5: "1  START BBC BASIC",
-    7: "2  CONTINUE BOOT",
-    10: "PAYLOAD DISCOVERY PENDING",
+    7: "PRESS 1 TO LAUNCH",
+    10: "BBC BASIC PAYLOAD READY",
     13: "STARTUP JINGLE       ON",
     14: "VIDEO              NTSC",
     17: "PRIMARY RAM AND STACK READY",
@@ -113,6 +113,13 @@ OPTIONS_LINES = {
     19: "PRIMARY CART INIT READY",
     20: "EXPANDED SLOTS PENDING",
     22: "RESET TO RETURN",
+}
+
+OPTIONS_LINES_MISSING = {
+    **OPTIONS_LINES,
+    5: "1  BBC BASIC UNAVAILABLE",
+    7: "ATTACH PAYLOAD AND RESET",
+    10: "NO VALID BASIC PAYLOAD",
 }
 
 # A commonly used nominal TMS9918 palette. Color 0 is transparent and is not
@@ -243,11 +250,11 @@ def build_font() -> bytes:
     return bytes(font)
 
 
-def build_options_name() -> bytes:
-    """Build the fixed 32x24 early-boot options screen."""
+def build_options_name(lines: dict[int, str]) -> bytes:
+    """Build one fixed 32x24 early-boot options screen."""
 
     name = bytearray(b" " * NAME_SIZE)
-    for row, text in OPTIONS_LINES.items():
+    for row, text in lines.items():
         if len(text) > 32:
             raise ValueError(f"options line {row} exceeds 32 columns")
         column = (32 - len(text)) // 2
@@ -373,7 +380,8 @@ def convert(source: Path, output_dir: Path) -> None:
         "logo_color.bin": color,
         "logo_name.bin": name,
         "boot_font.bin": build_font(),
-        "options_name.bin": build_options_name(),
+        "options_name_ready.bin": build_options_name(OPTIONS_LINES),
+        "options_name_missing.bin": build_options_name(OPTIONS_LINES_MISSING),
         "options_color.bin": bytes((0xF4,)) * SCREEN1_COLOR_SIZE,
     }
     for filename, data in outputs.items():

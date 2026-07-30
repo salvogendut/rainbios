@@ -59,6 +59,12 @@ allows standard five-byte hooks to cross slots. An openMSX probe installs an
 `H.TIMI` hook in another primary slot and checks interrupt frequency and exact
 slot-map restoration.
 
+M1G discovers version-1 RainBIOS payload descriptors in primary page-1
+cartridges. Checksum, version, type, service, entry, and RAM requirements are
+validated before the first compatible payload is exposed to the boot menu.
+Claimed but invalid descriptors fail closed and do not fall through to their
+ordinary `INIT`.
+
 - enumerate primary and expanded slots without assuming a machine layout;
 - select and test RAM, establish the stack, and initialize BIOS work areas;
 - complete expanded-slot `ENASLT`, `RDSLT`, `WRSLT`, and `CALSLT`, then
@@ -66,8 +72,6 @@ slot-map restoration.
   by M1E/M1F and `RSLREG`/`WSLREG` are complete;
 - add keyboard and device processing to the initial IM 1 interrupt handler;
 - run the original diagnostic cartridge on hardware;
-- define payload discovery and launch state for the optional BBC BASIC menu
-  entry.
 
 Exit criterion: cold boot reaches the diagnostic cartridge on representative
 MSX1 emulator configurations and at least one hardware configuration.
@@ -116,14 +120,22 @@ and controllers.
 
 ## M4 — Cartridge compatibility
 
+Status: in progress.
+
+M4A enables the descriptor-driven BBC BASIC menu entry. Space opens a truthful
+ready/unavailable menu; option 1 maps the validated payload, supplies the
+documented zeroed-register and `SP=F380h` state, and transfers without a return
+address. Positive and corrupt-descriptor openMSX probes cover the gate and
+entry state. The complete BBC BASIC smoke sequence passes through the menu,
+and a standard `H.TIMI` test hook drives the same path in 1983 before its
+rendered prompt is checked.
+
 - extend primary header discovery to expanded cartridge slots;
 - define and test startup register and work-area state;
 - support common slot and mapper arrangements needed before cartridge code
   installs its own mapper;
 - create a compatibility corpus of redistributable homebrew and original test
   ROMs.
-- launch the pinned BBC BASIC for Z80 on MSX payload from the boot menu when
-  present.
 
 Exit criterion: a published set of redistributable MSX1 cartridges boots and
 passes a documented smoke-test matrix.

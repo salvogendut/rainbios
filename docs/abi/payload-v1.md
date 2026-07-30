@@ -29,9 +29,26 @@ Required-service bits are:
 - bit 2: 50/60 Hz timing and `JIFFY`;
 - bits 3-7: reserved and zero.
 
-The descriptor describes requirements; it does not authorize a launch.
-RainBIOS must also verify that pages 2 and 3 map suitable RAM, that the
-required services are implemented, and that the entry lies in the selected
-payload ROM. Version 1 discovery is limited to normal 16 KiB page-1 payloads.
-Expanded-slot discovery and the exact launch/return register contract remain
-separate M1 work.
+The descriptor describes requirements; successful validation authorizes the
+menu entry, not immediate cartridge startup. RainBIOS also verifies that pages
+2 and 3 map contiguous RAM, that all requested services are implemented, and
+that the entry lies in the selected page-1 payload ROM. The first valid
+primary-slot payload wins. A cartridge with exact `RBP1` magic but an invalid
+descriptor fails closed and its ordinary `INIT` is not called.
+
+## Entry contract
+
+Selecting option 1 produces this non-returning transfer:
+
+- page 0 remains the RainBIOS MAIN-ROM;
+- page 1 maps the primary slot containing the validated payload;
+- pages 2 and 3 remain the contiguous RAM selected at cold boot;
+- `SP=F380h`;
+- A, BC, DE, HL, IX, and IY are zero;
+- Z80 interrupt mode 1 and maskable interrupts are enabled;
+- the keyboard buffer is empty after the menu selection is consumed.
+
+RainBIOS pushes the descriptor entry temporarily and uses `RET` only as an
+indirect jump, leaving `SP=F380h` at the target. There is no payload return
+address: a version-1 entry must not return. Flags are unspecified. Expanded
+slot discovery remains future work.

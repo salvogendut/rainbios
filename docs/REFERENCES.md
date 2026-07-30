@@ -109,6 +109,11 @@ and the `SNSMAT`, `CHSNS`, `CHGET`, and `KILBUF` contracts. The edge-triggered
 scanner, translation tables, circular-buffer implementation, printable font
 additions, and conformance probe are original RainBIOS work.
 
+M1G/M4A use the published normal cartridge header, primary-slot memory access,
+five-byte hook, and interrupt contracts. The `RBP1` validation rules, menu
+state, non-returning zero-register transfer, corrupt-descriptor fixture,
+timed-input fixture, and emulator probes are original RainBIOS work.
+
 ## Proprietary source trees
 
 The adjacent `msx-system` and `msxsyssrc20260412` trees were identified by

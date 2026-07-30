@@ -1,5 +1,5 @@
 address,name,kind,status,milestone,notes
-0000,RESET,reset,partial,M1,Tests primary RAM and establishes SP; scans non-BIOS primary slots for page-1/page-2 AB/INIT cartridges; expanded slots remain pending
+0000,RESET,reset,partial,M4,Tests primary RAM and establishes SP; scans non-BIOS primary slots for page-1/page-2 AB/INIT cartridges and validated page-1 RBP1 payloads; expanded slots remain pending
 0004,CGTABL,data,partial,M2,Points to the project-owned partial 8x8 boot font
 0006,VDP_DR,data,partial,M0,MSX1 VDP data port
 0007,VDP_DW,data,partial,M0,MSX1 VDP data port

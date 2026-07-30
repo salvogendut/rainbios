@@ -15,9 +15,10 @@ calls, enables an IM 1 VBlank path with standard hooks and `JIFFY`, and then
 displays the boot UI. It also discovers public `AB` cartridge headers in
 primary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
 0/1/2 initialization, Screen 0/1 text output, interrupt-driven international
-keyboard scan, and buffered character-input services are present. Expanded
-slot discovery, complete keyboard behavior, broad cartridge compatibility,
-and most firmware services remain pending.
+keyboard scan, buffered character-input services, and descriptor-driven BBC
+BASIC menu launch are present. Expanded slot discovery, complete keyboard
+behavior, broad cartridge compatibility, and most firmware services remain
+pending.
 
 ## Build
 
@@ -48,16 +49,15 @@ Space opens the early boot-menu preview. Asset provenance and release status
 are tracked in
 [docs/ASSETS.md](docs/ASSETS.md).
 
-The menu is intended to launch the separately built
+The menu launches the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
-payload once slot/RAM initialization and the required firmware services
-exist. Those console, keyboard, and timing services now pass the payload's
-interactive smoke test; descriptor-driven menu launch remains pending. Its
-open-source core and new BSD-3-Clause MSX port can be distributed with
-RainBIOS while remaining a distinct build artifact. The console-only
-standalone cartridge publishes a versioned RainBIOS payload descriptor and is
-pinned by source revision, size, and SHA-256 digest. The dependency, license,
-packaging, and platform boundary are described in
+payload when its versioned descriptor and requirements validate. Invalid
+descriptors are not advertised or entered. The console, keyboard, timing, and
+menu path pass the payload's interactive smoke test. Its open-source core and
+new BSD-3-Clause MSX port can be distributed with RainBIOS while remaining a
+distinct build artifact. The console-only cartridge is pinned by source
+revision, size, and SHA-256 digest. The dependency, license, packaging, and
+platform boundary are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
@@ -153,12 +153,23 @@ rendered screen and write captures below `build/1983/`. Override
 `EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
 
 With the pinned BBC BASIC artifact already built, its complete editing,
-language, error, clock, and timed-input sequence can run directly on RainBIOS.
-The second target independently requires a visible banner and prompt in 1983:
+language, error, clock, and timed-input sequence runs through Space, the
+descriptor-aware menu, and option 1. The second target performs the same menu
+transfer in 1983 and independently requires a visible banner and prompt:
 
 ```sh
 make test-openmsx-bbcbasic OPENMSX='flatpak run org.openmsx.openMSX'
 make test-1983-bbcbasic
+```
+
+The positive openMSX path also checks the payload slot, entry address, enabled
+menu text, page map, stack, and entry registers. A corrupt-descriptor fixture
+proves that claimed-but-invalid payloads fail closed without executing their
+ordinary cartridge `INIT`:
+
+```sh
+make test-openmsx-payload-invalid \
+    OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
 Optional black-box tests cover the locally supplied 32 KiB Arkanoid and MSX
