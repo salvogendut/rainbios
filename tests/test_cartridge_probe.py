@@ -37,6 +37,17 @@ class CartridgeProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "SLOT"):
             validate_report(VALID_REPORT.replace("SLOT=F4", "SLOT=F0"))
 
+    def test_running_expanded_cartridge_is_accepted(self) -> None:
+        report = VALID_REPORT.replace("SLOT=F4", "SLOT=F8")
+        report += "EXPTBL=00,00,80,00\nSLTTBL=00,00,08,00\n"
+        values = validate_report(
+            report,
+            expected_slot="F8",
+            expected_exptbl="00,00,80,00",
+            expected_slttbl="00,00,08,00",
+        )
+        self.assertEqual(values["SLTTBL"], "00,00,08,00")
+
 
 if __name__ == "__main__":
     unittest.main()

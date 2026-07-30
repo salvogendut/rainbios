@@ -2,8 +2,8 @@
 
 RainBIOS offers `START BBC BASIC` as a boot-menu entry. The console-only MSX
 payload works both as a standalone cartridge on compatible firmware and
-through RainBIOS's descriptor-aware menu. RainBIOS establishes primary-slot
-RAM, validates the payload and its required services, and performs a dedicated
+through RainBIOS's descriptor-aware menu. RainBIOS establishes slot RAM,
+validates the payload and its required services, and performs a dedicated
 non-returning transfer. The complete editing, language, error, clock, and
 timed-input smoke sequence passes through that menu path.
 
@@ -147,9 +147,9 @@ make check-bbcbasic-artifact \
 
 - **M0:** visible BBC BASIC menu entry; launcher truthfully marked as requiring
   M1.
-- **M1:** payload descriptor, primary discovery, RAM/stack state, ordinary
-  primary-cartridge INIT, and payload transfer are implemented; expanded-slot
-  discovery remains.
+- **M1:** payload descriptor, primary/expanded discovery, RAM/stack state,
+  ordinary cartridge INIT, and payload transfer are implemented. BBC BASIC is
+  tested both as a primary-slot ROM and in expanded slot 2-2.
 - **Port P0 (complete):** standalone build driver reproduces the 15,616-byte
   CP/M baseline with SHA-256 `8f65a0a8…`; the externally supplied `zmac` and
   `ld80` sources are recorded.

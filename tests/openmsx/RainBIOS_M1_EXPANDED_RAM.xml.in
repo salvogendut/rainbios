@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!DOCTYPE msxconfig SYSTEM "msxconfig2.dtd">
+<msxconfig>
+  <info>
+    <manufacturer>RainBIOS contributors</manufacturer>
+    <code>RainBIOS-MSX1-M1-EXPANDED-RAM</code>
+    <release_year>2026</release_year>
+    <description>RainBIOS M1 secondary-slot RAM bootstrap fixture</description>
+    <type>MSX</type>
+  </info>
+
+  <devices>
+    <primary slot="0">
+      <secondary slot="0">
+        <ROM id="RainBIOS Main ROM">
+          <mem base="0x0000" size="0x8000"/>
+          <rom>
+            <filename>@RAINBIOS_ROM@</filename>
+          </rom>
+        </ROM>
+      </secondary>
+    </primary>
+
+    <primary slot="3">
+      <secondary slot="0"/>
+      <secondary slot="2">
+        <RAM id="Expanded Main RAM">
+          <mem base="0x0000" size="0x10000"/>
+        </RAM>
+      </secondary>
+    </primary>
+
+    <PPI id="ppi">
+      <io base="0xA8" num="4"/>
+      <sound>
+        <volume>16000</volume>
+      </sound>
+      <key_ghosting>false</key_ghosting>
+      <keyboard_type>int</keyboard_type>
+      <has_keypad>false</has_keypad>
+      <code_kana_locks>false</code_kana_locks>
+      <graph_locks>false</graph_locks>
+    </PPI>
+
+    <VDP id="VDP">
+      <io base="0x98" num="2" type="O"/>
+      <io base="0x98" num="2" type="I"/>
+      <version>TMS9918A</version>
+      <vram>16</vram>
+    </VDP>
+
+    <PSG id="PSG">
+      <type>YM2149</type>
+      <io base="0xA0" num="2" type="O"/>
+      <io base="0xA2" num="1" type="I"/>
+      <sound>
+        <volume>21000</volume>
+      </sound>
+    </PSG>
+  </devices>
+</msxconfig>

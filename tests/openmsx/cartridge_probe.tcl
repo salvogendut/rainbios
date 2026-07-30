@@ -18,6 +18,10 @@ proc finish_cartridge_probe {} {
     puts $handle [format "PC=%04X" [reg PC]]
     puts $handle [format "SP=%04X" [reg SP]]
     puts $handle [format "SLOT=%02X" [primary_map]]
+    puts $handle [format "EXPTBL=%02X,%02X,%02X,%02X" \
+        [peek 0xFCC1] [peek 0xFCC2] [peek 0xFCC3] [peek 0xFCC4]]
+    puts $handle [format "SLTTBL=%02X,%02X,%02X,%02X" \
+        [peek 0xFCC5] [peek 0xFCC6] [peek 0xFCC7] [peek 0xFCC8]]
     puts $handle [format "SIGNATURE=%02X,%02X,%02X,%02X,%02X" \
         [peek 0xF300] [peek 0xF301] [peek 0xF302] \
         [peek 0xF303] [peek 0xF304]]

@@ -38,6 +38,13 @@ class PayloadMenuProbeTests(unittest.TestCase):
                 )
             )
 
+    def test_expanded_payload_launch_is_accepted(self) -> None:
+        report = self.make_report()
+        report = report.replace("DISCOVERY=01,4010,0", "DISCOVERY=8A,4010,0")
+        report = report.replace("LAUNCH=F4,F380", "LAUNCH=F8,F380")
+        values = validate_report(report, payload_slot="8A", launch_slot="F8")
+        self.assertEqual(values["DISCOVERY"], "8A,4010,0")
+
 
 if __name__ == "__main__":
     unittest.main()

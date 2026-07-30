@@ -26,9 +26,15 @@ def parse_state(text: str) -> dict[str, str]:
     return fields
 
 
-def validate_state(text: str) -> dict[str, str]:
+def validate_state(
+    text: str,
+    expected_slot: str = "F0",
+    expected_subslot: str | None = None,
+) -> dict[str, str]:
     fields = parse_state(text)
-    expected = {"sp": "F380", "slot": "F0"}
+    expected = {"sp": "F380", "slot": expected_slot}
+    if expected_subslot is not None:
+        expected["subslot"] = expected_subslot
     for key, expected_value in expected.items():
         if fields.get(key) != expected_value:
             raise ValueError(
@@ -45,6 +51,9 @@ def main() -> int:
     parser.add_argument("--models", type=pathlib.Path, required=True)
     parser.add_argument("--bios", type=pathlib.Path, required=True)
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
+    parser.add_argument("--model", default="msx1")
+    parser.add_argument("--expected-slot", default="F0")
+    parser.add_argument("--expected-subslot")
     arguments = parser.parse_args()
     command = [
         arguments.emulator,
@@ -53,7 +62,7 @@ def main() -> int:
         "--models",
         str(arguments.models),
         "--model",
-        "msx1",
+        arguments.model,
         "--region",
         "ntsc",
         "--bios",
@@ -76,7 +85,11 @@ def main() -> int:
     if result.returncode:
         return result.returncode
     try:
-        fields = validate_state(result.stdout)
+        fields = validate_state(
+            result.stdout,
+            arguments.expected_slot,
+            arguments.expected_subslot,
+        )
     except ValueError as error:
         print(f"error: invalid 1983 M1 state: {error}", file=sys.stderr)
         return 1

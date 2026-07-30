@@ -33,7 +33,7 @@ The descriptor describes requirements; successful validation authorizes the
 menu entry, not immediate cartridge startup. RainBIOS also verifies that pages
 2 and 3 map contiguous RAM, that all requested services are implemented, and
 that the entry lies in the selected page-1 payload ROM. The first valid
-primary-slot payload wins. A cartridge with exact `RBP1` magic but an invalid
+primary or expanded payload wins. A cartridge with exact `RBP1` magic but an invalid
 descriptor fails closed and its ordinary `INIT` is not called.
 
 ## Entry contract
@@ -41,7 +41,7 @@ descriptor fails closed and its ordinary `INIT` is not called.
 Selecting option 1 produces this non-returning transfer:
 
 - page 0 remains the RainBIOS MAIN-ROM;
-- page 1 maps the primary slot containing the validated payload;
+- page 1 maps the slot containing the validated payload;
 - pages 2 and 3 remain the contiguous RAM selected at cold boot;
 - `SP=F380h`;
 - A, BC, DE, HL, IX, and IY are zero;
@@ -50,5 +50,4 @@ Selecting option 1 produces this non-returning transfer:
 
 RainBIOS pushes the descriptor entry temporarily and uses `RET` only as an
 indirect jump, leaving `SP=F380h` at the target. There is no payload return
-address: a version-1 entry must not return. Flags are unspecified. Expanded
-slot discovery remains future work.
+address: a version-1 entry must not return. Flags are unspecified.

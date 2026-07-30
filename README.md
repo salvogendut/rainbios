@@ -9,15 +9,16 @@ proprietary source code, ROM data, fonts, logos, or other copyrighted assets.
 Milestone M1 is in progress. The project builds a deliberately incomplete
 32 KiB MSX1 main ROM with the standard entry-point layout and a small set of
 low-level hardware routines. Cold boot now finds and tests 32 KiB of RAM in a
-primary slot, maps it into pages 2 and 3, establishes the stack and minimal
-MAIN-ROM work area, initializes primary-slot control and memory read/write
+primary or secondary slot, maps it into pages 2 and 3, establishes the stack
+and minimal MAIN-ROM work area, initializes primary/expanded slot control and
+memory read/write
 calls, enables an IM 1 VBlank path with standard hooks and `JIFFY`, and then
 displays the boot UI. It also discovers public `AB` cartridge headers in
-primary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
+primary and secondary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
 0/1/2 initialization, Screen 0/1 text output, interrupt-driven international
 keyboard scan, buffered character-input services, and descriptor-driven BBC
-BASIC menu launch are present. Expanded slot discovery, complete keyboard
-behavior, broad cartridge compatibility, and most firmware services remain
+BASIC menu launch are present. Complete keyboard behavior, memory-mapper
+allocation, broad cartridge compatibility, and most firmware services remain
 pending.
 
 ## Build
@@ -66,9 +67,10 @@ An optional openMSX machine-definition check is available:
 make test-openmsx
 ```
 
-The M1 state probe places RAM in each non-ROM primary slot in turn, then adds a
-page-3-only decoy ahead of a valid 32 KiB candidate. It checks the resulting
-page map, stack, work-area bounds, slot tables, and hook initialization:
+The M1 state probe places RAM in each non-ROM primary slot in turn, adds a
+page-3-only decoy ahead of a valid 32 KiB candidate, and boots with RAM in
+expanded slot 3-2. It checks the resulting page map, stack, work-area bounds,
+slot tables, and hook initialization:
 
 ```sh
 make test-openmsx-m1 OPENMSX='flatpak run org.openmsx.openMSX'
@@ -80,6 +82,15 @@ including exact slot-map restoration:
 
 ```sh
 make test-openmsx-slots OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+The expanded-slot probe independently checks `EXPTBL`/`SLTTBL`, the inverted
+`FFFFh` selector, all four address pages, stack-safe restoration, and a
+returning expanded `CALSLT`:
+
+```sh
+make test-openmsx-expanded-slots \
+  OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
 The interrupt/video service probe checks `CALLF`, `H.TIMI`, `JIFFY`,
@@ -104,9 +115,23 @@ An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
 make test-openmsx-cartridge OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
-The test requires the CPU to be executing from cartridge page 1, the correct
-primary slot to be mapped, a cartridge-written RAM signature to exist, and
-the rendered screen to remain nonblank.
+The corresponding secondary-slot test places the same cartridge in expanded
+slot 2-2:
+
+```sh
+make test-openmsx-expanded-cartridge \
+  OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+Both tests require the CPU to be executing from cartridge page 1, the correct
+slot to be mapped, a cartridge-written RAM signature to exist, and the
+rendered screen to remain nonblank. BBC BASIC descriptor discovery and menu
+launch in expanded slot 2-2 are covered by:
+
+```sh
+make test-openmsx-expanded-bbcbasic-menu \
+  OPENMSX='flatpak run org.openmsx.openMSX'
+```
 
 When openMSX is installed as a Flatpak, use:
 
@@ -143,13 +168,16 @@ The adjacent `1983` emulator provides a second, fully headless boot check:
 
 ```sh
 make test-1983
+make test-1983-expanded
 make test-1983-cartridge
 ```
 
 The first target runs 120 NTSC frames and requires the M1 stack and
-page-2/page-3 slot map. The second independently requires execution in the
-diagnostic cartridge with slot 1 mapped into page 1. Both validate the
-rendered screen and write captures below `build/1983/`. Override
+page-2/page-3 slot map. The expanded target repeats that check on the MSX2
+layout and requires secondary selector `A0h`, with RAM in slot 3-2. The
+cartridge target independently requires execution in the diagnostic
+cartridge with slot 1 mapped into page 1. All validate the rendered screen and
+write captures below `build/1983/`. Override
 `EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
 
 With the pinned BBC BASIC artifact already built, its complete editing,

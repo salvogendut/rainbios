@@ -10,10 +10,12 @@ reviewable.
 - Material consulted: license and build documentation; public main-ROM
   entry-point layout in `src/main.asm`; later, `src/video.asm` solely as an
   open-source cross-check of published VDP input ordering and externally
-  observable screen-mode behavior
+  observable screen-mode behavior; later, `src/slot.asm` solely to cross-check
+  the observable requirement that temporary secondary selections are mirrored
+  in `SLTTBL` and restored afterward
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
-- Excluded: using device or service implementation code as a RainBIOS source
+- Excluded: copying or adapting device or service implementation routines
 - RainBIOS use: interface and observable behavior facts only; no implementation
   code or assets copied
 - Reference checksums:
@@ -25,6 +27,8 @@ reviewable.
     `0bf991b209a4dbe3bb418c8beb20983a6a27b3dd7c6838f6e992352e62b3dd94`
   - `src/video.asm`:
     `fa1b00b72dd6736a47873f7f38bbef289c8720fea4fe74b7962b79d1c808b5d4`
+  - `src/slot.asm`:
+    `552fefd09c228cf569ac1ccb916a355362ccc70b5c90bcd3cae1d46fee6d6144`
 
 The openMSX MSX1 machine configuration was later adapted as an integration
 test fixture in `tests/openmsx`. Its license and copyright notices are retained
@@ -78,8 +82,9 @@ open-source implementation difference is not copied.
 
 The handbook identifies `BOTTOM`/`HIMEM`, `BIOSSLT`, `EXPTBL`, `SLTTBL`, and
 the five-byte hook table, and documents that `FFFFh` is the expanded-slot
-selection register. The first M1 slice initializes only the primary-slot state
-it can represent truthfully; expanded-slot entries remain pending.
+selection register whose read value is inverted. M1H uses those public facts
+to initialize the tables and drive original RainBIOS selection/restoration
+paths.
 
 M1B uses the published `RSLREG`, `WSLREG`, and `ENASLT` inputs, outputs, and
 clobber declarations. The page-switch implementation and its RAM helper are
@@ -94,6 +99,13 @@ M1D uses the published IX/IY `CALSLT` contract. M1E uses the documented
 `RET`-or-retain-control behavior. The map-restoring call path, boot scanner,
 diagnostic cartridge, RAM marker, and two-emulator probes are original
 RainBIOS work.
+
+M1H uses the handbook's expanded slot-ID encoding, inverted `FFFFh` read
+behavior, and `EXPTBL`/`SLTTBL` contracts. C-BIOS `src/slot.asm` was consulted
+after the original RainBIOS paths were written to confirm the externally
+observable live-mirror behavior noted above; no instruction sequence was
+copied. The bootstrap, selector construction, page-3 register-only
+restoration, fixtures, and probes are original RainBIOS work.
 
 M1F uses the published inline `CALLF` layout, IM 1 timer interrupt behavior,
 `H.KEYI`/`H.TIMI` hook locations, and `JIFFY` counter. M2A uses the published

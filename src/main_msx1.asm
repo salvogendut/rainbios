@@ -205,9 +205,10 @@ cold_boot:
                 di
 
 ; Do not assume the main ROM is in primary slot 0. Preserve the page-0/page-1
-; mapping selected by reset and scan primary slots for writable RAM in both
-; pages 2 and 3. This bootstrap is stackless and does not yet handle expanded
-; slots.
+; mapping selected by reset and scan every primary/secondary slot for writable
+; RAM in both pages 2 and 3. This bootstrap is stackless. Expansion tests keep
+; the reset page-0/page-1 secondary selections unchanged so an expanded main
+; ROM remains visible throughout.
                 ld a,#82
                 out (PPI_CONTROL),a             ; PPI mode 0, keyboard input
                 in a,(PPI_SLOT)
@@ -229,42 +230,112 @@ bootstrap_primary_ram_slot:
                 or b
                 out (PPI_SLOT),a
 
+; FFFFh reads as the complement of the last selector written only on an
+; expanded primary slot. Derive the current low selector nibble from the first
+; read, then use two upper-nibble patterns while preserving the page-0/page-1
+; subslots that keep this code visible.
+                ld a,(#ffff)
+                ld c,a
+                cpl
+                and #0f
+                ld b,a
+                ld (#ffff),a
+                ld a,(#ffff)
+                cpl
+                cp b
+                jr nz,bootstrap_unexpanded_ram
+                ld a,b
+                or #50
+                ld h,a
+                ld (#ffff),a
+                ld a,(#ffff)
+                cpl
+                cp h
+                jr nz,bootstrap_unexpanded_ram
+
+; C becomes the original non-inverted selector. Try each secondary slot in
+; both RAM pages while retaining its page-0/page-1 selections.
+                ld a,c
+                cpl
+                ld c,a
+                ld b,0
+bootstrap_secondary_ram_slot:
+                ld a,b
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld l,a
+                add a,a
+                add a,a
+                or l
+                ld h,a
+                ld a,c
+                and #0f
+                or h
+                ld (#ffff),a
+                jr bootstrap_test_ram
+
+bootstrap_unexpanded_ram:
+                ld a,c
+                ld (#ffff),a
+                ld b,4                          ; unexpanded sentinel
+
 ; Require two complementary patterns to stick in each page, restoring every
 ; probe byte before selecting or rejecting the candidate.
+bootstrap_test_ram:
                 ld hl,RAM_TEST3
-                ld c,(hl)
+                ld a,(hl)
+                ex af,af'
                 ld (hl),#55
                 ld a,(hl)
                 cp #55
-                jr nz,bootstrap_primary_ram_fail
+                jr nz,bootstrap_ram_test_fail
                 ld (hl),#aa
                 ld a,(hl)
                 cp #aa
-                jr nz,bootstrap_primary_ram_fail
-                ld (hl),c
+                jr nz,bootstrap_ram_test_fail
+                ex af,af'
+                ld (hl),a
 
                 ld hl,RAM_TEST2
-                ld c,(hl)
+                ld a,(hl)
+                ex af,af'
                 ld (hl),#55
                 ld a,(hl)
                 cp #55
-                jr nz,bootstrap_primary_ram_fail
+                jr nz,bootstrap_ram_test_fail
                 ld (hl),#aa
                 ld a,(hl)
                 cp #aa
-                jr nz,bootstrap_primary_ram_fail
-                ld (hl),c
+                jr nz,bootstrap_ram_test_fail
+                ex af,af'
+                ld (hl),a
                 jr bootstrap_primary_ram_found
 
+bootstrap_ram_test_fail:
+                ex af,af'
+                ld (hl),a
+                ld a,b
+                cp 4
+                jr z,bootstrap_primary_ram_fail
+                inc b
+                ld a,b
+                cp 4
+                jr nz,bootstrap_secondary_ram_slot
+
 bootstrap_primary_ram_fail:
-                ld (hl),c
+; Restore the pre-probe selector (or ordinary FFFFh byte) before moving to the
+; next primary candidate.
+                ld a,c
+                ld (#ffff),a
                 inc e
                 ld a,e
                 cp 4
-                jr nz,bootstrap_primary_ram_slot
+                jp nz,bootstrap_primary_ram_slot
 
-; No primary RAM was found. Restore the reset mapping and fail closed. A later
-; M1 slice will add expanded-slot probing and a visible diagnostic.
+; No contiguous page-2/page-3 RAM was found. Restore the reset mapping and
+; fail closed.
                 ld a,d
                 out (PPI_SLOT),a
 bootstrap_no_primary_ram:
@@ -293,18 +364,19 @@ bootstrap_primary_ram_found:
                 ldir
                 pop de
 
-; Record the minimal MAIN-ROM state. The RAMAD0-RAMAD3 bytes at F341h-F344h
-; belong to the Disk-ROM communication area and are deliberately not claimed.
+; Record the primary MAIN-ROM slot before probing expansion state. The
+; RAMAD0-RAMAD3 bytes at F341h-F344h belong to the Disk-ROM communication
+; area and are deliberately not claimed.
                 ld a,d
                 and #03
                 ld (BIOSSLT),a
+                call bootstrap_expanded_slots
                 ld hl,#8000
                 ld (BOTTOM),hl
                 ld hl,STACK_TOP
                 ld (HIMEM),hl
 
-; Empty hooks begin with RET. EXPTBL/SLTTBL remain zero in this explicitly
-; primary-slot-only slice.
+; Empty hooks begin with RET.
                 ld hl,HOOKBASE
                 ld de,5
                 ld b,113
@@ -500,11 +572,11 @@ cold_boot_jingle_gap:
                 dec d
                 jr nz,cold_boot_jingle_note
 
-; Discover simple primary-slot cartridges after RAM, video, and sound are
+; Discover simple primary/secondary-slot cartridges after RAM, video, and sound are
 ; initialized. A public MSX cartridge header begins with "AB", followed by the
 ; little-endian INIT address. An INIT routine that returns lets scanning
 ; continue; a game may keep control instead. M1E scans 4000h and 8000h in each
-; non-BIOS primary slot and can invoke INIT in page 1 or page 2.
+; non-BIOS slot and can invoke INIT in page 1 or page 2.
                 im 1
                 call cold_boot_scan_cartridges
                 ei
@@ -635,9 +707,20 @@ cold_boot_scan_slot:
                 ld a,(CART_SCAN_SLOT)
                 cp 4
                 ret z
+                bit 7,a
+                jr nz,cold_boot_scan_slot_ready
+
+; Normalize an expanded primary candidate to its secondary-slot-zero ID.
+                or #80
+                call expanded_slot_check
+                jr nz,cold_boot_scan_slot_expanded
+                and #03
+                jr cold_boot_scan_slot_ready
+cold_boot_scan_slot_expanded:
+                ld (CART_SCAN_SLOT),a
+cold_boot_scan_slot_ready:
                 ld b,a
                 ld a,(BIOSSLT)
-                and #03
                 cp b
                 jr z,cold_boot_scan_next_slot
                 ld hl,#4000
@@ -646,6 +729,20 @@ cold_boot_scan_slot:
                 call cold_boot_try_cartridge
 cold_boot_scan_next_slot:
                 ld a,(CART_SCAN_SLOT)
+                bit 7,a
+                jr z,cold_boot_scan_next_primary
+                ld b,a
+                and #0c
+                cp #0c
+                jr z,cold_boot_scan_expanded_done
+                ld a,b
+                add a,4
+                ld (CART_SCAN_SLOT),a
+                jr cold_boot_scan_slot
+cold_boot_scan_expanded_done:
+                ld a,b
+                and #03
+cold_boot_scan_next_primary:
                 inc a
                 ld (CART_SCAN_SLOT),a
                 jr cold_boot_scan_slot
@@ -1476,12 +1573,152 @@ rdpsg:
                 in a,(PSG_READ)
                 ret
 
-; Primary-slot memory calls. The page-0 cases execute the access and exact map
-; restoration from RAM. Other pages can be changed while this page-0 code
-; remains visible; page 3 is restored before any stack operation.
-rdslt:
+; Detect the four primary-slot expanders after page-3 RAM and its stack have
+; been established. An expanded slot returns the complement of the value
+; written to FFFFh. Two patterns distinguish that register from writable RAM
+; and fixed ROM; the original byte or selector is restored before the stack is
+; used again. SLTTBL records the non-inverted selector written to each slot.
+bootstrap_expanded_slots:
+                ld c,0
+bootstrap_expanded_slot:
+                in a,(PPI_SLOT)
+                ld d,a
+                and #3f
+                ld b,a
+                ld a,c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                or b
+                out (PPI_SLOT),a
+
+                ld a,(#ffff)
+                ld e,a
+                cpl
+                and #0f
+                ld b,a
+                ld (#ffff),a
+                ld a,(#ffff)
+                cpl
+                cp b
+                jr nz,bootstrap_slot_not_expanded
+                ld a,b
+                or #50
+                ld h,a
+                ld (#ffff),a
+                ld a,(#ffff)
+                cpl
+                cp h
+                jr nz,bootstrap_slot_not_expanded
+
+                ld a,e
+                cpl
+                ld (#ffff),a
+                ld b,a
+                ld a,d
+                out (PPI_SLOT),a
+                ld a,c
+                or a
+                jr z,bootstrap_expanded_slot0
+                dec a
+                jr z,bootstrap_expanded_slot1
+                dec a
+                jr z,bootstrap_expanded_slot2
+                ld a,#80
+                ld (EXPTBL+3),a
+                ld a,b
+                ld (SLTTBL+3),a
+                jr bootstrap_expanded_next
+bootstrap_expanded_slot2:
+                ld a,#80
+                ld (EXPTBL+2),a
+                ld a,b
+                ld (SLTTBL+2),a
+                jr bootstrap_expanded_next
+bootstrap_expanded_slot1:
+                ld a,#80
+                ld (EXPTBL+1),a
+                ld a,b
+                ld (SLTTBL+1),a
+                jr bootstrap_expanded_next
+bootstrap_expanded_slot0:
+                ld a,#80
+                ld (EXPTBL),a
+                ld a,b
+                ld (SLTTBL),a
+                jr bootstrap_expanded_next
+
+bootstrap_slot_not_expanded:
+                ld a,e
+                ld (#ffff),a
+                ld a,d
+                out (PPI_SLOT),a
+
+bootstrap_expanded_next:
+                inc c
+                ld a,c
+                cp 4
+                jr nz,bootstrap_expanded_slot
+
+; If the main ROM's primary slot is expanded, publish its page-0 secondary
+; slot in the standard FxxxSSPP slot-ID form.
+                ld a,(BIOSSLT)
+                ld c,a
+                or a
+                jr z,bootstrap_main_expansion0
+                dec a
+                jr z,bootstrap_main_expansion1
+                dec a
+                jr z,bootstrap_main_expansion2
+                ld a,(EXPTBL+3)
+                jr bootstrap_main_expansion_check
+bootstrap_main_expansion2:
+                ld a,(EXPTBL+2)
+                jr bootstrap_main_expansion_check
+bootstrap_main_expansion1:
+                ld a,(EXPTBL+1)
+                jr bootstrap_main_expansion_check
+bootstrap_main_expansion0:
+                ld a,(EXPTBL)
+bootstrap_main_expansion_check:
                 bit 7,a
-                jp nz,unsupported_call
+                ret z
+                ld a,c
+                or a
+                jr z,bootstrap_main_selector0
+                dec a
+                jr z,bootstrap_main_selector1
+                dec a
+                jr z,bootstrap_main_selector2
+                ld a,(SLTTBL+3)
+                jr bootstrap_main_selector_ready
+bootstrap_main_selector2:
+                ld a,(SLTTBL+2)
+                jr bootstrap_main_selector_ready
+bootstrap_main_selector1:
+                ld a,(SLTTBL+1)
+                jr bootstrap_main_selector_ready
+bootstrap_main_selector0:
+                ld a,(SLTTBL)
+bootstrap_main_selector_ready:
+                and #03
+                add a,a
+                add a,a
+                or c
+                or #80
+                ld (BIOSSLT),a
+                ret
+
+; Inter-slot memory calls. Page-0 accesses finish from mapped RAM because the
+; BIOS disappears immediately after the PPI write. Page-3 expanded accesses
+; restore both selectors before using the stack again.
+rdslt:
+                di
+                bit 7,a
+                jr nz,rdslt_expanded
                 and #03
                 ld c,a
                 call primary_slot_map
@@ -1499,9 +1736,102 @@ rdslt_direct:
                 ld a,b
                 ret
 
+rdslt_expanded:
+                call expanded_slot_check
+                jp z,unsupported_call
+                ld a,h
+                and #c0
+                cp #c0
+                jr z,rdslt_expanded_page3
+
+; Preserve the public E input while the selected secondary slot is installed.
+; The temporary selector leaves page 3 unchanged for page-0 through page-2
+; accesses, so the normal stack remains available.
+                push de
+                call expanded_temporary_select
+                push bc
+                call primary_slot_map
+                bit 7,h
+                jr nz,rdslt_expanded_direct
+                bit 6,h
+                jr nz,rdslt_expanded_direct
+                call PAGE0_READ_HELPER
+                jr rdslt_expanded_restore
+rdslt_expanded_direct:
+                out (PPI_SLOT),a
+                ld b,(hl)
+                ld a,d
+                out (PPI_SLOT),a
+                ld a,b
+rdslt_expanded_restore:
+                ld e,a
+                pop bc
+                ld a,b
+                call expanded_store_selector
+                call expanded_write_selector
+                ld a,e
+                pop de
+                ret
+
+; Selecting a different secondary slot in page 3 can hide the stack even when
+; its primary slot was already selected. Keep every restoration value in
+; registers until both the secondary selector and PPI map are back in place.
+rdslt_expanded_page3:
+                push de
+                call expanded_load_selector
+                ld e,a
+                ld a,c
+                and #0c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld b,a
+                ld a,e
+                and #3f
+                or b
+                ld b,a
+                ld a,b
+                call expanded_store_selector
+                ld a,c
+                and #03
+                ld c,a
+                in a,(PPI_SLOT)
+                ld d,a
+                ld a,c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld c,a
+                ld a,d
+                and #3f
+                or c
+                out (PPI_SLOT),a
+                ld a,b
+                ld (#ffff),a
+                ld b,(hl)
+                ld a,e
+                ld (#ffff),a
+                ld a,d
+                out (PPI_SLOT),a
+                ld a,c
+                rlca
+                rlca
+                and #03
+                ld c,a
+                ld a,e
+                call expanded_store_selector
+                ld a,b
+                pop de
+                ret
+
 wrslt:
+                di
                 bit 7,a
-                jp nz,unsupported_call
+                jr nz,wrslt_expanded
                 and #03
                 ld c,a
                 call primary_slot_map
@@ -1516,6 +1846,218 @@ wrslt_direct:
                 ld (hl),e
                 ld a,d
                 out (PPI_SLOT),a
+                ret
+
+wrslt_expanded:
+                call expanded_slot_check
+                jp z,unsupported_call
+                ld a,h
+                and #c0
+                cp #c0
+                jr z,wrslt_expanded_page3
+                call expanded_temporary_select
+                push bc
+                call primary_slot_map
+                bit 7,h
+                jr nz,wrslt_expanded_direct
+                bit 6,h
+                jr nz,wrslt_expanded_direct
+                call PAGE0_WRITE_HELPER
+                jr wrslt_expanded_restore
+wrslt_expanded_direct:
+                out (PPI_SLOT),a
+                ld (hl),e
+                ld a,d
+                out (PPI_SLOT),a
+wrslt_expanded_restore:
+                pop bc
+                ld a,b
+                call expanded_store_selector
+                call expanded_write_selector
+                ret
+
+wrslt_expanded_page3:
+                call expanded_load_selector
+                ld b,a
+                ld a,c
+                and #0c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld d,a
+                ld a,b
+                and #3f
+                or d
+                call expanded_store_selector
+                ex af,af'
+                ld a,c
+                and #03
+                ld c,a
+                in a,(PPI_SLOT)
+                ld d,a
+                ld a,c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld c,a
+                ld a,d
+                and #3f
+                or c
+                out (PPI_SLOT),a
+                ex af,af'
+                ld (#ffff),a
+                ld (hl),e
+                ld a,b
+                ld (#ffff),a
+                ld a,d
+                out (PPI_SLOT),a
+                ld a,c
+                rlca
+                rlca
+                and #03
+                ld c,a
+                ld a,b
+                call expanded_store_selector
+                ret
+
+; Validate an expanded slot ID against EXPTBL without disturbing HL or E.
+; Return the original slot ID in A and C; Z means that its primary slot is not
+; expanded and the caller must fail closed.
+expanded_slot_check:
+                ld c,a
+                and #03
+                jr z,expanded_slot_check0
+                dec a
+                jr z,expanded_slot_check1
+                dec a
+                jr z,expanded_slot_check2
+                ld a,(EXPTBL+3)
+                jr expanded_slot_check_flag
+expanded_slot_check2:
+                ld a,(EXPTBL+2)
+                jr expanded_slot_check_flag
+expanded_slot_check1:
+                ld a,(EXPTBL+1)
+                jr expanded_slot_check_flag
+expanded_slot_check0:
+                ld a,(EXPTBL)
+expanded_slot_check_flag:
+                bit 7,a
+                ld a,c
+                ret
+
+; Load the current non-inverted secondary selector for slot ID C.
+expanded_load_selector:
+                ld a,c
+                and #03
+                jr z,expanded_load_selector0
+                dec a
+                jr z,expanded_load_selector1
+                dec a
+                jr z,expanded_load_selector2
+                ld a,(SLTTBL+3)
+                ret
+expanded_load_selector2:
+                ld a,(SLTTBL+2)
+                ret
+expanded_load_selector1:
+                ld a,(SLTTBL+1)
+                ret
+expanded_load_selector0:
+                ld a,(SLTTBL)
+                ret
+
+; Build a selector for C's secondary slot and the page containing HL.
+; Return A=new selector, B=old selector, C=primary slot.
+expanded_compute_selector:
+                call expanded_load_selector
+                ld b,a
+                ld a,h
+                and #c0
+                jr z,expanded_compute_page0
+                cp #40
+                jr z,expanded_compute_page1
+                cp #80
+                jr z,expanded_compute_page2
+                ld a,c
+                and #0c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld d,a
+                ld a,b
+                and #3f
+                jr expanded_compute_merge
+expanded_compute_page2:
+                ld a,c
+                and #0c
+                add a,a
+                add a,a
+                ld d,a
+                ld a,b
+                and #cf
+                jr expanded_compute_merge
+expanded_compute_page1:
+                ld a,c
+                and #0c
+                ld d,a
+                ld a,b
+                and #f3
+                jr expanded_compute_merge
+expanded_compute_page0:
+                ld a,c
+                and #0c
+                rrca
+                rrca
+                ld d,a
+                ld a,b
+                and #fc
+expanded_compute_merge:
+                or d
+                push af
+                ld a,c
+                and #03
+                ld c,a
+                pop af
+                ret
+
+expanded_temporary_select:
+                call expanded_compute_selector
+                call expanded_store_selector
+; Fall through with the new selector in A and the old selector in B.
+
+; Write A to primary slot C's FFFFh selector while preserving its current
+; primary mapping. Callers only use this helper when A keeps page 3's
+; secondary selection unchanged.
+expanded_write_selector:
+                push bc
+                push de
+                ld e,a
+                in a,(PPI_SLOT)
+                ld d,a
+                and #3f
+                ld b,a
+                ld a,c
+                and #03
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                or b
+                out (PPI_SLOT),a
+                ld a,e
+                ld (#ffff),a
+                ld a,d
+                out (PPI_SLOT),a
+                pop de
+                pop bc
                 ret
 
 ; Input C is a primary slot and the top two bits of H select the page. Return
@@ -1569,16 +2111,16 @@ primary_slot_map_page0:
                 or c
                 ret
 
-; Partial inter-slot call. M1D accepts non-expanded primary slots when the
-; target in IX is in page 1 or page 2. Both pages leave this page-0 routine and
-; the page-3 stack visible. The exact previous primary map is kept in this
-; call's stack frame because the called routine may destroy every normal
-; register.
+; Partial inter-slot call. Primary and expanded targets in IX are accepted in
+; page 1 or page 2. Both pages leave this page-0 routine and the page-3 stack
+; visible. Restoration state is kept in the call's stack frame because the
+; called routine may destroy every normal register.
 calslt:
+                di
                 push iy
                 pop bc
                 bit 7,b
-                jp nz,unsupported_call
+                jr nz,calslt_expanded
                 push ix
                 pop hl
                 ld a,h
@@ -1610,12 +2152,51 @@ calslt_return:
                 ex af,af'
                 ret
 
-; Primary-slot control. RSLREG and WSLREG map directly to the PPI register.
-; ENASLT deliberately rejects expanded-slot IDs until EXPTBL/SLTTBL and the
-; secondary-slot register have complete M1 support.
-enaslt:
-                bit 7,a
+calslt_expanded:
+                push ix
+                pop hl
+                ld a,h
+                and #c0
+                cp #40
+                jr z,calslt_expanded_page_supported
+                cp #80
                 jp nz,unsupported_call
+calslt_expanded_page_supported:
+                ld a,b
+                call expanded_slot_check
+                jp z,unsupported_call
+                call expanded_temporary_select
+                push bc                        ; old selector, primary slot
+                call primary_slot_map
+                push de                        ; exact old primary map in D
+                out (PPI_SLOT),a
+                ld hl,calslt_expanded_return
+                push hl
+                jp (ix)
+
+; Recover restoration state through the alternate register set so the target
+; routine's normal AF/BC/DE/HL results survive unchanged.
+calslt_expanded_return:
+                ex af,af'
+                exx
+                pop bc                         ; B = old primary map
+                pop de                         ; D = old selector, E = primary
+                ld c,e
+                ld a,d
+                call expanded_store_selector
+                call expanded_write_selector
+                ld a,b
+                out (PPI_SLOT),a
+                exx
+                ex af,af'
+                ret
+
+; Slot control. RSLREG and WSLREG map directly to the PPI register. ENASLT
+; updates both the primary and secondary selectors for expanded slot IDs.
+enaslt:
+                di
+                bit 7,a
+                jr nz,enaslt_expanded
                 and #03
                 ld e,a
                 ld a,h
@@ -1673,6 +2254,79 @@ enaslt_direct:
                 and b
                 or c
                 out (PPI_SLOT),a
+                ret
+
+enaslt_expanded:
+                call expanded_slot_check
+                jp z,unsupported_call
+                ld a,h
+                and #c0
+                cp #c0
+                jr z,enaslt_expanded_page3
+
+; Page 0 through page 2 leave the page-3 stack selected. Publish the selector,
+; write it to hardware, and then reuse the primary-slot mapping paths.
+                push hl
+                call expanded_compute_selector
+                call expanded_store_selector
+                call expanded_write_selector
+                pop hl
+                ld e,c
+                ld a,h
+                and #c0
+                jr z,enaslt_page0
+                cp #40
+                jr z,enaslt_page1
+                jr enaslt_page2
+
+; Page 3 must become stackless before either selector is changed. The mirror is
+; updated first; after popping the caller's address, no RAM is touched.
+enaslt_expanded_page3:
+                call expanded_compute_selector
+                call expanded_store_selector
+                ld b,a
+                pop hl
+                in a,(PPI_SLOT)
+                and #3f
+                ld d,a
+                ld a,c
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                or d
+                out (PPI_SLOT),a
+                ld a,b
+                ld (#ffff),a
+                jp (hl)
+
+; Store A in the selector mirror for primary slot C while preserving A, B,
+; and C. D is scratch.
+expanded_store_selector:
+                ld d,a
+                ld a,c
+                and #03
+                jr z,expanded_store_selector0
+                dec a
+                jr z,expanded_store_selector1
+                dec a
+                jr z,expanded_store_selector2
+                ld a,d
+                ld (SLTTBL+3),a
+                ret
+expanded_store_selector2:
+                ld a,d
+                ld (SLTTBL+2),a
+                ret
+expanded_store_selector1:
+                ld a,d
+                ld (SLTTBL+1),a
+                ret
+expanded_store_selector0:
+                ld a,d
+                ld (SLTTBL),a
                 ret
 
 rslreg:

@@ -36,6 +36,19 @@ HOOKS=C9,C9,C9
         with self.assertRaisesRegex(ValueError, "SLOTS"):
             validate_report(report, 2)
 
+    def test_expanded_bios_and_ram_state(self) -> None:
+        report = """\
+SP=F380
+SLOTS=0/0/3/3
+BOTTOM=8000
+HIMEM=F380
+BIOSSLT=80
+EXPTBL=80000080
+SLTTBL=A0000000
+HOOKS=C9,C9,C9
+"""
+        validate_report(report, 3, [0, 3], 0xA0, 0x80)
+
     def test_1983_state_requires_stack_and_ram_pages(self) -> None:
         state = (
             "state frame=121 pc=037A sp=F380 slot=F0 subslot=00 "
@@ -44,6 +57,11 @@ HOOKS=C9,C9,C9
         self.assertEqual(validate_state(state)["sp"], "F380")
         with self.assertRaisesRegex(ValueError, "slot"):
             validate_state(state.replace("slot=F0", "slot=00"))
+        self.assertEqual(
+            validate_state(state, expected_subslot="00")["subslot"], "00"
+        )
+        with self.assertRaisesRegex(ValueError, "subslot"):
+            validate_state(state, expected_subslot="A0")
 
 
 if __name__ == "__main__":

@@ -33,19 +33,20 @@ link-time section layout as modules grow.
 The cold-boot bootstrap remains stackless until it has located RAM. The first
 M1 slice preserves the reset-selected ROM mapping and requires complementary
 write patterns to stick in both pages 2 and 3 of one primary-slot candidate.
-It then establishes the stack, minimal MAIN-ROM work-area bounds, primary slot
-tables, and empty hooks. Expanded-slot RAM remains later M1 work.
+It then establishes the stack, minimal MAIN-ROM work-area bounds, slot tables,
+and empty hooks. M1H extends the stackless probe to secondary-slot RAM.
 
 M1B adds direct `RSLREG`/`WSLREG` access and primary-slot `ENASLT`. Because
 switching page 0 removes the routine performing the switch, cold boot installs
 a three-byte `OUT (A8h),A`/`RET` helper at `F380h`. Switching page 3 instead
 pops the return address before replacing the page that contains the stack.
-Expanded-slot IDs remain an explicit unsupported case.
+M1H extends the same paths to expanded IDs and mirrors permanent selections
+in `SLTTBL`.
 
 M1C extends the RAM-resident helper block with page-0 read/restore and
 write/restore operations. `RDSLT` and `WRSLT` handle pages 1–3 from visible
-page-0 code and restore page 3 before touching its stack. These calls are
-primary-slot-only until expanded-slot state is initialized.
+page-0 code and restore page 3 before touching its stack. M1H restores both
+the primary map and expanded selector around these calls.
 
 M1D implements the primary-slot page-1/page-2 subset of `CALSLT`. IX supplies
 the target and the high byte of IY supplies the slot ID. The old PPI map lives
@@ -53,27 +54,34 @@ in that call's page-3 stack frame while cartridge code runs, because the
 target is permitted to replace the normal registers. If it returns, a page-0
 continuation uses the alternate register set to restore the exact map while
 preserving the target's normal register and flag results. Separate stack
-frames also allow returning primary calls to nest.
+frames also allow returning calls to nest. M1H adds secondary-selector
+metadata to the frame for expanded page-1/page-2 targets.
 
 M1E scans the public cartridge header locations at `4000h` and `8000h` in
-each non-BIOS primary slot. A header beginning `41h,42h` with a nonzero
+each non-BIOS slot. A header beginning `41h,42h` with a nonzero
 page-1/page-2 INIT pointer is entered through `CALSLT`. A returning INIT lets
 the scan continue; a game may retain control. This is deliberately the first
-simple primary-cartridge slice, not a claim of expanded-slot, mapper, or
-full-service compatibility.
+simple cartridge slice. M1H extends enumeration to all secondary slots;
+bank-switched mapper compatibility remains separate work.
 
 M1F enables IM 1 only after page 0 and the page-3 stack are stable. `KEYINT`
 preserves the normal register set, runs `H.KEYI`, acknowledges VDP status,
 runs `H.TIMI` on VBlank, and increments `JIFFY`. Standard five-byte hooks can
 use the partial `CALLF`, which parses its inline slot and address through the
-alternate register set and delegates primary page-1/page-2 targets to
+alternate register set and delegates page-1/page-2 targets to
 `CALSLT`.
 
 M1G recognizes a version-1 RainBIOS payload descriptor at `7FF0h` in normal
 16 KiB page-1 cartridges. It validates the checksum, type, required-service
-mask, entry, and RAM requirements before recording the first compatible
-primary-slot payload. A ROM which claims `RBP1` but fails validation is not
+mask, entry, and RAM requirements before recording the first compatible slot
+payload. A ROM which claims `RBP1` but fails validation is not
 entered through its ordinary cartridge `INIT`.
+
+M1H performs a stackless pre-RAM expansion probe without changing the
+reset-selected page-0/page-1 subslots. Once RAM is live it publishes
+`EXPTBL`, the non-inverted selectors in `SLTTBL`, and the full `BIOSSLT`.
+Expanded page-3 calls keep restoration state in registers until the old
+secondary selector and primary map are both visible again.
 
 M2A publishes the eight TMS9918 register shadows and current screen/table
 work variables. VDP register and address command pairs are protected from

@@ -25,8 +25,14 @@ OPENMSX_M1_MACHINES := $(foreach slot,$(OPENMSX_M1_SLOTS),\
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM$(slot).xml)
 OPENMSX_M1_SPLIT_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_SPLIT.xml
+OPENMSX_M1_EXPANDED_RAM_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_EXPANDED_RAM.xml
 OPENMSX_M1_REPORT_DIR := $(OPENMSX_ROOT)/m1
 OPENMSX_SLOT_REPORT := $(OPENMSX_M1_REPORT_DIR)/slot-calls.txt
+OPENMSX_EXPANDED_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_EXPANDED.xml
+OPENMSX_EXPANDED_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/expanded-slot-calls.txt
 OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
 OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
@@ -39,12 +45,22 @@ OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
 OPENMSX_CART_SCREEN := $(OPENMSX_ROOT)/rainbios_cartridge.png
+OPENMSX_EXPANDED_CART_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_EXPANDED_CARTRIDGE.xml
+OPENMSX_EXPANDED_CART_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/expanded-cartridge.txt
+OPENMSX_EXPANDED_CART_SCREEN := \
+	$(OPENMSX_ROOT)/rainbios_expanded_cartridge.png
 OPENMSX_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
 OPENMSX_BBC_BASIC_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-smoke.txt
 OPENMSX_BBC_BASIC_MENU_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-menu.txt
+OPENMSX_EXPANDED_BBC_BASIC_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_EXPANDED_BBC_BASIC.xml
+OPENMSX_EXPANDED_BBC_BASIC_MENU_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/expanded-bbcbasic-menu.txt
 OPENMSX_INVALID_PAYLOAD_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_INVALID_PAYLOAD.xml
 OPENMSX_INVALID_PAYLOAD_REPORT := \
@@ -63,6 +79,8 @@ OPENMSX_EXTERNAL_DIAGNOSTICS_SCREEN := \
 	$(OPENMSX_ROOT)/external-diagnostics.png
 EMULATOR_1983_DIR := $(BUILD_DIR)/1983
 EMULATOR_1983_SCREEN := $(EMULATOR_1983_DIR)/rainbios_logo.ppm
+EMULATOR_1983_EXPANDED_SCREEN := \
+	$(EMULATOR_1983_DIR)/rainbios_msx2_expanded.ppm
 EMULATOR_1983_CART_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
 EMULATOR_1983_BBC_BASIC_SCREEN := \
@@ -77,8 +95,12 @@ SOURCES := src/main_msx1.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
+	test-openmsx-expanded-slots \
 	test-openmsx-services test-openmsx-keyboard test-openmsx-cartridge test-1983 \
+	test-openmsx-expanded-cartridge \
+	test-1983-expanded \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
+	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
@@ -130,6 +152,11 @@ $(OPENMSX_M1_SPLIT_MACHINE): \
 	mkdir -p $(@D)
 	sed 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' $< > $@
 
+$(OPENMSX_M1_EXPANDED_RAM_MACHINE): \
+		tests/openmsx/RainBIOS_M1_EXPANDED_RAM.xml.in $(MSX1_ROM)
+	mkdir -p $(@D)
+	sed 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' $< > $@
+
 test-openmsx: $(OPENMSX_MACHINE)
 	mkdir -p $(OPENMSX_HOME)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
@@ -161,7 +188,8 @@ test-openmsx-audio: $(OPENMSX_MACHINE)
 		-command 'soundlog start $(abspath $(OPENMSX_JINGLE)); after realtime 1 {soundlog stop; exit}'
 	$(PYTHON) tools/check_jingle_wav.py $(OPENMSX_JINGLE)
 
-test-openmsx-m1: $(OPENMSX_M1_MACHINES) $(OPENMSX_M1_SPLIT_MACHINE)
+test-openmsx-m1: $(OPENMSX_M1_MACHINES) $(OPENMSX_M1_SPLIT_MACHINE) \
+		$(OPENMSX_M1_EXPANDED_RAM_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
 	@for slot in $(OPENMSX_M1_SLOTS); do \
 		report="$(abspath $(OPENMSX_M1_REPORT_DIR))/ram$$slot.txt"; \
@@ -180,6 +208,15 @@ test-openmsx-m1: $(OPENMSX_M1_MACHINES) $(OPENMSX_M1_SPLIT_MACHINE)
 		-command "set m1_output {$$report}" \
 		-script "$(abspath tests/openmsx/m1_probe.tcl)" || exit 1; \
 	$(PYTHON) tools/check_m1_probe.py --ram-slot 2 "$$report"
+	@report="$(abspath $(OPENMSX_M1_REPORT_DIR))/expanded-ram.txt"; \
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_EXPANDED_RAM \
+		-command "set m1_output {$$report}" \
+		-script "$(abspath tests/openmsx/m1_probe.tcl)" || exit 1; \
+	$(PYTHON) tools/check_m1_probe.py --ram-slot 3 \
+		--expanded-primary 0 --expanded-primary 3 \
+		--selector 0xA0 --bios-slot 0x80 "$$report"
 
 test-openmsx-slots: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -189,6 +226,21 @@ test-openmsx-slots: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set slot_output {$(abspath $(OPENMSX_SLOT_REPORT))}" \
 		-script "$(abspath tests/openmsx/slot_calls_probe.tcl)"
 	$(PYTHON) tools/check_slot_calls_probe.py $(OPENMSX_SLOT_REPORT)
+
+$(OPENMSX_EXPANDED_MACHINE): \
+		tests/openmsx/RainBIOS_M1_EXPANDED.xml.in $(MSX1_ROM)
+	mkdir -p $(@D)
+	sed 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' $< > $@
+
+test-openmsx-expanded-slots: $(OPENMSX_EXPANDED_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_EXPANDED \
+		-command "set expanded_output {$(abspath $(OPENMSX_EXPANDED_REPORT))}" \
+		-script "$(abspath tests/openmsx/expanded_slot_calls_probe.tcl)"
+	$(PYTHON) tools/check_expanded_slot_calls_probe.py \
+		$(OPENMSX_EXPANDED_REPORT)
 
 test-openmsx-services: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -226,6 +278,26 @@ test-openmsx-cartridge: $(OPENMSX_CART_MACHINE)
 	$(PYTHON) tools/check_cartridge_probe.py $(OPENMSX_CART_REPORT)
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_CART_SCREEN)
 
+$(OPENMSX_EXPANDED_CART_MACHINE): \
+		tests/openmsx/RainBIOS_M1_EXPANDED_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(DIAGNOSTIC_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(DIAGNOSTIC_CART))|' \
+		$< > $@
+
+test-openmsx-expanded-cartridge: $(OPENMSX_EXPANDED_CART_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_EXPANDED_CARTRIDGE \
+		-command "set cartridge_output {$(abspath $(OPENMSX_EXPANDED_CART_REPORT))}; set cartridge_screenshot {$(abspath $(OPENMSX_EXPANDED_CART_SCREEN))}" \
+		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
+	$(PYTHON) tools/check_cartridge_probe.py --expected-slot F8 \
+		--expected-exptbl 00,00,80,00 --expected-slttbl 00,00,08,00 \
+		$(OPENMSX_EXPANDED_CART_REPORT)
+	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_EXPANDED_CART_SCREEN)
+
 $(OPENMSX_BBC_BASIC_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
 		$(MSX1_ROM) $(BBC_BASIC_ROM)
@@ -245,6 +317,27 @@ test-openmsx-bbcbasic-menu: $(OPENMSX_BBC_BASIC_MACHINE)
 		-script "$(abspath tests/openmsx/payload_menu_probe.tcl)"
 	$(PYTHON) tools/check_payload_menu_probe.py \
 		$(OPENMSX_BBC_BASIC_MENU_REPORT)
+
+$(OPENMSX_EXPANDED_BBC_BASIC_MACHINE): \
+		tests/openmsx/RainBIOS_M1_EXPANDED_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(BBC_BASIC_ROM)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(BBC_BASIC_ROM))|' \
+		-e 's|RainBIOS-MSX1-M1-EXPANDED-CARTRIDGE|RainBIOS-EXPANDED-BBC-BASIC|' \
+		-e 's|RainBIOS Expanded Diagnostic Cartridge|Expanded BBC BASIC Payload|' \
+		$< > $@
+
+test-openmsx-expanded-bbcbasic-menu: $(OPENMSX_EXPANDED_BBC_BASIC_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_EXPANDED_BBC_BASIC \
+		-command "set payload_menu_output {$(abspath $(OPENMSX_EXPANDED_BBC_BASIC_MENU_REPORT))}" \
+		-script "$(abspath tests/openmsx/payload_menu_probe.tcl)"
+	$(PYTHON) tools/check_payload_menu_probe.py \
+		--payload-slot 8A --launch-slot F8 \
+		$(OPENMSX_EXPANDED_BBC_BASIC_MENU_REPORT)
 
 test-openmsx-bbcbasic: test-openmsx-bbcbasic-menu
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -329,6 +422,15 @@ test-1983: $(MSX1_ROM)
 		--bios "$(MSX1_ROM)" --screenshot "$(EMULATOR_1983_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_SCREEN)
+
+test-1983-expanded: $(MSX1_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_m1.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model msx2 --expected-subslot A0 \
+		--bios "$(MSX1_ROM)" --screenshot "$(EMULATOR_1983_EXPANDED_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_EXPANDED_SCREEN)
 
 test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 	mkdir -p $(EMULATOR_1983_DIR)

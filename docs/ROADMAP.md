@@ -23,12 +23,11 @@ entry point is truthfully classified as implemented, partial, or stub.
 Status: in progress.
 
 The first M1 slice preserves the reset-selected ROM mapping, tests both
-16 KiB pages of a primary-slot RAM candidate, maps the accepted 32 KiB into
+16 KiB pages of a slot RAM candidate, maps the accepted 32 KiB into
 pages 2 and 3, establishes `SP=F380h`, clears the MAIN-ROM work area through
 `FFFEh`, sets `BOTTOM`, `HIMEM`, and `BIOSSLT`, and initializes every hook
-entry with `RET`. Host tests, four openMSX layouts (including a page-3-only
-decoy), and the 1983 boot/rendering check cover this slice. Expanded slots
-remain intentionally unsupported.
+entry with `RET`. Host tests, primary and expanded openMSX layouts (including
+a page-3-only decoy), and MSX1/MSX2 checks in 1983 cover this state.
 
 The M1B slice implements and tests direct primary-slot register access and
 `ENASLT` for non-expanded slot IDs on all four pages. Page 0 completes its
@@ -59,17 +58,23 @@ allows standard five-byte hooks to cross slots. An openMSX probe installs an
 `H.TIMI` hook in another primary slot and checks interrupt frequency and exact
 slot-map restoration.
 
-M1G discovers version-1 RainBIOS payload descriptors in primary page-1
-cartridges. Checksum, version, type, service, entry, and RAM requirements are
+M1G discovers version-1 RainBIOS payload descriptors in page-1 cartridges.
+Checksum, version, type, service, entry, and RAM requirements are
 validated before the first compatible payload is exposed to the boot menu.
 Claimed but invalid descriptors fail closed and do not fall through to their
 ordinary `INIT`.
 
-- enumerate primary and expanded slots without assuming a machine layout;
-- select and test RAM, establish the stack, and initialize BIOS work areas;
-- complete expanded-slot `ENASLT`, `RDSLT`, `WRSLT`, and `CALSLT`, then
-  complete the corresponding expanded-slot `CALLF`; the primary forms used
-  by M1E/M1F and `RSLREG`/`WSLREG` are complete;
+M1H initializes `EXPTBL`/`SLTTBL`, discovers contiguous RAM in secondary
+slots, and implements expanded `ENASLT`, `RDSLT`, `WRSLT`, page-1/page-2
+`CALSLT`, and the corresponding `CALLF` path. Cartridge and RBP1 discovery
+enumerate all four subslots of each expanded primary slot. Dedicated openMSX
+fixtures cover physical selector state, all address pages, expanded
+cartridge INIT, and expanded BBC BASIC menu launch; 1983 confirms boot with
+MSX2 expanded-slot RAM.
+
+- add page-0/page-3 `CALSLT` support if a compatible stack/trampoline contract
+  can be established;
+- add memory-mapper sizing and segment allocation beyond the reset segments;
 - add keyboard and device processing to the initial IM 1 interrupt handler;
 - run the original diagnostic cartridge on hardware;
 
