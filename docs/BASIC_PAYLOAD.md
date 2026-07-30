@@ -8,8 +8,8 @@ disabled until M1 establishes slots, RAM, a stack, and work areas.
 
 The port lives in the separate
 [`bbcbasic-z80-msx`](https://github.com/salvogendut/bbcbasic-z80-msx)
-repository. RainBIOS pins its initial port commit and preserved upstream tree
-in `deps/bbcbasic-z80-msx.lock.json`.
+repository. RainBIOS pins its current integration commit and preserved
+upstream tree in `deps/bbcbasic-z80-msx.lock.json`.
 
 The repository has two important branches:
 
@@ -111,8 +111,9 @@ size, and SHA-256 digest.
 - **M0:** visible BBC BASIC menu entry; launcher truthfully marked as requiring
   M1.
 - **M1:** payload descriptor and discovery tests; initialized launch state.
-- **Port P0:** reproducible legacy CP/M baseline using pinned `zmac` and
-  `ld80`.
+- **Port P0 (complete):** standalone build driver reproduces the 15,616-byte
+  CP/M baseline with SHA-256 `8f65a0a8…`; the externally supplied `zmac` and
+  `ld80` sources are recorded.
 - **Port P1:** MSX console-only prompt with storage explicitly unsupported.
 - **M2/M3:** enough console, keyboard, timing, and optional PSG services for
   interactive smoke tests.

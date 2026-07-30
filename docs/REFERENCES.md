@@ -90,6 +90,8 @@ implementation inputs. They remain quarantined under
   `https://github.com/salvogendut/bbcbasic-z80-msx`
 - Initial port revision:
   `87384ff4f2f554ff71494100c3fc431b9bb71f1b`
+- Reproducible CP/M baseline revision:
+  `f926bd6fb40ed6ca17da1ecae27274a7fac956f0`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -102,9 +104,13 @@ implementation inputs. They remain quarantined under
 
 The preserved branch contains the 18 commits which touched the BBC BASIC
 subtree, with authors, dates, messages, blobs, and ordering retained. Its tip
-tree is byte-for-byte identical to the CP/Mish subtree named above. The
-current Distrobox tool environment has neither `zmac` nor `ld80`, so the
-legacy CP/M baseline is documented but not yet reproduced in this workspace.
+tree is byte-for-byte identical to the CP/Mish subtree named above. Neither
+`zmac` nor `ld80` was preinstalled. Exact CP/Mish tool sources were
+built in a disposable directory and reproduced a 15,616-byte CP/M image with
+SHA-256
+`8f65a0a83d2231384b5a7f79035c2b97d748d238a924a116a84214c004cbe8f6`.
+The port repository now contains a standalone build driver and records the
+historical licensing uncertainty around `zmac`; the tool is not vendored.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 
