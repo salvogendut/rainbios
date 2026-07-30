@@ -196,6 +196,8 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
   `88ebf44284db5951ad6cb433ca3ad7650d56bc92`
 - MSX cassette storage revision:
   `186b2cc7fcbfa8bf21d1dfa7ce8987d4f0c4711f`
+- MSX `POINT()` parsing revision:
+  `6ddaa57afe51e45c0ebec88666c846b01841e05b`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -228,7 +230,7 @@ services. It places the unchanged core at `4400h-74C1h`, the independently
 written graphics adapter at `74C2h-77AAh`, the cassette adapter at
 `77ABh-794Eh`, fixed and adapter state at `8000h-8321h`, and user memory from
 `8322h`. Its 16 KiB ROM has SHA-256
-`14733ea4ae0b7956dfcf9ab9ec4d6f1be838ec1f6efc6da83887fb0c69a7b817`
+`29691e2ac6498988b15ef8e80687f902ae834fd886585bcc1f753a49e0434678`
 and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`, requiring the
 console, keyboard, timing, graphics, and cassette capability bits.
 An openMSX smoke test exercises language, editing, error, clock, and timeout

@@ -24,6 +24,38 @@ def validate_screenshot(path: pathlib.Path) -> None:
         raise ValueError(f"graphics screenshot has only {len(colours)} colours")
     if visible < 1_000:
         raise ValueError(f"graphics screenshot has only {visible} visible pixels")
+    chromatic = {
+        colour: count
+        for colour, count in colours.items()
+        if max(colour) - min(colour) >= 20 and max(colour) >= 80
+    }
+    substantial = {
+        colour: count for colour, count in chromatic.items() if count >= 200
+    }
+    if len(substantial) < 3:
+        raise ValueError(
+            "graphics screenshot lacks the three coloured geometry strokes"
+        )
+    points = [
+        (x, y)
+        for y in range(image.height)
+        for x in range(image.width)
+        if image.getpixel((x, y)) in substantial
+    ]
+    left = min(x for x, _ in points)
+    top = min(y for _, y in points)
+    right = max(x for x, _ in points)
+    bottom = max(y for _, y in points)
+    if not (
+        235 <= left <= 260
+        and 385 <= right <= 405
+        and 180 <= top <= 200
+        and 275 <= bottom <= 300
+    ):
+        raise ValueError(
+            "coloured geometry is outside its expected rectangle: "
+            f"{left},{top}..{right},{bottom}"
+        )
 
 
 def main() -> int:

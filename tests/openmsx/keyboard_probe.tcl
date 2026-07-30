@@ -63,26 +63,26 @@ proc empty_done {} {
             [word_at 0xF3F8] [word_at 0xF3FA]
     ]
     keymatrixdown 6 0x01
-    keymatrixdown 1 0x04
+    keymatrixdown 2 0x40
     after time 0.05 sample_shift_a
     after time 0.10 release_shift_a
     after time 0.15 shifted_a_ready
 }
 
 proc sample_shift_a {} {
-    reg A 1
+    reg A 2
     invoke_bios 0x0141 matrix_sampled
 }
 
 proc matrix_sampled {} {
     record_keyboard [
         format "MATRIX=%02X,%02X,%02X,%04X" \
-            [reg A] [peek 0xFBDB] [peek 0xFBE6] [word_at 0xF3F8]
+            [reg A] [peek 0xFBDC] [peek 0xFBE7] [word_at 0xF3F8]
     ]
 }
 
 proc release_shift_a {} {
-    keymatrixup 1 0x04
+    keymatrixup 2 0x40
     keymatrixup 6 0x01
 }
 

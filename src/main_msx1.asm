@@ -1219,11 +1219,18 @@ chput:
                 jr z,chput_backspace
                 cp #20
                 jr c,chput_done
+                ld a,(SCRMOD)
+                cp 2
+                jr z,chput_graphics_character
                 push de
                 call console_cursor_address
                 pop de
                 ld a,e
                 call wrtvrm
+                jr chput_advance_cursor
+chput_graphics_character:
+                call graphics_put_character
+chput_advance_cursor:
                 ld a,(CSRX)
                 inc a
                 ld b,a
@@ -1296,21 +1303,97 @@ console_cursor_column:
                 add hl,de
                 ret
 
+; Render one character into its Graphics II pattern and colour cell. Screen 2
+; uses a sequential name table, so row Y and column X map to pattern address
+; (Y * 256) + (X * 8). E contains the printable character.
+graphics_put_character:
+                ld l,e
+                ld h,0
+                add hl,hl
+                add hl,hl
+                add hl,hl
+                ld bc,boot_font
+                add hl,bc                       ; HL = eight-byte glyph
+                ld a,(CSRY)
+                dec a
+                ld d,a
+                ld a,(CSRX)
+                dec a
+                add a,a
+                add a,a
+                add a,a
+                ld e,a                          ; DE = pattern address
+                push de
+                ld bc,8
+                call ldirvm
+                pop hl
+                ld de,#2000
+                add hl,de                       ; matching colour cell
+                ld a,(FORCLR)
+                and #0f
+                rlca
+                rlca
+                rlca
+                rlca
+                ld d,a
+                ld a,(BAKCLR)
+                and #0f
+                or d
+                ld bc,8
+                jp filvrm
+
 ; Move text rows 2..24 to rows 1..23 and blank the last row. The direct
 ; bytewise VRAM copy works in both 40-column Screen 0 and 32-column Screen 1
 ; without reserving a large RAM buffer.
 console_scroll:
                 ld a,(SCRMOD)
+                cp 2
+                jr z,console_scroll_screen2
                 cp 1
                 jr z,console_scroll_screen1
                 ld hl,#0028                    ; Screen 0 row 2
                 ld de,#0000                    ; Screen 0 row 1
                 ld bc,920                      ; 23 rows * 40 columns
-                jr console_scroll_copy
+                call console_scroll_copy
+                ld hl,#0398                    ; Screen 0 row 24
+                ld bc,40
+                jr console_scroll_clear_text
 console_scroll_screen1:
                 ld hl,#1820                    ; Screen 1 row 2
                 ld de,#1800                    ; Screen 1 row 1
                 ld bc,736                      ; 23 rows * 32 columns
+                call console_scroll_copy
+                ld hl,#1ae0                    ; Screen 1 row 24
+                ld bc,32
+console_scroll_clear_text:
+                ld a,#20
+                jp filvrm
+console_scroll_screen2:
+                ld hl,#0100                    ; pattern rows 2..24
+                ld de,#0000
+                ld bc,#1700
+                call console_scroll_copy
+                ld hl,#2100                    ; colour rows 2..24
+                ld de,#2000
+                ld bc,#1700
+                call console_scroll_copy
+                ld hl,#1700                    ; blank pattern row 24
+                ld bc,#0100
+                xor a
+                call filvrm
+                ld hl,#3700                    ; reset its colour row
+                ld bc,#0100
+                ld a,(FORCLR)
+                and #0f
+                rlca
+                rlca
+                rlca
+                rlca
+                ld d,a
+                ld a,(BAKCLR)
+                and #0f
+                or d
+                jp filvrm
 console_scroll_copy:
                 call rdvrm
                 ex de,hl
@@ -1322,18 +1405,7 @@ console_scroll_copy:
                 ld a,b
                 or c
                 jr nz,console_scroll_copy
-                ld a,(SCRMOD)
-                cp 1
-                jr z,console_scroll_clear_screen1
-                ld hl,#0398                    ; Screen 0 row 24
-                ld bc,40
-                jr console_scroll_clear
-console_scroll_clear_screen1:
-                ld hl,#1ae0                    ; Screen 1 row 24
-                ld bc,32
-console_scroll_clear:
-                ld a,#20
-                jp filvrm
+                ret
 
 cls:
                 push hl

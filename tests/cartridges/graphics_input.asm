@@ -135,6 +135,7 @@ graphics_program:
                 db '80 GCOL 0,7',#0d
                 db '90 PLOT 69,640,512',#0d
                 db '95 P%=POINT(640,512)',#0d
+                db '98 PLOT 69,1000,512',#0d
                 db '100 GOTO 100',#0d
                 db 'RUN',#0d,0
 

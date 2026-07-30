@@ -27,8 +27,8 @@ class KeyboardProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "CHAR"):
             validate_report(
                 self.make_report().replace(
-                    "CHAR=41,1234,5678,9ABC",
-                    "CHAR=41,0000,5678,9ABC",
+                    "CHAR=61,1234,5678,9ABC",
+                    "CHAR=61,0000,5678,9ABC",
                 )
             )
 

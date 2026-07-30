@@ -78,7 +78,7 @@ console adapter at `4013h-423Ah`, unchanged core at `4400h-74C1h`, Graphics II
 adapter at `74C2h-77AAh`, cassette adapter at `77ABh-794Eh`, fixed state at
 `8000h-8321h`, and user memory from `8322h`. Its deterministic 16 KiB ROM
 ends with payload descriptor v1 at `7FF0h-7FFFh` and has SHA-256
-`14733ea4ae0b7956dfcf9ab9ec4d6f1be838ec1f6efc6da83887fb0c69a7b817`.
+`29691e2ac6498988b15ef8e80687f902ae834fd886585bcc1f753a49e0434678`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983

@@ -88,10 +88,11 @@ Status: in progress.
 M2A corrects the published `WRTVDP` B=data/C=register contract, makes VDP
 control-port pairs interrupt-atomic, initializes register shadows and the
 current table-base work variables, and provides partial Screen 0/1/2 mode
-setup. A minimal Screen 0/1 console implements `POSIT`, printable `CHPUT`,
-backspace, carriage return, line feed, wrapping, and `CLS`. The project-owned
-font now covers printable ASCII. The public service probe and two
-opaque cartridge smoke tests cover this slice.
+setup. The console implements `POSIT`, printable `CHPUT`, backspace, carriage
+return, line feed, wrapping, scrolling, and `CLS` in the text modes, plus
+glyph rendering and scrolling in Graphics II. The project-owned font covers
+printable ASCII. The public service probe and two opaque cartridge smoke tests
+cover this slice.
 
 M2B makes `INITGRP` produce deterministic empty Graphics II pattern, name,
 colour, and sprite tables. The BBC BASIC payload uses the public BIOS VRAM
@@ -104,7 +105,7 @@ so cross-slot `H.TIMI` hooks cannot corrupt the interpreter.
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - add a freely redistributable character set with documented provenance;
-- implement text cursor, scrolling, control characters, and `CHPUT`;
+- finish the remaining text control characters and cursor presentation;
 - add host and emulator tests for port ordering and VRAM boundaries.
 
 Exit criterion: diagnostic cartridges can display and update a text UI through

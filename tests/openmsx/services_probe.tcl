@@ -141,6 +141,34 @@ proc initgrp_done {} {
             [debug read VRAM 0x2000] [debug read VRAM 0x37FF] \
             [debug read VRAM 0x1B00]
     ]
+    poke 0xF3DD 2
+    poke 0xF3DC 3
+    reg A 0x41
+    invoke_bios 0x00A2 graphics_chput_done
+}
+
+proc graphics_chput_done {} {
+    puts $::services_handle [
+        format "GRAPHICS_CHPUT=%02X,%02X,%02X,%02X" \
+            [debug read VRAM 0x0208] [debug read VRAM 0x2208] \
+            [peek 0xF3DD] [peek 0xF3DC]
+    ]
+    debug write VRAM 0x0100 0xAA
+    debug write VRAM 0x2100 0xBC
+    debug write VRAM 0x1700 0x55
+    debug write VRAM 0x3700 0x66
+    poke 0xF3DC 24
+    reg A 0x0A
+    invoke_bios 0x00A2 graphics_scroll_done
+}
+
+proc graphics_scroll_done {} {
+    puts $::services_handle [
+        format "GRAPHICS_SCROLL=%02X,%02X,%02X,%02X,%02X,%02X" \
+            [debug read VRAM 0x0000] [debug read VRAM 0x2000] \
+            [debug read VRAM 0x1700] [debug read VRAM 0x3700] \
+            [peek 0xF3DD] [peek 0xF3DC]
+    ]
     close $::services_handle
     exit
 }

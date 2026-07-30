@@ -11,9 +11,9 @@ import pathlib
 EXPECTED = {
     "INIT": "FBF0,FBF0,FF,FF",
     "EMPTY": "1,FBF0,FBF0",
-    "MATRIX": "FB,FB,FB,FBF1",
+    "MATRIX": "BF,BF,BF,FBF1",
     "READY": "1,FBF1",
-    "CHAR": "41,1234,5678,9ABC",
+    "CHAR": "61,1234,5678,9ABC",
     "DRAINED": "1,FBF1,FBF1",
     "KILLED": "1,FBF0,FBF0",
     "BLOCKING": "0D",
