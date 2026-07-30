@@ -1,5 +1,5 @@
 address,name,kind,status,milestone,notes
-0000,RESET,reset,partial,M1,Displays the logo and startup notice; plays a PSG jingle; Space opens the early boot menu
+0000,RESET,reset,partial,M1,Tests both pages of 32 KiB primary-slot RAM and establishes SP before displaying the boot UI; expanded slots remain pending
 0004,CGTABL,data,partial,M2,Points to the project-owned partial 8x8 boot font
 0006,VDP_DR,data,partial,M0,MSX1 VDP data port
 0007,VDP_DW,data,partial,M0,MSX1 VDP data port

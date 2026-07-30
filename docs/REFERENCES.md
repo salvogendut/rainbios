@@ -58,6 +58,22 @@ RainBIOS therefore uses `11h` for an international keyboard and international
 BASIC identifier. C-BIOS 0.29a emits `02h` for that configuration; that
 open-source implementation difference is not copied.
 
+## 2026-07-30 — MSX2 Technical Handbook
+
+- Public English transcription:
+  `https://konamiman.github.io/MSX2-Technical-Handbook/`
+- Material consulted: Chapter 5 section 7 inter-slot call interfaces and
+  Appendix 4 MAIN-ROM work-area and hook listings
+- Purpose: define the M1 slot-call register contract and the documented
+  `F380h-FFCAh` work-area layout
+- RainBIOS use: interface and behavioral facts only
+
+The handbook identifies `BOTTOM`/`HIMEM`, `BIOSSLT`, `EXPTBL`, `SLTTBL`, and
+the five-byte hook table, and documents that `FFFFh` is the expanded-slot
+selection register. The first M1 slice initializes only the primary-slot state
+it can represent truthfully; expanded-slot entries and inter-slot primitives
+remain pending.
+
 ## Proprietary source trees
 
 The adjacent `msx-system` and `msxsyssrc20260412` trees were identified by
@@ -98,6 +114,8 @@ implementation inputs. They remain quarantined under
   `0b5979efed97ac5e557a43daed0916acdcb5d5f1`
 - MSX console P1 revision:
   `439b86aff3ba81eb4bc152852c98424f22f22004`
+- RainBIOS descriptor revision:
+  `b97a838020cc6ad053b8fa1cd1ec5efc00e0d975`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -128,7 +146,8 @@ The subsequent P1 cartridge uses published MSX BIOS calls and work-area
 variables for console, keyboard, cursor, and timing services. It places the
 unchanged core at `4400h-74CBh`, fixed and adapter state at `8000h-8307h`, and
 user memory from `8308h`. Its 16 KiB ROM has SHA-256
-`709e7a5fad4fe8faf244bbf6579adb5d7a116bf06263d80533a1254a8fca9bde`.
+`2a53b54be1f5b734f1f8f9ea075c62b1cdedab5aad516334da74f60614987bcd`
+and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`.
 An openMSX smoke test exercises language, editing, error, clock, and timeout
 paths with zero writes to the selected ROM window. The adjacent 1983 emulator
 separately renders the banner and prompt, avoiding reliance on openMSX raw

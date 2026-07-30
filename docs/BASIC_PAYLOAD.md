@@ -2,9 +2,10 @@
 
 RainBIOS intends to offer `START BBC BASIC` as a boot-menu entry. The
 console-only MSX payload now boots as a standalone cartridge, while the
-current M0 menu remains a truthful preview: launch stays disabled until M1
-establishes slots, RAM, a stack, work areas, discovery, and the transfer
-contract.
+current menu remains a truthful preview. RainBIOS now establishes primary-slot
+RAM, a stack, and a minimal work area, but launch stays disabled until expanded
+slots, interrupts, descriptor discovery, capability checks, and the transfer
+contract are implemented.
 
 ## Selected project
 
@@ -61,7 +62,8 @@ payload with interpreter state at `8000h` plausible.
 The P1 console build places its cartridge veneer at `4000h`, independently
 written adapter at `4013h-4230h`, unchanged core at `4400h-74CBh`, fixed state
 at `8000h-8307h`, and user memory from `8308h`. Its deterministic 16 KiB ROM
-has SHA-256 `709e7a5f…`. A guarded openMSX test exercises editing, integer and
+ends with payload descriptor v1 at `7FF0h-7FFFh` and has SHA-256
+`2a53b54b…`. A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983
 emulator independently confirms that the banner and prompt render visibly.
@@ -89,9 +91,9 @@ RainBIOS will own:
 - inter-slot transfer and defined failure/return handling;
 - the menu state shown when no compatible payload is present.
 
-## Proposed launch sequence
+## Launch sequence
 
-After M1, RainBIOS will:
+During the remaining M1 and later cartridge work, RainBIOS will:
 
 1. initialize slots, RAM, the stack, interrupts, and documented work areas;
 2. discover a payload through a versioned descriptor, not a hard-coded slot;
@@ -102,10 +104,11 @@ After M1, RainBIOS will:
 5. establish the documented register and interrupt state;
 6. transfer control through inter-slot code and diagnose an unexpected return.
 
-The descriptor bytes, entry registers, memory ownership, required service
-table, and return convention will be fixed by original tests before launcher
-code is enabled. The descriptor must not collide with ordinary MSX cartridge
-startup.
+The descriptor bytes and validation rules are fixed in
+`docs/abi/payload-v1.md` and covered by original host tests. Entry registers,
+memory ownership during transfer, and the return convention remain to be fixed
+by tests before launcher code is enabled. The descriptor does not alter the
+ordinary MSX cartridge header or standalone startup.
 
 ## Dependency workflow
 
@@ -130,7 +133,9 @@ make check-bbcbasic-artifact \
 
 - **M0:** visible BBC BASIC menu entry; launcher truthfully marked as requiring
   M1.
-- **M1:** payload descriptor and discovery tests; initialized launch state.
+- **M1:** payload descriptor complete; primary RAM/stack state implemented;
+  expanded-slot discovery, interrupts, payload discovery, and transfer state
+  remain.
 - **Port P0 (complete):** standalone build driver reproduces the 15,616-byte
   CP/M baseline with SHA-256 `8f65a0a8…`; the externally supplied `zmac` and
   `ld80` sources are recorded.

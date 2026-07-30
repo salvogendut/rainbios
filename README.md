@@ -6,10 +6,12 @@ RainBIOS is an independent, open-source firmware project for MSX and MSX2
 computers. Its goal is binary-compatible system behavior without incorporating
 proprietary source code, ROM data, fonts, logos, or other copyrighted assets.
 
-Milestone M0 is complete. The project builds a deliberately incomplete 32 KiB
-MSX1 main ROM with the standard entry-point layout and a small set of low-level
-hardware routines. It does **not** boot cartridges or replace a complete MSX
-BIOS yet; reset and slot/RAM initialization are the next milestone.
+Milestone M1 is in progress. The project builds a deliberately incomplete
+32 KiB MSX1 main ROM with the standard entry-point layout and a small set of
+low-level hardware routines. Cold boot now finds and tests 32 KiB of RAM in a
+primary slot, maps it into pages 2 and 3, establishes the stack and minimal
+MAIN-ROM work area, and then displays the boot UI. Expanded-slot discovery,
+interrupts, inter-slot calls, and cartridge startup remain pending.
 
 ## Build
 
@@ -45,14 +47,23 @@ The menu is intended to launch the separately built
 payload once slot/RAM initialization and the required firmware services
 exist. Its open-source core and new BSD-3-Clause MSX port can be bundled with
 RainBIOS while remaining a distinct build artifact. Its console-only
-standalone cartridge now boots and is pinned by source revision, size, and
-SHA-256 digest. The dependency, license, and platform boundary are described in
+standalone cartridge now boots, publishes a versioned RainBIOS payload
+descriptor, and is pinned by source revision, size, and SHA-256 digest. The
+dependency, license, and platform boundary are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
 
 ```sh
 make test-openmsx
+```
+
+The M1 state probe places RAM in each non-ROM primary slot in turn, then adds a
+page-3-only decoy ahead of a valid 32 KiB candidate. It checks the resulting
+page map, stack, work-area bounds, slot tables, and hook initialization:
+
+```sh
+make test-openmsx-m1 OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
 When openMSX is installed as a Flatpak, use:
@@ -92,8 +103,9 @@ The adjacent `1983` emulator provides a second, fully headless boot check:
 make test-1983
 ```
 
-That target runs 120 NTSC frames, prints CPU/VDP state, validates the rendered
-screen, and writes `build/1983/rainbios_logo.ppm`. Override
+That target runs 120 NTSC frames, requires the M1 stack and page-2/page-3 slot
+map, validates the rendered screen, and writes
+`build/1983/rainbios_logo.ppm`. Override
 `EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
 
 The optional sibling BBC BASIC checkout can be checked against RainBIOS's

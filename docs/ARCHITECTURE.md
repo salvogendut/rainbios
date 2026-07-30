@@ -30,12 +30,18 @@ Fixed entry points contain only jumps or documented metadata. Implementations
 live after `0200h` during the bootstrap phase; this will be replaced with a
 link-time section layout as modules grow.
 
-The M0 cold-boot path is intentionally stackless. It programs the TMS9918,
-uploads a converted Graphics II logo and Space-key notice, plays a short
-four-note PSG motif, and polls the keyboard without assuming that RAM is
-visible. Space switches to a fixed Screen 1 boot-menu preview built from the
-project-owned partial font. Menu selection and payload launch remain disabled
-until M1 establishes RAM, slots, a stack, and work areas.
+The cold-boot bootstrap remains stackless until it has located RAM. The first
+M1 slice preserves the reset-selected ROM mapping and requires complementary
+write patterns to stick in both pages 2 and 3 of one primary-slot candidate.
+It then establishes the stack, minimal MAIN-ROM work-area bounds, primary slot
+tables, and empty hooks. Expanded-slot RAM, inter-slot primitives, and
+interrupts remain later M1 work.
+
+After that bootstrap, the ROM programs the TMS9918, uploads a converted
+Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
+polls the keyboard. Space switches to a fixed Screen 1 boot-menu preview built
+from the project-owned partial font. Menu selection and payload launch remain
+disabled until the remaining firmware services and launch checks exist.
 
 The 13,056-byte logo payload is temporarily embedded in the main ROM. It will
 move to a compressed or separate, independently discoverable ROM before
@@ -46,19 +52,19 @@ main-BIOS space becomes constrained.
 The boot menu is intended to launch a separately built BBC BASIC for Z80
 payload. The imported interpreter source retains its permissive upstream
 notice, while new MSX platform code is BSD-3-Clause. RainBIOS will discover
-and enter the payload only through a documented descriptor after M1
-initialization. Keeping the payload outside the 32 KiB main BIOS also preserves
-ROM space and allows either project to be released independently. The initial
-port profile keeps the 12,492-byte language core in a 16 KiB page-1 payload
-ROM, places its aligned state at `8000h-8307h`, and begins user memory at
-`8308h`. A guarded interactive openMSX test records zero cartridge writes for
-the P1 cases, and 1983 independently renders the live prompt. See
-`docs/BASIC_PAYLOAD.md`.
+and enter the payload only through the versioned descriptor in
+`docs/abi/payload-v1.md`. Keeping the payload outside the 32 KiB main BIOS
+also preserves ROM space and allows either project to be released
+independently. The initial port profile keeps the 12,492-byte language core in
+a 16 KiB page-1 payload ROM, places its aligned state at `8000h-8307h`, and
+begins user memory at `8308h`. A guarded interactive openMSX test records zero
+cartridge writes for the P1 cases, and 1983 independently renders the live
+prompt. See `docs/BASIC_PAYLOAD.md`.
 
 ## Failure behavior during bring-up
 
 Unimplemented ordinary calls currently return with carry set. Reset remains
-in its boot UI, and interrupt vectors return safely. This makes the M0 ROM useful
+in its boot UI, and interrupt vectors return safely. This makes the M1 ROM useful
 for layout validation without suggesting that unsupported behavior is
 compatible. Each such entry remains marked `stub` in the ABI table.
 

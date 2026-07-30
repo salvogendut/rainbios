@@ -1,6 +1,6 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
-; RainBIOS M0 MSX1 main-ROM skeleton.
+; RainBIOS M1 MSX1 main-ROM skeleton.
 ;
 ; This source establishes the public ROM layout. Routines marked partial have
 ; straightforward hardware behavior but have not yet passed instruction-level
@@ -18,6 +18,16 @@ PPI_CONTROL     equ #ab
 
 RG1SAV          equ #f3e0
 STATFL          equ #f3e7
+BOTTOM          equ #fc48
+HIMEM           equ #fc4a
+BIOSSLT         equ #fcc0
+EXPTBL          equ #fcc1
+SLTTBL          equ #fcc5
+HOOKBASE        equ #fd9a
+
+RAM_TEST2       equ #bfff
+RAM_TEST3       equ #f380
+STACK_TOP       equ #f380
 
                 org #0000
 
@@ -163,12 +173,109 @@ STATFL          equ #f3e7
 cold_boot:
                 di
 
-; Initialize Graphics II with the display disabled. This path deliberately
-; avoids CALL, PUSH, and RAM because M1 has not selected or tested RAM yet.
+; Do not assume the main ROM is in primary slot 0. Preserve the page-0/page-1
+; mapping selected by reset and scan primary slots for writable RAM in both
+; pages 2 and 3. This bootstrap is stackless and does not yet handle expanded
+; slots.
                 ld a,#82
                 out (PPI_CONTROL),a             ; PPI mode 0, keyboard input
+                in a,(PPI_SLOT)
+                ld d,a                          ; original primary-slot map
+                ld e,0                          ; candidate primary RAM slot
+bootstrap_primary_ram_slot:
+                ld a,e
+                add a,a
+                add a,a
+                add a,a
+                add a,a                         ; candidate in page-2 bits
+                ld b,a
+                add a,a
+                add a,a                         ; candidate in page-3 bits
+                or b
+                ld b,a
+                ld a,d
+                and #0f
+                or b
+                out (PPI_SLOT),a
+
+; Require two complementary patterns to stick in each page, restoring every
+; probe byte before selecting or rejecting the candidate.
+                ld hl,RAM_TEST3
+                ld c,(hl)
+                ld (hl),#55
+                ld a,(hl)
+                cp #55
+                jr nz,bootstrap_primary_ram_fail
+                ld (hl),#aa
+                ld a,(hl)
+                cp #aa
+                jr nz,bootstrap_primary_ram_fail
+                ld (hl),c
+
+                ld hl,RAM_TEST2
+                ld c,(hl)
+                ld (hl),#55
+                ld a,(hl)
+                cp #55
+                jr nz,bootstrap_primary_ram_fail
+                ld (hl),#aa
+                ld a,(hl)
+                cp #aa
+                jr nz,bootstrap_primary_ram_fail
+                ld (hl),c
+                jr bootstrap_primary_ram_found
+
+bootstrap_primary_ram_fail:
+                ld (hl),c
+                inc e
+                ld a,e
+                cp 4
+                jr nz,bootstrap_primary_ram_slot
+
+; No primary RAM was found. Restore the reset mapping and fail closed. A later
+; M1 slice will add expanded-slot probing and a visible diagnostic.
+                ld a,d
+                out (PPI_SLOT),a
+bootstrap_no_primary_ram:
+                halt
+                jr bootstrap_no_primary_ram
+
+bootstrap_primary_ram_found:
+; Initialize the published system work area without touching FFFFh, which is
+; the secondary-slot register on expanded-slot machines.
+                ld sp,STACK_TOP
+                push de                         ; preserve reset map/RAM slot
                 xor a
-                out (PPI_SLOT),a                ; main ROM in all four pages
+                ld hl,RAM_TEST3
+                ld (hl),a
+                ld de,RAM_TEST3+1
+                ld bc,#0c7e                    ; clear F381h through FFFEh
+                ldir
+                pop de
+
+; Record the minimal MAIN-ROM state. The RAMAD0-RAMAD3 bytes at F341h-F344h
+; belong to the Disk-ROM communication area and are deliberately not claimed.
+                ld a,d
+                and #03
+                ld (BIOSSLT),a
+                ld hl,#8000
+                ld (BOTTOM),hl
+                ld hl,STACK_TOP
+                ld (HIMEM),hl
+
+; Empty hooks begin with RET. EXPTBL/SLTTBL remain zero in this explicitly
+; primary-slot-only slice.
+                ld hl,HOOKBASE
+                ld de,5
+                ld b,113
+bootstrap_empty_hook:
+                ld (hl),#c9
+                add hl,de
+                djnz bootstrap_empty_hook
+
+                ld sp,STACK_TOP
+
+; Initialize Graphics II with the display disabled.
                 ld a,#02
                 out (VDP_CONTROL),a
                 ld a,#80

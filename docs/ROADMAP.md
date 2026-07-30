@@ -20,11 +20,21 @@ entry point is truthfully classified as implemented, partial, or stub.
 
 ## M1 — Reset, slots, RAM, and interrupts
 
+Status: in progress.
+
+The first M1 slice preserves the reset-selected ROM mapping, tests both
+16 KiB pages of a primary-slot RAM candidate, maps the accepted 32 KiB into
+pages 2 and 3, establishes `SP=F380h`, clears the MAIN-ROM work area through
+`FFFEh`, sets `BOTTOM`, `HIMEM`, and `BIOSSLT`, and initializes every hook
+entry with `RET`. Host tests, four openMSX layouts (including a page-3-only
+decoy), and the 1983 boot/rendering check cover this slice. Expanded slots
+remain intentionally unsupported.
+
 - enumerate primary and expanded slots without assuming a machine layout;
 - select and test RAM, establish the stack, and initialize BIOS work areas;
 - implement `RDSLT`, `WRSLT`, `CALSLT`, `ENASLT`, `RSLREG`, and `WSLREG`;
 - initialize hooks and an IM 1 interrupt handler;
-- run an original diagnostic cartridge.
+- run an original diagnostic cartridge;
 - define payload discovery and launch state for the optional BBC BASIC menu
   entry.
 

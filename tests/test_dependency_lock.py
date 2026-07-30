@@ -28,7 +28,7 @@ class BasicDependencyLockTests(unittest.TestCase):
         self.assertEqual(artifact["size"], 16_384)
         self.assertEqual(
             artifact["sha256"],
-            "709e7a5fad4fe8faf244bbf6579adb5d7a116bf06263d80533a1254a8fca9bde",
+            "2a53b54be1f5b734f1f8f9ea075c62b1cdedab5aad516334da74f60614987bcd",
         )
 
     def test_boot_menu_names_the_pinned_interpreter(self) -> None:

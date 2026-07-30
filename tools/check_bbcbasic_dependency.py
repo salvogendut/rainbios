@@ -11,6 +11,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+if __package__:
+    from .payload_descriptor import descriptor_from_rom
+else:
+    from payload_descriptor import descriptor_from_rom
+
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = ROOT / "deps" / "bbcbasic-z80-msx.lock.json"
@@ -96,7 +101,16 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+    try:
+        descriptor = descriptor_from_rom(payload)
+    except ValueError as error:
+        print(f"error: invalid BBC BASIC payload descriptor: {error}", file=sys.stderr)
+        return 1
     print(f"verified MSX payload {len(payload)} bytes, SHA-256 {digest}")
+    print(
+        "verified payload descriptor "
+        f"entry={descriptor.entry:#06x}, services={descriptor.required_services:#04x}"
+    )
     return 0
 
 
