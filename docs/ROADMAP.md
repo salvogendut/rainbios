@@ -30,9 +30,16 @@ entry with `RET`. Host tests, four openMSX layouts (including a page-3-only
 decoy), and the 1983 boot/rendering check cover this slice. Expanded slots
 remain intentionally unsupported.
 
+The M1B slice implements and tests direct primary-slot register access and
+`ENASLT` for non-expanded slot IDs on all four pages. Page 0 completes its
+switch from a RAM helper; page 3 removes the return address from the old stack
+before replacing that stack's slot. Expanded IDs currently fail closed without
+changing the map. See `docs/abi/slot-calls.md`.
+
 - enumerate primary and expanded slots without assuming a machine layout;
 - select and test RAM, establish the stack, and initialize BIOS work areas;
-- implement `RDSLT`, `WRSLT`, `CALSLT`, `ENASLT`, `RSLREG`, and `WSLREG`;
+- complete expanded-slot `ENASLT` and implement `RDSLT`, `WRSLT`, `CALSLT`,
+  and `CALLF`; `RSLREG` and `WSLREG` are complete;
 - initialize hooks and an IM 1 interrupt handler;
 - run an original diagnostic cartridge;
 - define payload discovery and launch state for the optional BBC BASIC menu

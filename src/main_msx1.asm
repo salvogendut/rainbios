@@ -27,6 +27,7 @@ HOOKBASE        equ #fd9a
 
 RAM_TEST2       equ #bfff
 RAM_TEST3       equ #f380
+PAGE0_SLOT_HELPER equ #f380
 STACK_TOP       equ #f380
 
                 org #0000
@@ -53,7 +54,7 @@ STACK_TOP       equ #f380
                 defs #0020-$,#ff
                 jp dcompr                       ; 0020 DCOMPR
                 defs #0024-$,#ff
-                jp unsupported_call             ; 0024 ENASLT
+                jp enaslt                       ; 0024 ENASLT
                 defs #0028-$,#ff
                 jp unsupported_call             ; 0028 GETYPR
 
@@ -253,6 +254,16 @@ bootstrap_primary_ram_found:
                 ldir
                 pop de
 
+; A page-0 slot switch must finish from mapped RAM because the BIOS disappears
+; immediately after the PPI write. JP here leaves the caller's return address
+; on the stack, so this three-byte helper returns directly to that caller.
+                ld hl,PAGE0_SLOT_HELPER
+                ld (hl),#d3                    ; OUT (A8h),A
+                inc hl
+                ld (hl),PPI_SLOT
+                inc hl
+                ld (hl),#c9                    ; RET
+
 ; Record the minimal MAIN-ROM state. The RAMAD0-RAMAD3 bytes at F341h-F344h
 ; belong to the Disk-ROM communication area and are deliberately not claimed.
                 ld a,d
@@ -349,7 +360,7 @@ cold_boot_color_block:
                 dec d
                 jr nz,cold_boot_color_block
 
-; Enable the display. VDP interrupts remain disabled during M0 bring-up.
+; Enable the display. VDP interrupts remain disabled during M1 bring-up.
                 ld a,#c0
                 out (VDP_CONTROL),a
                 ld a,#81
@@ -421,7 +432,7 @@ cold_boot_wait:
                 jr nz,cold_boot_wait
 
 ; Space opens a compact Screen 1 options/information page. Its static state is
-; intentionally honest about M0: editing starts after RAM/slot initialization.
+; intentionally honest about the incomplete M1 cartridge path.
 cold_boot_options:
                 xor a
                 out (VDP_CONTROL),a
@@ -635,7 +646,71 @@ rdpsg:
                 in a,(PSG_READ)
                 ret
 
-; Partial PPI and slot-register primitives.
+; Primary-slot primitives. RSLREG and WSLREG map directly to the PPI register.
+; ENASLT deliberately rejects expanded-slot IDs until EXPTBL/SLTTBL and the
+; secondary-slot register have complete M1 support.
+enaslt:
+                bit 7,a
+                jp nz,unsupported_call
+                and #03
+                ld e,a
+                ld a,h
+                and #c0
+                jr z,enaslt_page0
+                cp #40
+                jr z,enaslt_page1
+                cp #80
+                jr z,enaslt_page2
+
+; Page 3 contains the normal stack. Pop the caller's return address before
+; changing that page, then jump to it without reading the newly selected slot.
+                ld a,e
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld c,a
+                in a,(PPI_SLOT)
+                and #3f
+                or c
+                pop hl
+                out (PPI_SLOT),a
+                jp (hl)
+
+enaslt_page2:
+                ld a,e
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld b,#cf
+                jr enaslt_direct
+
+enaslt_page1:
+                ld a,e
+                add a,a
+                add a,a
+                ld b,#f3
+                jr enaslt_direct
+
+enaslt_page0:
+                ld a,e
+                ld c,a
+                in a,(PPI_SLOT)
+                and #fc
+                or c
+                jp PAGE0_SLOT_HELPER
+
+enaslt_direct:
+                ld c,a
+                in a,(PPI_SLOT)
+                and b
+                or c
+                out (PPI_SLOT),a
+                ret
+
 rslreg:
                 in a,(PPI_SLOT)
                 ret

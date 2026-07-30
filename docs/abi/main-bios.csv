@@ -10,7 +10,7 @@ address,name,kind,status,milestone,notes
 0018,OUTDO,jump,stub,M6,
 001C,CALSLT,jump,stub,M1,
 0020,DCOMPR,jump,partial,M0,Needs flag and clobber conformance tests
-0024,ENASLT,jump,stub,M1,
+0024,ENASLT,jump,partial,M1,Supports non-expanded slot IDs on all four pages; expanded-slot IDs return carry set without changing the map
 0028,GETYPR,jump,stub,M6,
 002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
 002C,IDBYT2,data,partial,M0,US keyboard and BASIC identifiers
@@ -101,8 +101,8 @@ address,name,kind,status,milestone,notes
 012F,SCANL,jump,stub,M2,
 0132,CHGCAP,jump,stub,M3,
 0135,CHGSND,jump,stub,M3,
-0138,RSLREG,jump,partial,M1,Direct primary-slot register access
-013B,WSLREG,jump,partial,M1,Direct primary-slot register access
+0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
+013B,WSLREG,jump,implemented,M1,Writes the primary-slot register while preserving all registers
 013E,RDVDP,jump,partial,M2,Reads and mirrors status register zero
 0141,SNSMAT,jump,partial,M3,Needs PPI direction and clobber tests
 0144,PHYDIO,jump,stub,M6,

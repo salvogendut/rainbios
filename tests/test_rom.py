@@ -57,6 +57,12 @@ class MainRomLayoutTest(unittest.TestCase):
     def test_msx1_extrom_compatibility_entry_returns(self):
         self.assertEqual(self.rom[0x015F], 0xC9)  # RET
 
+    def test_primary_slot_register_calls_are_direct(self):
+        rslreg = int.from_bytes(self.rom[0x0139:0x013B], "little")
+        wslreg = int.from_bytes(self.rom[0x013C:0x013E], "little")
+        self.assertEqual(self.rom[rslreg : rslreg + 3], bytes((0xDB, 0xA8, 0xC9)))
+        self.assertEqual(self.rom[wslreg : wslreg + 3], bytes((0xD3, 0xA8, 0xC9)))
+
     def test_abi_addresses_are_unique_and_ordered(self):
         addresses = [int(row["address"], 16) for row in self.abi]
         self.assertEqual(addresses, sorted(addresses))

@@ -74,6 +74,10 @@ selection register. The first M1 slice initializes only the primary-slot state
 it can represent truthfully; expanded-slot entries and inter-slot primitives
 remain pending.
 
+M1B uses the published `RSLREG`, `WSLREG`, and `ENASLT` inputs, outputs, and
+clobber declarations. The page-switch implementation and its RAM helper are
+original RainBIOS code covered by host and openMSX conformance probes.
+
 ## Proprietary source trees
 
 The adjacent `msx-system` and `msxsyssrc20260412` trees were identified by

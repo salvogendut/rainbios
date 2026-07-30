@@ -10,8 +10,9 @@ Milestone M1 is in progress. The project builds a deliberately incomplete
 32 KiB MSX1 main ROM with the standard entry-point layout and a small set of
 low-level hardware routines. Cold boot now finds and tests 32 KiB of RAM in a
 primary slot, maps it into pages 2 and 3, establishes the stack and minimal
-MAIN-ROM work area, and then displays the boot UI. Expanded-slot discovery,
-interrupts, inter-slot calls, and cartridge startup remain pending.
+MAIN-ROM work area, initializes primary-slot control calls, and then displays
+the boot UI. Expanded-slot discovery, inter-slot read/write/call operations,
+interrupts, and cartridge startup remain pending.
 
 ## Build
 
@@ -64,6 +65,13 @@ page map, stack, work-area bounds, slot tables, and hook initialization:
 
 ```sh
 make test-openmsx-m1 OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+The M1B call probe verifies `RSLREG`, `WSLREG`, and primary-slot `ENASLT`,
+including safe page-0 and page-3 switching:
+
+```sh
+make test-openmsx-slots OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
 When openMSX is installed as a Flatpak, use:

@@ -23,6 +23,7 @@ OPENMSX_M1_MACHINES := $(foreach slot,$(OPENMSX_M1_SLOTS),\
 OPENMSX_M1_SPLIT_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_SPLIT.xml
 OPENMSX_M1_REPORT_DIR := $(OPENMSX_ROOT)/m1
+OPENMSX_SLOT_REPORT := $(OPENMSX_M1_REPORT_DIR)/slot-calls.txt
 EMULATOR_1983_DIR := $(BUILD_DIR)/1983
 EMULATOR_1983_SCREEN := $(EMULATOR_1983_DIR)/rainbios_logo.ppm
 LOGO_DIR := $(BUILD_DIR)/logo
@@ -30,7 +31,7 @@ LOGO_STAMP := $(LOGO_DIR)/.converted
 SOURCES := src/main_msx1.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
-	test-openmsx-audio test-openmsx-m1 test-1983 check-bbcbasic \
+	test-openmsx-audio test-openmsx-m1 test-openmsx-slots test-1983 check-bbcbasic \
 	check-bbcbasic-artifact clean
 
 all: $(MSX1_ROM)
@@ -76,7 +77,7 @@ test-openmsx-boot: $(OPENMSX_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_MSX1 \
-		-command 'set throttle off; after time 1 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}'
+		-command 'set throttle off; after time 1 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_BOOT_SCREEN)
 
 test-openmsx-options: $(OPENMSX_MACHINE)
@@ -84,7 +85,7 @@ test-openmsx-options: $(OPENMSX_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_MSX1 \
-		-command 'set throttle off; after time 1.2 {keymatrixdown 8 0x01}; after time 1.3 {keymatrixup 8 0x01}; after time 1.8 {screenshot -raw -size 320 $(abspath $(OPENMSX_OPTIONS_SCREEN)); exit}'
+		-command 'set throttle off; after time 1.2 {keymatrixdown 8 0x01}; after time 1.3 {keymatrixup 8 0x01}; after time 1.8 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_OPTIONS_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--min-colors 2 --max-colors 4 $(OPENMSX_OPTIONS_SCREEN)
 
@@ -115,6 +116,15 @@ test-openmsx-m1: $(OPENMSX_M1_MACHINES) $(OPENMSX_M1_SPLIT_MACHINE)
 		-command "set m1_output {$$report}" \
 		-script "$(abspath tests/openmsx/m1_probe.tcl)" || exit 1; \
 	$(PYTHON) tools/check_m1_probe.py --ram-slot 2 "$$report"
+
+test-openmsx-slots: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set slot_output {$(abspath $(OPENMSX_SLOT_REPORT))}" \
+		-script "$(abspath tests/openmsx/slot_calls_probe.tcl)"
+	$(PYTHON) tools/check_slot_calls_probe.py $(OPENMSX_SLOT_REPORT)
 
 test-1983: $(MSX1_ROM)
 	mkdir -p $(EMULATOR_1983_DIR)

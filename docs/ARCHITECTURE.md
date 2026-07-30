@@ -37,6 +37,12 @@ It then establishes the stack, minimal MAIN-ROM work-area bounds, primary slot
 tables, and empty hooks. Expanded-slot RAM, inter-slot primitives, and
 interrupts remain later M1 work.
 
+M1B adds direct `RSLREG`/`WSLREG` access and primary-slot `ENASLT`. Because
+switching page 0 removes the routine performing the switch, cold boot installs
+a three-byte `OUT (A8h),A`/`RET` helper at `F380h`. Switching page 3 instead
+pops the return address before replacing the page that contains the stack.
+Expanded-slot IDs remain an explicit unsupported case.
+
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 polls the keyboard. Space switches to a fixed Screen 1 boot-menu preview built
