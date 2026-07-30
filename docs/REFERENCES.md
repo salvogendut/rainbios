@@ -92,6 +92,8 @@ implementation inputs. They remain quarantined under
   `87384ff4f2f554ff71494100c3fc431b9bb71f1b`
 - Reproducible CP/M baseline revision:
   `f926bd6fb40ed6ca17da1ecae27274a7fac956f0`
+- Static core-audit revision:
+  `f318ab09dcb30158843b2e6fba9386ed4956ca69`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -111,6 +113,10 @@ SHA-256
 `8f65a0a83d2231384b5a7f79035c2b97d748d238a924a116a84214c004cbe8f6`.
 The port repository now contains a standalone build driver and records the
 historical licensing uncertainty around `zmac`; the tool is not vendored.
+Its subsequent static audit records a 12,492-byte core, a 768-byte aligned RAM
+module, 26 required platform symbols, 21 direct symbolic writes confined to
+RAM exports, and two intentional user-facing port instructions. Runtime
+write-guard testing remains required before treating the core as ROM-safe.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 

@@ -51,6 +51,13 @@ code, absolute addresses, interrupt state, and RAM use. However, its platform
 boundary is substantially narrower than adapting a BASIC tightly coupled to
 Spectrum-family paging and video hardware.
 
+The first static audit found a 12,492-byte language core with no CP/M calls,
+reserved storage, or interrupt-control opcodes. All 21 direct symbolic writes
+target the separate 768-byte RAM module. This makes a 16 KiB page-1 ROM
+payload with interpreter state at `8000h` and user memory from `8300h`
+plausible. A runtime read-only write guard is still required before that
+layout becomes a compatibility promise.
+
 SE BASIC IV remains useful open-source prior art and a possible future
 alternative payload. Its adjacent upstream checkout remains unmodified; no
 SE BASIC fork or source change is part of this integration.
@@ -114,6 +121,8 @@ size, and SHA-256 digest.
 - **Port P0 (complete):** standalone build driver reproduces the 15,616-byte
   CP/M baseline with SHA-256 `8f65a0a8…`; the externally supplied `zmac` and
   `ld80` sources are recorded.
+- **Port P0b (complete):** static audit fixes the 26-symbol MSX platform
+  boundary and checks ROM-core assumptions on every `make check`.
 - **Port P1:** MSX console-only prompt with storage explicitly unsupported.
 - **M2/M3:** enough console, keyboard, timing, and optional PSG services for
   interactive smoke tests.
