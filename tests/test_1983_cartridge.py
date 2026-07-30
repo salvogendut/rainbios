@@ -26,6 +26,24 @@ class Emulator1983CartridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "slot"):
             validate_state(VALID_STATE.replace("slot=F4", "slot=F0"))
 
+    def test_32k_cartridge_mapping_is_configurable(self) -> None:
+        fields = validate_state(
+            VALID_STATE.replace("slot=F4", "slot=D4"),
+            expected_slot="D4",
+        )
+        self.assertEqual(fields["slot"], "D4")
+
+    def test_expected_video_mode_is_checked(self) -> None:
+        state = VALID_STATE.rstrip() + " vdp_r0=02 vdp_r1=E0\n"
+        fields = validate_state(
+            state,
+            expected_vdp_r0="02",
+            expected_vdp_r1="E0",
+        )
+        self.assertEqual(fields["vdp_r1"], "E0")
+        with self.assertRaisesRegex(ValueError, "vdp_r1"):
+            validate_state(state, expected_vdp_r1="F0")
+
 
 if __name__ == "__main__":
     unittest.main()

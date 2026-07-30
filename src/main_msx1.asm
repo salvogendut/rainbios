@@ -16,8 +16,24 @@ PPI_KEYBOARD    equ #a9
 PPI_CONTROL_C   equ #aa
 PPI_CONTROL     equ #ab
 
+R0SAV           equ #f3df
 RG1SAV          equ #f3e0
 STATFL          equ #f3e7
+FORCLR          equ #f3e9
+BAKCLR          equ #f3ea
+BDRCLR          equ #f3eb
+LINL40          equ #f3ae
+LINL32          equ #f3af
+LINLEN          equ #f3b0
+CRTCNT          equ #f3b1
+CSRY            equ #f3dc
+CSRX            equ #f3dd
+NAMBAS          equ #f922
+CGPBAS          equ #f924
+PATBAS          equ #f926
+ATRBAS          equ #f928
+JIFFY           equ #fc9e
+SCRMOD          equ #fcaf
 BOTTOM          equ #fc48
 HIMEM           equ #fc4a
 BIOSSLT         equ #fcc0
@@ -68,9 +84,9 @@ STACK_TOP       equ #f380
                 db #00                          ; 002E reserved
                 db #00                          ; 002F reserved
 
-                jp unsupported_inline_call      ; 0030 CALLF
+                jp callf                        ; 0030 CALLF
                 defs #0038-$,#ff
-                jp empty_interrupt              ; 0038 KEYINT
+                jp keyint                       ; 0038 KEYINT
                 jp unsupported_call             ; 003B INITIO
                 jp unsupported_call             ; 003E INIFNK
                 jp disscr                       ; 0041 DISSCR
@@ -83,14 +99,14 @@ STACK_TOP       equ #f380
                 jp filvrm                       ; 0056 FILVRM
                 jp ldirmv                       ; 0059 LDIRMV
                 jp ldirvm                       ; 005C LDIRVM
-                jp unsupported_call             ; 005F CHGMOD
+                jp chgmod                       ; 005F CHGMOD
                 jp unsupported_call             ; 0062 CHGCLR
                 defs #0066-$,#ff
                 jp nmi_handler                  ; 0066 NMI
                 jp unsupported_call             ; 0069 CLRSPR
-                jp unsupported_call             ; 006C INITXT
-                jp unsupported_call             ; 006F INIT32
-                jp unsupported_call             ; 0072 INITGRP
+                jp initxt                       ; 006C INITXT
+                jp init32                       ; 006F INIT32
+                jp initgrp                      ; 0072 INITGRP
                 jp unsupported_call             ; 0075 INIMLT
                 jp unsupported_call             ; 0078 SETTXT
                 jp unsupported_call             ; 007B SETT32
@@ -106,7 +122,7 @@ STACK_TOP       equ #f380
                 jp unsupported_call             ; 0099 STRTMS
                 jp unsupported_call             ; 009C CHSNS
                 jp unsupported_call             ; 009F CHGET
-                jp unsupported_call             ; 00A2 CHPUT
+                jp chput                        ; 00A2 CHPUT
                 jp unsupported_call             ; 00A5 LPTOUT
                 jp unsupported_call             ; 00A8 LPTSTT
                 jp unsupported_call             ; 00AB CNVCHR
@@ -117,8 +133,8 @@ STACK_TOP       equ #f380
                 jp unsupported_call             ; 00BA ISCNTC
                 jp unsupported_call             ; 00BD CKCNTC
                 jp unsupported_call             ; 00C0 BEEP
-                jp unsupported_call             ; 00C3 CLS
-                jp unsupported_call             ; 00C6 POSIT
+                jp cls                          ; 00C3 CLS
+                jp posit                        ; 00C6 POSIT
                 jp unsupported_call             ; 00C9 FNKSB
                 jp unsupported_call             ; 00CC ERAFNK
                 jp unsupported_call             ; 00CF DSPFNK
@@ -286,6 +302,38 @@ bootstrap_empty_hook:
                 add hl,de
                 djnz bootstrap_empty_hook
 
+; Publish the eight write-only TMS9918 register values used by the boot UI.
+; Firmware clients read these RAM shadows when changing individual bits.
+                ld hl,cold_boot_vdp_registers
+                ld de,R0SAV
+                ld bc,8
+                ldir
+                ld a,40
+                ld (LINL40),a
+                ld a,32
+                ld (LINL32),a
+                ld (LINLEN),a
+                ld a,24
+                ld (CRTCNT),a
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
+                ld a,15
+                ld (FORCLR),a
+                ld a,1
+                ld (BAKCLR),a
+                ld (BDRCLR),a
+                ld a,2
+                ld (SCRMOD),a
+                ld hl,#1800
+                ld (NAMBAS),hl
+                ld hl,#0000
+                ld (CGPBAS),hl
+                ld hl,#3800
+                ld (PATBAS),hl
+                ld hl,#1b00
+                ld (ATRBAS),hl
+
                 ld sp,STACK_TOP
 
 ; Initialize Graphics II with the display disabled.
@@ -362,8 +410,9 @@ cold_boot_color_block:
                 dec d
                 jr nz,cold_boot_color_block
 
-; Enable the display. VDP interrupts remain disabled during M1 bring-up.
-                ld a,#c0
+; Enable the display and VBlank interrupt source. The CPU stays under DI until
+; cartridge discovery has a stable page-0 BIOS and page-3 stack.
+                ld a,#e0
                 out (VDP_CONTROL),a
                 ld a,#81
                 out (VDP_CONTROL),a
@@ -428,7 +477,9 @@ cold_boot_jingle_gap:
 ; little-endian INIT address. An INIT routine that returns lets scanning
 ; continue; a game may keep control instead. M1E scans 4000h and 8000h in each
 ; non-BIOS primary slot and can invoke INIT in page 1 or page 2.
+                im 1
                 call cold_boot_scan_cartridges
+                ei
 
 ; Poll keyboard matrix row 8. MSX keys are active-low, and bit 0 is Space.
 cold_boot_wait:
@@ -570,7 +621,9 @@ cold_boot_call_cartridge:
                 ld c,0
                 push bc
                 pop iy
+                ei
                 call calslt
+                di
                 ret
 
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
@@ -579,15 +632,58 @@ unsupported_call:
                 scf
                 ret
 
-; CALLF embeds operands after the call site, so returning as if it were an
-; ordinary routine would execute those operands. Fail closed until M1.
-unsupported_inline_call:
-                di
-unsupported_inline_halt:
-                halt
-                jr unsupported_inline_halt
+; Partial inline inter-slot call used by standard five-byte hooks:
+;   RST 30h, slot byte, target word, RET.
+; Parse the inline operands through the alternate BC/DE/HL set so the target
+; receives the caller's normal BC/DE/HL values. IX/IY take the documented
+; CALSLT target and slot inputs.
+callf:
+                exx
+                pop hl
+                ld a,(hl)
+                inc hl
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                push hl
+                push de
+                pop ix
+                ld b,a
+                ld c,0
+                push bc
+                pop iy
+                exx
+                jp calslt
 
-empty_interrupt:
+; Partial MSX1 IM 1 handler. Preserve every normal register, run the device
+; and VBlank hooks, acknowledge VDP status zero, and advance the public JIFFY
+; counter once per VBlank. Keyboard processing remains a later M3 slice.
+keyint:
+                push af
+                push bc
+                push de
+                push hl
+                push ix
+                push iy
+                call HOOKBASE                    ; H.KEYI
+                in a,(VDP_CONTROL)
+                bit 7,a
+                jr z,keyint_done
+                push af
+                call HOOKBASE+5                  ; H.TIMI
+                pop af
+                ld (STATFL),a
+                ld hl,(JIFFY)
+                inc hl
+                ld (JIFFY),hl
+keyint_done:
+                pop iy
+                pop ix
+                pop hl
+                pop de
+                pop bc
+                pop af
                 ei
                 reti
 
@@ -607,50 +703,299 @@ dcompr:
 disscr:
                 ld a,(RG1SAV)
                 and #bf
-                ld c,a
-                ld b,#01
+                ld b,a
+                ld c,#01
                 jp wrtvdp
 
 enascr:
                 ld a,(RG1SAV)
                 or #40
-                ld c,a
-                ld b,#01
+                ld b,a
+                ld c,#01
                 jp wrtvdp
 
 wrtvdp:
                 push af
                 push hl
-                ld a,b
+                ld a,c
                 and #07
                 add a,#df
                 ld l,a
                 ld h,#f3
-                ld (hl),c
-                ld a,c
-                out (VDP_CONTROL),a
+                ld (hl),b
+                di
                 ld a,b
+                out (VDP_CONTROL),a
+                ld a,c
                 or #80
                 out (VDP_CONTROL),a
+                ei
                 pop hl
                 pop af
                 ret
 
+; Minimal MSX1 mode dispatcher. Screen 3 remains explicitly unsupported.
+chgmod:
+                or a
+                jp z,initxt
+                cp 1
+                jp z,init32
+                cp 2
+                jp z,initgrp
+                jp unsupported_call
+
+; Program all eight TMS9918 registers from HL. The public WRTVDP path updates
+; the corresponding RAM shadows for every register.
+write_vdp_register_block:
+                ld c,0
+                ld d,8
+write_vdp_register_block_loop:
+                ld b,(hl)
+                call wrtvdp
+                inc hl
+                inc c
+                dec d
+                jr nz,write_vdp_register_block_loop
+                ret
+
+; SCREEN 0: 40x24 text, name table at 0000h and font at 0800h.
+initxt:
+                ld hl,text40_vdp_registers
+                call write_vdp_register_block
+                ld hl,#0000
+                ld (NAMBAS),hl
+                ld hl,#0800
+                ld (CGPBAS),hl
+                ld hl,#0000
+                ld (PATBAS),hl
+                ld (ATRBAS),hl
+                ld hl,#0000
+                ld bc,960
+                ld a,#20
+                call filvrm
+                ld hl,boot_font
+                ld de,#0800
+                ld bc,#0800
+                call ldirvm
+                ld a,0
+                ld (SCRMOD),a
+                ld a,(LINL40)
+                ld (LINLEN),a
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
+                ld b,#f0
+                ld c,1
+                jp wrtvdp
+
+; SCREEN 1: 32x24 text/tiles. This first slice supplies the project font,
+; clears the name and color tables, and hides sprites.
+init32:
+                ld hl,text32_vdp_registers
+                call write_vdp_register_block
+                ld hl,#1800
+                ld (NAMBAS),hl
+                ld hl,#0000
+                ld (CGPBAS),hl
+                ld hl,#3800
+                ld (PATBAS),hl
+                ld hl,#1b00
+                ld (ATRBAS),hl
+                ld hl,#1800
+                ld bc,768
+                ld a,#20
+                call filvrm
+                ld hl,boot_font
+                ld de,#0000
+                ld bc,#0800
+                call ldirvm
+                ld hl,#2000
+                ld bc,32
+                ld a,#f1
+                call filvrm
+                ld hl,#1b00
+                ld a,#d0
+                call wrtvrm
+                ld a,1
+                ld (SCRMOD),a
+                ld a,(LINL32)
+                ld (LINLEN),a
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
+                ld b,#e0
+                ld c,1
+                jp wrtvdp
+
+; SCREEN 2: Graphics II with the standard three copies of pattern indices in
+; the name table. Cartridge code owns subsequent pattern and color contents.
+initgrp:
+                ld hl,graphics2_vdp_registers
+                call write_vdp_register_block
+                ld hl,#1800
+                ld (NAMBAS),hl
+                ld hl,#0000
+                ld (CGPBAS),hl
+                ld hl,#3800
+                ld (PATBAS),hl
+                ld hl,#1b00
+                ld (ATRBAS),hl
+                ld hl,#1800
+                call setwrt
+                di
+                ld b,3
+                xor a
+initgrp_name_loop:
+                out (VDP_DATA),a
+                inc a
+                jr nz,initgrp_name_loop
+                djnz initgrp_name_loop
+                ei
+                ld hl,#1b00
+                ld a,#d0
+                call wrtvrm
+                ld a,2
+                ld (SCRMOD),a
+                ld a,(LINL32)
+                ld (LINLEN),a
+                ld b,#e0
+                ld c,1
+                jp wrtvdp
+
+; Minimal Screen 0/1 console output. Cursor coordinates are one-based, as
+; published for POSIT and the CSRX/CSRY work bytes. CHPUT preserves every
+; normal register and handles printable ASCII, CR, LF, and line wrapping.
+chput:
+                push af
+                push bc
+                push de
+                push hl
+                push af
+                call HOOKBASE+10                 ; H.CHPH
+                pop af
+                ld e,a
+                ld a,e
+                cp #0d
+                jr z,chput_carriage_return
+                cp #0a
+                jr z,chput_line_feed
+                cp #20
+                jr c,chput_done
+                push de
+                call console_cursor_address
+                pop de
+                ld a,e
+                call wrtvrm
+                ld a,(CSRX)
+                inc a
+                ld b,a
+                ld a,(LINLEN)
+                inc a
+                cp b
+                ld a,b
+                jr nz,chput_store_x
+                ld a,1
+                ld (CSRX),a
+                jr chput_advance_line
+chput_store_x:
+                ld (CSRX),a
+                jr chput_done
+chput_carriage_return:
+                ld a,1
+                ld (CSRX),a
+                jr chput_done
+chput_line_feed:
+chput_advance_line:
+                ld a,(CSRY)
+                inc a
+                cp 25
+                jr c,chput_store_y
+                ld a,24
+chput_store_y:
+                ld (CSRY),a
+chput_done:
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+; Convert the current one-based cursor position into a Screen 0/1 name-table
+; VRAM address. Screen 0 begins at 0000h; Screen 1 begins at 1800h.
+console_cursor_address:
+                ld a,(CSRY)
+                dec a
+                ld b,a
+                ld a,(LINLEN)
+                ld e,a
+                ld d,0
+                ld hl,0
+console_cursor_row_loop:
+                ld a,b
+                or a
+                jr z,console_cursor_column
+                add hl,de
+                dec b
+                jr console_cursor_row_loop
+console_cursor_column:
+                ld a,(CSRX)
+                dec a
+                ld e,a
+                ld d,0
+                add hl,de
+                ld a,(SCRMOD)
+                cp 1
+                ret nz
+                ld de,#1800
+                add hl,de
+                ret
+
+cls:
+                push hl
+                ld a,(SCRMOD)
+                cp 1
+                jr z,cls_screen1
+                ld hl,#0000
+                ld bc,960
+                jr cls_fill
+cls_screen1:
+                ld hl,#1800
+                ld bc,768
+cls_fill:
+                ld a,#20
+                call filvrm
+                ld a,1
+                ld (CSRX),a
+                ld (CSRY),a
+                pop hl
+                ret
+
+posit:
+                ld a,h
+                ld (CSRX),a
+                ld a,l
+                ld (CSRY),a
+                ret
+
 setrd:
+                di
                 ld a,l
                 out (VDP_CONTROL),a
                 ld a,h
                 and #3f
                 out (VDP_CONTROL),a
+                ei
                 ret
 
 setwrt:
+                di
                 ld a,l
                 out (VDP_CONTROL),a
                 ld a,h
                 and #3f
                 or #40
                 out (VDP_CONTROL),a
+                ei
                 ret
 
 rdvrm:
@@ -951,6 +1296,16 @@ slot_helpers_image:
                 db #d3,PPI_SLOT,#73,#7a         ; write byte, restore old map
                 db #d3,PPI_SLOT,#c9
 slot_helpers_image_end:
+
+cold_boot_vdp_registers:
+                db #02,#e0,#06,#ff,#03,#36,#07,#01
+
+text40_vdp_registers:
+                db #00,#b0,#00,#00,#01,#36,#07,#f1
+text32_vdp_registers:
+                db #00,#a0,#06,#80,#00,#36,#07,#f1
+graphics2_vdp_registers:
+                db #02,#a0,#06,#ff,#03,#36,#07,#01
 
 jingle_notes:
                 db #d6,#00                     ; C5

@@ -53,10 +53,14 @@ failure convention is a RainBIOS bring-up extension, not a claim about the
 standard BIOS contract, and will disappear when expanded-slot handling is
 implemented.
 
-`CALLF` remains a fail-stop stub. Slot calls are not yet tested with interrupts
-enabled.
+`CALLF` parses the standard inline slot byte and target word, then delegates
+non-expanded page-1/page-2 calls to `CALSLT`. This is sufficient for standard
+five-byte hooks whose target is in those primary pages. Expanded targets and
+page-0/page-3 targets remain pending.
 
 The `test-openmsx-slots` target verifies register preservation, every primary
 page selection, physical-RAM reads and writes, exact map restoration, all
 three page-0 RAM helpers, the page-3 stack paths, returning page-1/page-2
-`CALSLT`, a nested returning page-1 call, and expanded-ID failure.
+`CALSLT`, a nested returning page-1 call, and expanded-ID failure. The separate
+`test-openmsx-services` probe exercises `CALLF` from `H.TIMI` while interrupts
+are enabled and requires the exact primary-slot map to be restored.

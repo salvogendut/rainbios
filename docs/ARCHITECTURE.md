@@ -34,8 +34,7 @@ The cold-boot bootstrap remains stackless until it has located RAM. The first
 M1 slice preserves the reset-selected ROM mapping and requires complementary
 write patterns to stick in both pages 2 and 3 of one primary-slot candidate.
 It then establishes the stack, minimal MAIN-ROM work-area bounds, primary slot
-tables, and empty hooks. Expanded-slot RAM and interrupts remain later M1
-work.
+tables, and empty hooks. Expanded-slot RAM remains later M1 work.
 
 M1B adds direct `RSLREG`/`WSLREG` access and primary-slot `ENASLT`. Because
 switching page 0 removes the routine performing the switch, cold boot installs
@@ -62,6 +61,21 @@ page-1/page-2 INIT pointer is entered through `CALSLT`. A returning INIT lets
 the scan continue; a game may retain control. This is deliberately the first
 simple primary-cartridge slice, not a claim of expanded-slot, mapper, or
 full-service compatibility.
+
+M1F enables IM 1 only after page 0 and the page-3 stack are stable. `KEYINT`
+preserves the normal register set, runs `H.KEYI`, acknowledges VDP status,
+runs `H.TIMI` on VBlank, and increments `JIFFY`. Standard five-byte hooks can
+use the partial `CALLF`, which parses its inline slot and address through the
+alternate register set and delegates primary page-1/page-2 targets to
+`CALSLT`.
+
+M2A publishes the eight TMS9918 register shadows and current screen/table
+work variables. VDP register and address command pairs are protected from
+interrupt interleaving. Screen 0, Screen 1, and Screen 2 initialization use
+original RainBIOS tables and the project-owned font. The first console slice
+supports one-based cursor positioning, text name-table output, carriage
+return, line feed, wrapping, and clearing; scrolling and the complete control
+character set remain pending.
 
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
@@ -91,8 +105,8 @@ prompt. See `docs/BASIC_PAYLOAD.md`.
 ## Failure behavior during bring-up
 
 Unimplemented ordinary calls currently return with carry set. Reset remains
-in its boot UI, and interrupt vectors return safely. This makes the M1 ROM useful
-for layout validation without suggesting that unsupported behavior is
+in its boot UI, while the NMI vector returns safely. This makes the M1 ROM
+useful for layout validation without suggesting that unsupported behavior is
 compatible. Each such entry remains marked `stub` in the ABI table.
 
 Unsupported calls may later emit structured diagnostics to an emulator debug
@@ -106,6 +120,10 @@ hardware.
 - Z80 unit tests will execute one BIOS call in a controlled memory/port model.
 - Emulator integration tests boot a minimal, original test cartridge, inspect
   its RAM proof marker and execution state, and require a rendered nonblank
+  frame in both openMSX and 1983.
+- An openMSX service probe calls interrupt, VDP, mode, and console entries only
+  through their fixed public addresses. Optional opaque-cartridge probes
+  require cartridge execution, the expected slot/video state, and a rendered
   frame in both openMSX and 1983.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before
   a compatibility milestone is released.

@@ -15,13 +15,13 @@ address,name,kind,status,milestone,notes
 002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
 002C,IDBYT2,data,partial,M0,US keyboard and BASIC identifiers
 002D,VERSION,data,partial,M0,MSX1 generation identifier
-0030,CALLF,jump,stub,M1,Fail-stop because this entry has inline operands
-0038,KEYINT,jump,stub,M1,Safe empty interrupt return only
+0030,CALLF,jump,partial,M1,Supports inline calls to non-expanded primary page-1/page-2 targets through CALSLT
+0038,KEYINT,jump,partial,M1,Runs H.KEYI and VBlank H.TIMI then updates STATFL and JIFFY; keyboard processing remains pending
 003B,INITIO,jump,stub,M1,
 003E,INIFNK,jump,stub,M3,
-0041,DISSCR,jump,partial,M2,No interrupt atomicity tests yet
-0044,ENASCR,jump,partial,M2,No interrupt atomicity tests yet
-0047,WRTVDP,jump,partial,M2,MSX1 registers 0 through 7 only
+0041,DISSCR,jump,partial,M2,Updates TMS9918 register 1 through the shadowed WRTVDP path
+0044,ENASCR,jump,partial,M2,Updates TMS9918 register 1 through the shadowed WRTVDP path
+0047,WRTVDP,jump,partial,M2,Accepts B=data and C=register; updates MSX1 register shadows 0 through 7 atomically
 004A,RDVRM,jump,partial,M2,Needs VDP timing tests
 004D,WRTVRM,jump,partial,M2,Needs VDP timing tests
 0050,SETRD,jump,partial,M2,14-bit VRAM address only
@@ -29,13 +29,13 @@ address,name,kind,status,milestone,notes
 0056,FILVRM,jump,partial,M2,Needs count and timing conformance tests
 0059,LDIRMV,jump,partial,M2,Needs count and timing conformance tests
 005C,LDIRVM,jump,partial,M2,Needs count and timing conformance tests
-005F,CHGMOD,jump,stub,M2,
+005F,CHGMOD,jump,partial,M2,Dispatches modes 0/1/2; mode 3 and MSX2 modes remain unsupported
 0062,CHGCLR,jump,stub,M2,
 0066,NMI,jump,stub,M1,Safe empty NMI return only
 0069,CLRSPR,jump,stub,M2,
-006C,INITXT,jump,stub,M2,
-006F,INIT32,jump,stub,M2,
-0072,INITGRP,jump,stub,M2,
+006C,INITXT,jump,partial,M2,Initializes a fixed 40x24 text layout and the project font
+006F,INIT32,jump,partial,M2,Initializes a fixed 32x24 tile layout and the project font
+0072,INITGRP,jump,partial,M2,Initializes Graphics II registers and the standard pattern-name sequence
 0075,INIMLT,jump,stub,M2,
 0078,SETTXT,jump,stub,M2,
 007B,SETT32,jump,stub,M2,
@@ -51,7 +51,7 @@ address,name,kind,status,milestone,notes
 0099,STRTMS,jump,stub,M3,
 009C,CHSNS,jump,stub,M3,
 009F,CHGET,jump,stub,M3,
-00A2,CHPUT,jump,stub,M2,
+00A2,CHPUT,jump,partial,M2,Screen 0/1 printable output plus CR/LF/wrap; scrolling and full control handling remain pending
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,
 00AB,CNVCHR,jump,stub,M3,
@@ -62,8 +62,8 @@ address,name,kind,status,milestone,notes
 00BA,ISCNTC,jump,stub,M3,
 00BD,CKCNTC,jump,stub,M3,
 00C0,BEEP,jump,stub,M3,
-00C3,CLS,jump,stub,M2,
-00C6,POSIT,jump,stub,M2,
+00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
+00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking
 00C9,FNKSB,jump,stub,M2,
 00CC,ERAFNK,jump,stub,M2,
 00CF,DSPFNK,jump,stub,M2,

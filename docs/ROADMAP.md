@@ -52,12 +52,19 @@ M1E scans `4000h` and `8000h` in each non-BIOS primary slot for the public
 BSD-3-Clause cartridge fixture reaches its loop, writes a proof marker to
 RAM, and leaves the logo visibly rendered in both openMSX and 1983.
 
+M1F enables the TMS9918 VBlank source and Z80 IM 1, preserves the normal
+register set in `KEYINT`, runs `H.KEYI` and `H.TIMI`, acknowledges VDP status,
+and increments `JIFFY`. The primary page-1/page-2 subset of inline `CALLF`
+allows standard five-byte hooks to cross slots. An openMSX probe installs an
+`H.TIMI` hook in another primary slot and checks interrupt frequency and exact
+slot-map restoration.
+
 - enumerate primary and expanded slots without assuming a machine layout;
 - select and test RAM, establish the stack, and initialize BIOS work areas;
 - complete expanded-slot `ENASLT`, `RDSLT`, `WRSLT`, and `CALSLT`, then
-  implement `CALLF`; the primary forms used by M1E and `RSLREG`/`WSLREG` are
-  complete;
-- initialize hooks and an IM 1 interrupt handler;
+  complete the corresponding expanded-slot `CALLF`; the primary forms used
+  by M1E/M1F and `RSLREG`/`WSLREG` are complete;
+- add keyboard and device processing to the initial IM 1 interrupt handler;
 - run the original diagnostic cartridge on hardware;
 - define payload discovery and launch state for the optional BBC BASIC menu
   entry.
@@ -66,6 +73,16 @@ Exit criterion: cold boot reaches the diagnostic cartridge on representative
 MSX1 emulator configurations and at least one hardware configuration.
 
 ## M2 — MSX1 display and console
+
+Status: in progress.
+
+M2A corrects the published `WRTVDP` B=data/C=register contract, makes VDP
+control-port pairs interrupt-atomic, initializes register shadows and the
+current table-base work variables, and provides partial Screen 0/1/2 mode
+setup. A minimal Screen 0/1 console implements `POSIT`, printable `CHPUT`,
+carriage return, line feed, wrapping, and `CLS`. The project-owned font now
+contains matching lowercase glyph slots. The public service probe and two
+opaque cartridge smoke tests cover this slice.
 
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;

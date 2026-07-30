@@ -208,6 +208,10 @@ def build_font() -> bytes:
         offset = ord(character) * 8
         for row_index, row_bits in enumerate(rows):
             font[offset + row_index] = row_bits << 2
+        if "A" <= character <= "Z":
+            lowercase_offset = ord(character.lower()) * 8
+            for row_index, row_bits in enumerate(rows):
+                font[lowercase_offset + row_index] = row_bits << 2
     return bytes(font)
 
 

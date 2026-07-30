@@ -11,10 +11,12 @@ Milestone M1 is in progress. The project builds a deliberately incomplete
 low-level hardware routines. Cold boot now finds and tests 32 KiB of RAM in a
 primary slot, maps it into pages 2 and 3, establishes the stack and minimal
 MAIN-ROM work area, initializes primary-slot control and memory read/write
-calls, and then displays the boot UI. It also discovers public `AB` cartridge
-headers in primary slots and can invoke page-1/page-2 `INIT` routines.
-Expanded-slot discovery, interrupts, broad cartridge compatibility, and most
-firmware services remain pending.
+calls, enables an IM 1 VBlank path with standard hooks and `JIFFY`, and then
+displays the boot UI. It also discovers public `AB` cartridge headers in
+primary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
+0/1/2 initialization and Screen 0/1 text-output services are present.
+Expanded-slot discovery, keyboard services, broad cartridge compatibility,
+and most firmware services remain pending.
 
 ## Build
 
@@ -77,6 +79,13 @@ including exact slot-map restoration:
 make test-openmsx-slots OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
+The interrupt/video service probe checks `CALLF`, `H.TIMI`, `JIFFY`,
+`WRTVDP`, `INITXT`, `POSIT`, `CHPUT`, and `CLS` through their public entries:
+
+```sh
+make test-openmsx-services OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
 An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
 `INIT` transfer in openMSX:
 
@@ -131,6 +140,20 @@ page-2/page-3 slot map. The second independently requires execution in the
 diagnostic cartridge with slot 1 mapped into page 1. Both validate the
 rendered screen and write captures below `build/1983/`. Override
 `EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
+
+Optional black-box tests cover the locally supplied 32 KiB Arkanoid and MSX
+Diagnostics cartridges in both emulators:
+
+```sh
+make test-external-cartridges \
+    OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+The ROMs are not part of RainBIOS. The defaults point to `Arkano.rom` and
+`diag.rom` under the adjacent `1983/ROMS` directory; override `ARKANO_ROM` or
+`MSX_DIAGNOSTICS_ROM` for another local layout. Exact identities, results,
+and the limits of these smoke tests are recorded in
+[docs/CARTRIDGE_COMPATIBILITY.md](docs/CARTRIDGE_COMPATIBILITY.md).
 
 The optional sibling BBC BASIC checkout can be checked against RainBIOS's
 pinned revision with:

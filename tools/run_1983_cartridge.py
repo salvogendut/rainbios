@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Run 1983 and require execution inside the RainBIOS test cartridge."""
+"""Run 1983 and require execution inside a primary-slot cartridge."""
 
 from __future__ import annotations
 
@@ -15,7 +15,13 @@ except ModuleNotFoundError:
     from run_1983_m1 import parse_state
 
 
-def validate_state(text: str) -> dict[str, str]:
+def validate_state(
+    text: str,
+    *,
+    expected_slot: str = "F4",
+    expected_vdp_r0: str | None = None,
+    expected_vdp_r1: str | None = None,
+) -> dict[str, str]:
     fields = parse_state(text)
     try:
         pc = int(fields["pc"], 16)
@@ -26,12 +32,20 @@ def validate_state(text: str) -> dict[str, str]:
         raise ValueError(f"PC {pc:04X} is outside cartridge page 1")
     if not 0xF300 <= sp <= 0xF380:
         raise ValueError(f"SP {sp:04X} is outside RainBIOS main RAM")
-    if fields.get("slot") != "F4":
+    if fields.get("slot") != expected_slot:
         raise ValueError(
-            f"slot: found {fields.get('slot')!r}, expected 'F4'"
+            f"slot: found {fields.get('slot')!r}, expected {expected_slot!r}"
         )
     if int(fields.get("vram_nonzero", "0")) <= 0:
         raise ValueError("1983 reported blank VRAM")
+    for register, expected in (
+        ("vdp_r0", expected_vdp_r0),
+        ("vdp_r1", expected_vdp_r1),
+    ):
+        if expected is not None and fields.get(register) != expected:
+            raise ValueError(
+                f"{register}: found {fields.get(register)!r}, expected {expected!r}"
+            )
     return fields
 
 
@@ -42,6 +56,10 @@ def main() -> int:
     parser.add_argument("--bios", type=pathlib.Path, required=True)
     parser.add_argument("--cartridge", type=pathlib.Path, required=True)
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
+    parser.add_argument("--exit-after", type=int, default=180)
+    parser.add_argument("--expected-slot", default="F4")
+    parser.add_argument("--expected-vdp-r0")
+    parser.add_argument("--expected-vdp-r1")
     arguments = parser.parse_args()
     command = [
         arguments.emulator,
@@ -62,7 +80,7 @@ def main() -> int:
         "--headless",
         "--unthrottled",
         "--exit-after",
-        "180",
+        str(arguments.exit_after),
         "--dump-state",
         "--screenshot",
         str(arguments.screenshot),
@@ -77,7 +95,12 @@ def main() -> int:
     if result.returncode:
         return result.returncode
     try:
-        fields = validate_state(result.stdout)
+        fields = validate_state(
+            result.stdout,
+            expected_slot=arguments.expected_slot,
+            expected_vdp_r0=arguments.expected_vdp_r0,
+            expected_vdp_r1=arguments.expected_vdp_r1,
+        )
     except ValueError as error:
         print(f"error: invalid 1983 cartridge state: {error}", file=sys.stderr)
         return 1

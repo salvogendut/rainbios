@@ -8,11 +8,14 @@ reviewable.
 - Location used: adjacent `cbios-0.29a` release directory
 - License: permissive two-clause license in `doc/cbios.txt`
 - Material consulted: license and build documentation; public main-ROM
-  entry-point layout in `src/main.asm`
+  entry-point layout in `src/main.asm`; later, `src/video.asm` solely as an
+  open-source cross-check of published VDP input ordering and externally
+  observable screen-mode behavior
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
-- Excluded: device and service routine implementations
-- RainBIOS use: interface facts only; no implementation code or assets copied
+- Excluded: using device or service implementation code as a RainBIOS source
+- RainBIOS use: interface and observable behavior facts only; no implementation
+  code or assets copied
 - Reference checksums:
   - `src/main.asm`:
     `9cd33476229cc202e36ef6fa3858931b136fb5e65d086c25c1407557fbbc12f9`
@@ -20,6 +23,8 @@ reviewable.
     `b7c5b9fde2fd3b7bab292b8995581bc4f0f0315efe65ee49d934a1afd53099d8`
   - `doc/building.txt`:
     `0bf991b209a4dbe3bb418c8beb20983a6a27b3dd7c6838f6e992352e62b3dd94`
+  - `src/video.asm`:
+    `fa1b00b72dd6736a47873f7f38bbef289c8720fea4fe74b7962b79d1c808b5d4`
 
 The openMSX MSX1 machine configuration was later adapted as an integration
 test fixture in `tests/openmsx`. Its license and copyright notices are retained
@@ -62,9 +67,10 @@ open-source implementation difference is not copied.
 
 - Public English transcription:
   `https://konamiman.github.io/MSX2-Technical-Handbook/`
-- Material consulted: Chapter 3 slot initialization, Chapter 5 cartridge
-  headers and section 7 inter-slot call interfaces, and Appendix 4 MAIN-ROM
-  work-area and hook listings
+- Material consulted: Chapter 2 interrupt model; Chapter 3 slot
+  initialization; Chapter 5 cartridge headers and section 7 inter-slot call
+  interfaces; Appendix 1 interrupt/VDP/mode/console call contracts; and
+  Appendix 4 MAIN-ROM work-area and hook listings
 - Purpose: define the M1 slot-call register contract and the documented
   `F380h-FFCAh` work-area layout
 - RainBIOS use: interface and behavioral facts only
@@ -88,6 +94,14 @@ M1D uses the published IX/IY `CALSLT` contract. M1E uses the documented
 diagnostic cartridge, RAM marker, and two-emulator probes are original
 RainBIOS work.
 
+M1F uses the published inline `CALLF` layout, IM 1 timer interrupt behavior,
+`H.KEYI`/`H.TIMI` hook locations, and `JIFFY` counter. M2A uses the published
+B=data/C=register `WRTVDP` contract; Screen 0/1/2 mode contracts; current
+screen, table-base, color, line-length, and cursor work variables; and the
+`CHPUT`, `CLS`, and `POSIT` interfaces. The handler, mode tables, console
+implementation, font expansion, and conformance probe are original RainBIOS
+work.
+
 ## Proprietary source trees
 
 The adjacent `msx-system` and `msxsyssrc20260412` trees were identified by
@@ -106,6 +120,24 @@ implementation inputs. They remain quarantined under
 - Purpose: independent headless execution, CPU/VDP state reporting, and final
   framebuffer capture for the RainBIOS MSX1 ROM
 - RainBIOS use: validation tool only; no emulator implementation code copied
+
+## 2026-07-30 — Opaque cartridge smoke-test inputs
+
+- Local-only files:
+  - `Arkano.rom`, 32,768 bytes, SHA-256
+    `b14d1d94a1cc23efff146e8ad62e4364047c9023bba47642a0daa67f51122bcc`
+  - `diag.rom`, 32,768 bytes, SHA-256
+    `496d77166f5d3195a47a7a8c70511860126bd0b45cd48f54928b51cc3114c3c8`
+- Purpose: black-box confirmation that a game and a diagnostics UI can use the
+  current public RainBIOS services
+- Distribution: neither ROM is copied into or distributed by RainBIOS
+- RainBIOS use: runtime behavior and rendered output only
+
+The public `AB` header and INIT words were read to establish test metadata.
+During that initial metadata check, one 32-byte prefix was printed for each
+ROM, exposing 16 bytes beyond the header; those instruction bytes were not
+analyzed or used. All subsequent work used public BIOS-entry breakpoints,
+CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 
 ## 2026-07-30 — BBC BASIC (Z80) from CP/Mish
 
