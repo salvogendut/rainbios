@@ -106,6 +106,26 @@ proc cls_done {} {
         format "CLS=%02X,%02X,%02X" \
             [debug read VRAM 81] [peek 0xF3DD] [peek 0xF3DC]
     ]
+    debug write VRAM 0x0000 0xAA
+    debug write VRAM 0x17FF 0x55
+    debug write VRAM 0x2000 0x12
+    debug write VRAM 0x37FF 0x34
+    invoke_bios 0x0072 initgrp_done
+}
+
+proc initgrp_done {} {
+    set name_prefix {}
+    for {set address 0x1800} {$address < 0x1808} {incr address} {
+        lappend name_prefix [format %02X [debug read VRAM $address]]
+    }
+    puts $::services_handle [
+        format "INITGRP=%02X,%02X,%s,%02X,%02X,%02X,%02X,%02X" \
+            [debug read "VDP regs" 0] [debug read "VDP regs" 1] \
+            [join $name_prefix ,] \
+            [debug read VRAM 0x0000] [debug read VRAM 0x17FF] \
+            [debug read VRAM 0x2000] [debug read VRAM 0x37FF] \
+            [debug read VRAM 0x1B00]
+    ]
     close $::services_handle
     exit
 }

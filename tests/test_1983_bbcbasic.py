@@ -5,6 +5,9 @@ from __future__ import annotations
 import unittest
 
 from tools.run_1983_bbcbasic import validate_state
+from tools.run_1983_bbcbasic_graphics import (
+    validate_state as validate_graphics_state,
+)
 
 
 VALID_STATE = (
@@ -29,6 +32,22 @@ class Emulator1983BbcBasicTests(unittest.TestCase):
     def test_payload_pc_is_not_a_blocking_bios_wait(self) -> None:
         with self.assertRaisesRegex(ValueError, "outside RainBIOS"):
             validate_state(VALID_STATE.replace("pc=07DB", "pc=4400"))
+
+    def test_graphics_program_state_is_accepted(self) -> None:
+        state = (
+            "state frame=7201 pc=5114 sp=F2E0 slot=F4 subslot=00 "
+            "mapper=00,00,00,00 vram_nonzero=7000 vdp_r0=02 vdp_r1=E0\n"
+        )
+        fields = validate_graphics_state(state)
+        self.assertEqual(fields["vdp_r0"], "02")
+
+    def test_graphics_program_must_remain_in_graphics_mode(self) -> None:
+        state = (
+            "state frame=7201 pc=5114 sp=F2E0 slot=F4 subslot=00 "
+            "mapper=00,00,00,00 vram_nonzero=7000 vdp_r0=00 vdp_r1=F0\n"
+        )
+        with self.assertRaisesRegex(ValueError, "vdp_r0"):
+            validate_graphics_state(state)
 
 
 if __name__ == "__main__":

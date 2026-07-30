@@ -8,7 +8,7 @@ from tools.payload_descriptor import descriptor_from_rom, parse_descriptor
 
 
 BBC_BASIC_DESCRIPTOR = bytes.fromhex(
-    "52 42 50 31 01 10 01 07 10 40 00 80 00 F3 02 0D"
+    "52 42 50 31 01 10 01 0F 10 40 00 80 00 F3 02 05"
 )
 
 
@@ -17,7 +17,7 @@ class PayloadDescriptorTests(unittest.TestCase):
         descriptor = parse_descriptor(BBC_BASIC_DESCRIPTOR)
         self.assertEqual(descriptor.entry, 0x4010)
         self.assertEqual((descriptor.ram_start, descriptor.ram_end), (0x8000, 0xF300))
-        self.assertEqual(descriptor.required_services, 0x07)
+        self.assertEqual(descriptor.required_services, 0x0F)
 
     def test_descriptor_is_read_from_rom_tail(self) -> None:
         descriptor = descriptor_from_rom(
@@ -32,7 +32,7 @@ class PayloadDescriptorTests(unittest.TestCase):
             parse_descriptor(bytes(damaged))
 
         unknown = bytearray(BBC_BASIC_DESCRIPTOR)
-        unknown[7] = 0x87
+        unknown[7] = 0x8F
         unknown[-1] = (unknown[-1] - 0x80) & 0xFF
         with self.assertRaisesRegex(ValueError, "unknown"):
             parse_descriptor(bytes(unknown))

@@ -118,11 +118,12 @@ MSX platform code is BSD-3-Clause. RainBIOS discovers and enters the payload
 only through the versioned descriptor in
 `docs/abi/payload-v1.md`. Keeping the payload outside the 32 KiB main BIOS
 also preserves ROM space and allows either project to be released
-independently. The initial port profile keeps the 12,492-byte language core in
-a 16 KiB page-1 payload ROM, places its aligned state at `8000h-8307h`, and
-begins user memory at `8308h`. A guarded interactive openMSX test records zero
-cartridge writes for the P1 cases, and 1983 independently renders the live
-prompt. See `docs/BASIC_PAYLOAD.md`.
+independently. The current port profile keeps the 12,492-byte language core
+and an independently written Graphics II adapter in a 16 KiB page-1 payload
+ROM, places its aligned state at `8000h-8311h`, and begins user memory at
+`8312h`. Guarded openMSX tests record zero cartridge writes for the console
+and graphics programs, and 1983 independently renders both the live prompt
+and the multicolour graphics frame. See `docs/BASIC_PAYLOAD.md`.
 
 ## Failure behavior during bring-up
 
@@ -151,6 +152,9 @@ hardware.
   pinned BBC BASIC payload supplies the end-to-end console/keyboard/timing
   workload, guarded against writes to its ROM; 1983 separately requires its
   banner and prompt to be visibly rendered.
+- The BBC BASIC graphics workload checks Graphics II mode registers, VRAM
+  reference pixels and colours, cursor state, `POINT()` readback, zero ROM
+  writes, and a separately rendered 1983 frame.
 - Positive and corrupt descriptor probes check menu state, fail-closed
   handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before

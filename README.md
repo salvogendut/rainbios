@@ -53,12 +53,12 @@ are tracked in
 The menu launches the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
 payload when its versioned descriptor and requirements validate. Invalid
-descriptors are not advertised or entered. The console, keyboard, timing, and
-menu path pass the payload's interactive smoke test. Its open-source core and
-new BSD-3-Clause MSX port can be distributed with RainBIOS while remaining a
-distinct build artifact. The console-only cartridge is pinned by source
-revision, size, and SHA-256 digest. The dependency, license, packaging, and
-platform boundary are described in
+descriptors are not advertised or entered. The console, keyboard, timing,
+Graphics II, and menu paths pass executable BASIC tests. Its open-source core
+and new BSD-3-Clause MSX port can be distributed with RainBIOS while remaining
+a distinct build artifact. The cartridge is pinned by source revision, size,
+and SHA-256 digest. The dependency, license, packaging, and platform boundary
+are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
@@ -188,6 +188,17 @@ transfer in 1983 and independently requires a visible banner and prompt:
 ```sh
 make test-openmsx-bbcbasic OPENMSX='flatpak run org.openmsx.openMSX'
 make test-1983-bbcbasic
+```
+
+The graphics integration program selects Graphics II, draws a multicolour
+rectangle and diagonals, plots and reads back the center pixel, and remains in
+graphics mode. openMSX checks VRAM and the `POINT()` result with a ROM-write
+guard; 1983 independently validates the rendered frame:
+
+```sh
+make test-openmsx-bbcbasic-graphics \
+  OPENMSX='flatpak run org.openmsx.openMSX'
+make test-1983-bbcbasic-graphics
 ```
 
 The positive openMSX path also checks the payload slot, entry address, enabled

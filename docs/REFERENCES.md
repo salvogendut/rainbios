@@ -186,6 +186,8 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
   `439b86aff3ba81eb4bc152852c98424f22f22004`
 - RainBIOS descriptor revision:
   `b97a838020cc6ad053b8fa1cd1ec5efc00e0d975`
+- MSX Graphics II revision:
+  `88ebf44284db5951ad6cb433ca3ad7650d56bc92`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -212,12 +214,14 @@ The link-layout revision relocates that unchanged core to `4100h-71CBh`,
 places state at `8000h-82FFh`, and produces a nonfunctional 16 KiB layout ROM
 with SHA-256
 `b92d38754db7451e3e14acd0c1ae05efea2c50c99a2b920ee36e35bfc906be11`.
-The subsequent P1 cartridge uses published MSX BIOS calls and work-area
-variables for console, keyboard, cursor, and timing services. It places the
-unchanged core at `4400h-74CBh`, fixed and adapter state at `8000h-8307h`, and
-user memory from `8308h`. Its 16 KiB ROM has SHA-256
-`2a53b54be1f5b734f1f8f9ea075c62b1cdedab5aad516334da74f60614987bcd`
-and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`.
+The current cartridge uses published MSX BIOS calls and work-area variables
+for console, keyboard, cursor, timing, and Graphics II services. It places the
+unchanged core at `4400h-74C1h`, the independently written graphics adapter at
+`74C2h-77AAh`, fixed and adapter state at `8000h-8311h`, and user memory from
+`8312h`. Its 16 KiB ROM has SHA-256
+`5ef2f2b17709832c5a3ee59892dba806953cd0b5ec032e43df5dcd7f24f254a5`
+and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`, requiring the
+console, keyboard, timing, and graphics capability bits.
 An openMSX smoke test exercises language, editing, error, clock, and timeout
 paths with zero writes to the selected ROM window. The adjacent 1983 emulator
 separately renders the banner and prompt, avoiding reliance on openMSX raw
@@ -226,6 +230,12 @@ The same pinned BBC BASIC binary now passes that complete smoke sequence under
 RainBIOS with zero ROM writes. The 1983 test independently confirms the
 blocking `CHGET` wait state, the page-1 cartridge mapping, Text 40 mode, and a
 visible BBC BASIC banner and prompt.
+The Graphics II revision replaces the imported graphics stubs with original
+MSX code for `MODE 2/7`, `CLG`, `GCOL 0,c`, `MOVE`, `DRAW`, absolute `PLOT`
+4/5/69, and `POINT`. Its stored example passes on public C-BIOS and RainBIOS
+in openMSX with zero cartridge writes; 1983 separately confirms the rendered
+multicolour frame. No proprietary BIOS source was consulted for this
+milestone.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 

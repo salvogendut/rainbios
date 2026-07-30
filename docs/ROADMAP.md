@@ -93,6 +93,14 @@ backspace, carriage return, line feed, wrapping, and `CLS`. The project-owned
 font now covers printable ASCII. The public service probe and two
 opaque cartridge smoke tests cover this slice.
 
+M2B makes `INITGRP` produce deterministic empty Graphics II pattern, name,
+colour, and sprite tables. The BBC BASIC payload uses the public BIOS VRAM
+calls for its independently written `MODE 2/7`, `CLG`, `GCOL`, `MOVE`,
+`DRAW`, `PLOT`, and `POINT` subset. A real stored program passes under C-BIOS
+and RainBIOS in openMSX; 1983 independently confirms the rendered multicolour
+frame. The interrupt path now preserves both normal and shadow Z80 registers
+so cross-slot `H.TIMI` hooks cannot corrupt the interpreter.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - add a freely redistributable character set with documented provenance;

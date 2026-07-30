@@ -858,7 +858,7 @@ cold_boot_payload_checksum:
                 inc hl
                 ld a,(CART_SCAN_SLOT)
                 call rdslt                       ; required service bits
-                and #f8
+                and #f0
                 jp nz,cold_boot_payload_claimed
 
 ; Record and validate a page-1 entry address.
@@ -956,9 +956,11 @@ callf:
                 exx
                 jp calslt
 
-; Partial MSX1 IM 1 handler. Preserve every normal register, run the device
-; and VBlank hooks, acknowledge VDP status zero, scan the keyboard, and
-; advance the public JIFFY counter once per VBlank.
+; Partial MSX1 IM 1 handler. Preserve normal, index, and shadow registers,
+; run the device and VBlank hooks, acknowledge VDP status zero, scan the
+; keyboard, and advance the public JIFFY counter once per VBlank. CALLF hooks
+; use EXX internally, so preserving the shadow bank is required even when the
+; interrupted application never exchanges registers itself.
 keyint:
                 push af
                 push bc
@@ -966,6 +968,14 @@ keyint:
                 push hl
                 push ix
                 push iy
+                ex af,af'
+                push af
+                ex af,af'
+                exx
+                push bc
+                push de
+                push hl
+                exx
                 call HOOKBASE                    ; H.KEYI
                 in a,(VDP_CONTROL)
                 bit 7,a
@@ -979,6 +989,14 @@ keyint:
                 inc hl
                 ld (JIFFY),hl
 keyint_done:
+                exx
+                pop hl
+                pop de
+                pop bc
+                exx
+                ex af,af'
+                pop af
+                ex af,af'
                 pop iy
                 pop ix
                 pop hl
@@ -1129,7 +1147,8 @@ init32:
                 jp wrtvdp
 
 ; SCREEN 2: Graphics II with the standard three copies of pattern indices in
-; the name table. Cartridge code owns subsequent pattern and color contents.
+; the name table. Clear the bitmap and select white over black for every
+; eight-pixel colour cell so callers begin with deterministic graphics VRAM.
 initgrp:
                 ld hl,graphics2_vdp_registers
                 call write_vdp_register_block
@@ -1152,6 +1171,14 @@ initgrp_name_loop:
                 jr nz,initgrp_name_loop
                 djnz initgrp_name_loop
                 ei
+                ld hl,#0000
+                ld bc,#1800
+                xor a
+                call filvrm
+                ld hl,#2000
+                ld bc,#1800
+                ld a,#f1
+                call filvrm
                 ld hl,#1b00
                 ld a,#d0
                 call wrtvrm

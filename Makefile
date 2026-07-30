@@ -39,6 +39,8 @@ DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
 MENU_INPUT_CART := $(BUILD_DIR)/cartridges/menu_input.rom
 MENU_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_input.sym
+GRAPHICS_INPUT_CART := $(BUILD_DIR)/cartridges/graphics_input.rom
+GRAPHICS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/graphics_input.sym
 INVALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/invalid_payload.rom
 INVALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/invalid_payload.sym
 OPENMSX_CART_MACHINE := \
@@ -55,6 +57,10 @@ OPENMSX_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
 OPENMSX_BBC_BASIC_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-smoke.txt
+OPENMSX_BBC_GRAPHICS_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-graphics.txt
+OPENMSX_BBC_GRAPHICS_SCREEN := \
+	$(OPENMSX_ROOT)/bbcbasic-graphics.png
 OPENMSX_BBC_BASIC_MENU_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-menu.txt
 OPENMSX_EXPANDED_BBC_BASIC_MACHINE := \
@@ -85,6 +91,8 @@ EMULATOR_1983_CART_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
 EMULATOR_1983_BBC_BASIC_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-prompt.ppm
+EMULATOR_1983_BBC_GRAPHICS_SCREEN := \
+	$(EMULATOR_1983_DIR)/bbcbasic-graphics.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -100,6 +108,7 @@ SOURCES := src/main_msx1.asm
 	test-openmsx-expanded-cartridge \
 	test-1983-expanded \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
+	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
@@ -128,6 +137,10 @@ $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 $(MENU_INPUT_CART): tests/cartridges/menu_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(MENU_INPUT_CART_SYM)
+
+$(GRAPHICS_INPUT_CART): tests/cartridges/graphics_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(GRAPHICS_INPUT_CART_SYM)
 
 $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -348,6 +361,16 @@ test-openmsx-bbcbasic: test-openmsx-bbcbasic-menu
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_smoke.tcl)"
 	$(PYTHON) tools/check_bbcbasic_smoke.py $(OPENMSX_BBC_BASIC_REPORT)
 
+test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
+		-command "set graphics_output {$(abspath $(OPENMSX_BBC_GRAPHICS_REPORT))}; set graphics_screenshot {$(abspath $(OPENMSX_BBC_GRAPHICS_SCREEN))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x08}; after time 2.10 {keymatrixup 0 0x08}" \
+		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_graphics.tcl)"
+	$(PYTHON) $(BBC_BASIC_DIR)/tools/check_openmsx_graphics.py \
+		$(OPENMSX_BBC_GRAPHICS_REPORT)
+
 $(OPENMSX_INVALID_PAYLOAD_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
 		$(MSX1_ROM) $(INVALID_PAYLOAD_CART)
@@ -450,6 +473,17 @@ test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM) $(MENU_INPUT_CART)
 		--screenshot "$(EMULATOR_1983_BBC_BASIC_SCREEN)"
 	$(PYTHON) tools/check_bbcbasic_screenshot.py \
 		$(EMULATOR_1983_BBC_BASIC_SCREEN)
+
+test-1983-bbcbasic-graphics: \
+		$(MSX1_ROM) $(BBC_BASIC_ROM) $(GRAPHICS_INPUT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bbcbasic_graphics.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(BBC_BASIC_ROM)" \
+		--input-cartridge "$(GRAPHICS_INPUT_CART)" \
+		--screenshot "$(EMULATOR_1983_BBC_GRAPHICS_SCREEN)"
+	$(PYTHON) tools/check_graphics_screenshot.py \
+		$(EMULATOR_1983_BBC_GRAPHICS_SCREEN)
 
 test-1983-external-cartridges: test-1983-external-arkano \
 		test-1983-external-diagnostics

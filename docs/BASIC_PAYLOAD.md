@@ -1,6 +1,6 @@
 # BASIC payload integration
 
-RainBIOS offers `START BBC BASIC` as a boot-menu entry. The console-only MSX
+RainBIOS offers `START BBC BASIC` as a boot-menu entry. The MSX
 payload works both as a standalone cartridge on compatible firmware and
 through RainBIOS's descriptor-aware menu. RainBIOS establishes slot RAM,
 validates the payload and its required services, and performs a dedicated
@@ -73,14 +73,18 @@ reserved storage, or interrupt-control opcodes. All 21 direct symbolic writes
 target the separate 768-byte RAM module. This makes a 16 KiB page-1 ROM
 payload with interpreter state at `8000h` plausible.
 
-The P1 console build places its cartridge veneer at `4000h`, independently
-written adapter at `4013h-4230h`, unchanged core at `4400h-74CBh`, fixed state
-at `8000h-8307h`, and user memory from `8308h`. Its deterministic 16 KiB ROM
+The P1 build places its cartridge veneer at `4000h`, independently written
+console adapter at `4013h-423Ah`, unchanged core at `4400h-74C1h`, Graphics II
+adapter at `74C2h-77AAh`, fixed state at `8000h-8311h`, and user memory from
+`8312h`. Its deterministic 16 KiB ROM
 ends with payload descriptor v1 at `7FF0h-7FFFh` and has SHA-256
-`2a53b54b…`. A guarded openMSX test exercises editing, integer and
+`5ef2f2b1…`. A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983
 emulator independently confirms that the banner and prompt render visibly.
+An executable graphics example adds mode and colour selection, lines,
+absolute plotting, and pixel readback; it passes on C-BIOS and through
+RainBIOS in openMSX, with rendered output independently confirmed in 1983.
 
 SE BASIC IV remains useful open-source prior art and a possible future
 alternative payload. Its adjacent upstream checkout remains unmodified; no
@@ -92,7 +96,7 @@ The BBC BASIC project owns:
 
 - the interpreter and its retained upstream license;
 - the standalone cartridge startup adapter;
-- console, keyboard, cursor, and centisecond-clock services;
+- console, keyboard, cursor, centisecond-clock, and Graphics II services;
 - a replacement for the CP/M-specific file/operating-system layer;
 - its writable memory map and minimum-RAM requirements;
 - standalone payload builds and interpreter smoke tests.
@@ -160,8 +164,11 @@ make check-bbcbasic-artifact \
 - **Port P1 (complete):** bootable MSX console cartridge with storage
   explicitly unsupported, guarded runtime tests in openMSX, and independent
   rendered-prompt confirmation in 1983.
+- **Port P2 graphics (complete):** initial TMS9918 Graphics II subset with
+  `MODE 2/7`, `CLG`, `GCOL 0,c`, `MOVE`, `DRAW`, absolute `PLOT` 4/5/69,
+  and `POINT`, exercised by a real stored BASIC program.
 - **M2/M3:** console, keyboard, and timing services pass the interactive smoke
-  tests; complete console controls, keyboard behavior, and optional PSG
-  services remain.
+  and graphics tests; complete console controls, keyboard behavior, and
+  optional PSG services remain.
 - **M4 (first slice complete):** launch the pinned payload from the boot menu
   and run BBC BASIC expression, editing, and example-program tests.

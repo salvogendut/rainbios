@@ -35,7 +35,7 @@ address,name,kind,status,milestone,notes
 0069,CLRSPR,jump,stub,M2,
 006C,INITXT,jump,partial,M2,Initializes a fixed 40x24 text layout and the project font
 006F,INIT32,jump,partial,M2,Initializes a fixed 32x24 tile layout and the project font
-0072,INITGRP,jump,partial,M2,Initializes Graphics II registers and the standard pattern-name sequence
+0072,INITGRP,jump,partial,M2,Initializes Graphics II registers and deterministic empty pattern/name/color tables
 0075,INIMLT,jump,stub,M2,
 0078,SETTXT,jump,stub,M2,
 007B,SETT32,jump,stub,M2,
