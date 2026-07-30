@@ -1414,9 +1414,9 @@ keyboard_translate_table:
                 ld a,(hl)
                 bit 1,d
                 ret nz
-                cp 'a'
+                cp 'A'
                 ret c
-                cp 'z'+1
+                cp 'Z'+1
                 ret nc
                 and #1f                         ; Ctrl+A through Ctrl+Z
                 ret
@@ -2709,17 +2709,17 @@ graphics2_vdp_registers:
 keymap_unshifted:
                 db '0', '1', '2', '3', '4', '5', '6', '7'
                 db '8', '9', '-', '=', #5c, '[', ']', ';'
-                db #27, '`', ',', '.', '/', 0,   'a', 'b'
-                db 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'
-                db 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'
-                db 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-keymap_shifted:
-                db ')', '!', '@', '#', '$', '%', '^', '&'
-                db '*', '(', '_', '+', '|', '{', '}', ':'
-                db '"', '~', '<', '>', '?', 0,   'A', 'B'
+                db #27, '`', ',', '.', '/', 0,   'A', 'B'
                 db 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
                 db 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
                 db 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+keymap_shifted:
+                db ')', '!', '@', '#', '$', '%', '^', '&'
+                db '*', '(', '_', '+', '|', '{', '}', ':'
+                db '"', '~', '<', '>', '?', 0,   'a', 'b'
+                db 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'
+                db 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'
+                db 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
 keymap_row7:
                 db 0,0,#1b,#09,#03,#08,0,#0d
 keymap_row8:
