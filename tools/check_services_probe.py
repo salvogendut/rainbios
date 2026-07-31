@@ -17,6 +17,12 @@ EXPECTED = {
     "INITGRP": "02,E0,00,01,02,03,04,05,06,07,00,00,F1,F1,D0",
     "GRAPHICS_CHPUT": "38,F1,03,03",
     "GRAPHICS_SCROLL": "AA,BC,00,F1,03,18",
+    "PHYDIO": "1",
+    "FORMAT": "1",
+    "ISFLIO": "00,0",
+    "OUTDLP": "1",
+    "GETVCP": "1",
+    "GETVC2": "1",
 }
 
 

@@ -65,16 +65,18 @@ Claimed but invalid descriptors fail closed and do not fall through to their
 ordinary `INIT`.
 
 M1H initializes `EXPTBL`/`SLTTBL`, discovers contiguous RAM in secondary
-slots, and implements expanded `ENASLT`, `RDSLT`, `WRSLT`, page-1/page-2
-`CALSLT`, and the corresponding `CALLF` path. Cartridge and RBP1 discovery
-enumerate all four subslots of each expanded primary slot. Dedicated openMSX
-fixtures cover physical selector state, all address pages, expanded
-cartridge INIT, and expanded BBC BASIC menu launch; 1983 confirms boot with
-MSX2 expanded-slot RAM.
+slots, gives memory mappers an independent `3,2,1,0` 64 KiB page baseline,
+publishes the RAM slot through `RAMAD0`-`RAMAD3`, and implements expanded
+`ENASLT`, `RDSLT`, `WRSLT`, page-1/page-2 `CALSLT`, and the corresponding
+`CALLF` path. Cartridge and RBP1 discovery enumerate all four subslots of each
+expanded primary slot. Dedicated openMSX fixtures cover physical selector
+state, all address pages, expanded cartridge INIT, and expanded BBC BASIC menu
+launch; 1983 confirms boot with MSX2 expanded-slot RAM.
 
 - add page-0/page-3 `CALSLT` support if a compatible stack/trampoline contract
   can be established;
-- add memory-mapper sizing and segment allocation beyond the reset segments;
+- add memory-mapper sizing and segment allocation beyond the fixed 64 KiB
+  baseline;
 - add keyboard and device processing to the initial IM 1 interrupt handler;
 - run the original diagnostic cartridge on hardware;
 
@@ -117,9 +119,10 @@ Status: in progress.
 
 M3A initializes the standard 40-byte key buffer and matrix work areas, scans
 international rows 0-8 from `KEYINT`, translates new printable and editing-key
-presses with Shift/Ctrl, and implements partial `CHSNS`/`CHGET` plus complete
-buffer clearing through `KILBUF`. A physical-matrix openMSX probe covers
-Shift+A and blocking Return input. The pinned BBC BASIC payload then passes
+presses with Shift/Ctrl, toggles the standard `CAPST` lock (and its LED) on
+CAPS presses, and implements partial `CHSNS`/`CHGET` plus complete buffer
+clearing through `KILBUF`. A physical-matrix openMSX probe covers Shift+A,
+blocking Return input, and both CAPS states. The pinned BBC BASIC payload then passes
 its editing, expression, program, error, timing, and timeout sequence with
 zero ROM writes; 1983 independently renders its banner and prompt.
 
@@ -129,7 +132,7 @@ input/output calls. Original fixtures confirm raw CAS input in openMSX and
 from BBC BASIC `SAVE` in openMSX. Standard CAS input is the current baseline;
 slow sampled-WAV replay remains pending.
 
-- complete auto-repeat, lock/dead-key state, function-key expansion, key click,
+- complete auto-repeat, dead-key state, function-key expansion, key click,
   and break handling;
 - implement PSG initialization, joystick, trigger, and paddle calls;
 - implement or explicitly classify printer and remaining basic-device calls;
@@ -172,11 +175,23 @@ emulated machine layouts and real hardware.
 
 ## M6 — Completeness and optional system components
 
+Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
+and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
+Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
+side/track crossings on 720 KiB media. Reproducible 1983 probes cover success,
+no media, partial record-not-found counts, and write rejection without host
+image changes. Disk boot, filesystem services, formatting, drive B, other
+controllers, writable media, and real-hardware timing validation remain
+pending.
+
 - close remaining main BIOS and SUB-ROM ABI gaps;
 - characterize flags, clobbered registers, timing-sensitive I/O, and error
   behavior;
 - scope independently implemented BASIC and disk firmware as separate
   components with their own tests and provenance;
+- add a read-only-safe, hook-dispatching disk baseline for `PHYDIO`, `FORMAT`,
+  `ISFLIO`, `OUTDLP`, `GETVCP`, and `GETVC2` before adding writable media
+  support;
 - publish reproducible releases, symbols, compatibility results, and known
   deviations.
 

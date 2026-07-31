@@ -137,6 +137,32 @@ proc killed_buffer_status {} {
 
 proc blocking_wait {} {
     record_keyboard [format "BLOCKING=%02X" [reg A]]
+    keymatrixdown 6 0x08
+    after time 0.05 {keymatrixup 6 0x08}
+    after time 0.10 caps_on_a_press
+}
+
+proc caps_on_a_press {} {
+    keymatrixdown 2 0x40
+    after time 0.05 {keymatrixup 2 0x40}
+    after time 0.10 {invoke_bios 0x009F caps_on_read}
+}
+
+proc caps_on_read {} {
+    record_keyboard [format "CAPSON=%02X" [reg A]]
+    keymatrixdown 6 0x08
+    after time 0.05 {keymatrixup 6 0x08}
+    after time 0.10 caps_off_a_press
+}
+
+proc caps_off_a_press {} {
+    keymatrixdown 2 0x40
+    after time 0.05 {keymatrixup 2 0x40}
+    after time 0.10 {invoke_bios 0x009F caps_off_read}
+}
+
+proc caps_off_read {} {
+    record_keyboard [format "CAPSOFF=%02X" [reg A]]
     exit
 }
 

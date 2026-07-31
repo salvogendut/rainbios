@@ -13,10 +13,12 @@ EXPECTED = {
     "EMPTY": "1,FBF0,FBF0",
     "MATRIX": "BF,BF,BF,FBF1",
     "READY": "1,FBF1",
-    "CHAR": "61,1234,5678,9ABC",
+    "CHAR": "41,1234,5678,9ABC",
     "DRAINED": "1,FBF1,FBF1",
     "KILLED": "1,FBF0,FBF0",
     "BLOCKING": "0D",
+    "CAPSON": "41",
+    "CAPSOFF": "61",
 }
 
 

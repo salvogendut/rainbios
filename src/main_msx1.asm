@@ -11,6 +11,10 @@ VDP_CONTROL     equ #99
 PSG_ADDRESS     equ #a0
 PSG_WRITE       equ #a1
 PSG_READ        equ #a2
+MAPPER_PAGE0    equ #fc
+MAPPER_PAGE1    equ #fd
+MAPPER_PAGE2    equ #fe
+MAPPER_PAGE3    equ #ff
 PPI_SLOT        equ #a8
 PPI_KEYBOARD    equ #a9
 PPI_CONTROL_C   equ #aa
@@ -41,6 +45,7 @@ NEWKEY          equ #fbe5
 KEYBUF          equ #fbf0
 KEYBUF_END      equ #fc18
 JIFFY           equ #fc9e
+CAPST           equ #fcab
 SCRMOD          equ #fcaf
 BOTTOM          equ #fc48
 HIMEM           equ #fc4a
@@ -61,6 +66,18 @@ PAYLOAD_RAM_END equ #f396
 TAPE_PERIOD     equ #f398
 TAPE_LEVEL      equ #f399
 TAPE_SYNC       equ #f39a
+RAMAD0          equ #f341
+H_PHYD          equ #ffa7
+H_FORM          equ #ffac
+H_ISFL          equ #fedf
+H_OUTD          equ #fee4
+H_RUNC          equ #fecb
+H_STKE          equ #feda
+DEVICE          equ #fd99
+DISK_SETUP      equ #fb29
+PTRFIL          equ #f864
+VOICEN          equ #fb38
+VCBA            equ #fb41
 STACK_TOP       equ #f380
 
                 org #0000
@@ -190,12 +207,12 @@ STACK_TOP       equ #f380
                 jp wslreg                       ; 013B WSLREG
                 jp rdvdp                        ; 013E RDVDP
                 jp snsmat                       ; 0141 SNSMAT
-                jp unsupported_call             ; 0144 PHYDIO
-                jp unsupported_call             ; 0147 FORMAT
-                jp unsupported_call             ; 014A ISFLIO
-                jp unsupported_call             ; 014D OUTDLP
-                jp unsupported_call             ; 0150 GETVCP
-                jp unsupported_call             ; 0153 GETVC2
+                jp disk_phyio                   ; 0144 PHYDIO
+                jp disk_format                  ; 0147 FORMAT
+                jp disk_isflio                  ; 014A ISFLIO
+                jp disk_outdlp                  ; 014D OUTDLP
+                jp disk_getvcp                  ; 0150 GETVCP
+                jp disk_getvc2                  ; 0153 GETVC2
                 jp kilbuf                       ; 0156 KILBUF
                 jp unsupported_call             ; 0159 CALBAS
                 defs #015f-$,#ff
@@ -218,6 +235,18 @@ cold_boot:
                 out (PPI_CONTROL),a             ; cassette motor off
                 ld a,#0b
                 out (PPI_CONTROL),a             ; cassette output high
+
+; Give standard memory mappers four independent 16 KiB pages. Machines without
+; a mapper ignore these reserved ports; mapper sizing beyond 64 KiB is deferred.
+                ld a,3
+                out (MAPPER_PAGE0),a
+                ld a,2
+                out (MAPPER_PAGE1),a
+                ld a,1
+                out (MAPPER_PAGE2),a
+                xor a
+                out (MAPPER_PAGE3),a
+
                 in a,(PPI_SLOT)
                 ld d,a                          ; original primary-slot map
                 ld e,0                          ; candidate primary RAM slot
@@ -353,7 +382,8 @@ bootstrap_primary_ram_found:
 ; Initialize the published system work area without touching FFFFh, which is
 ; the secondary-slot register on expanded-slot machines.
                 ld sp,STACK_TOP
-                push de                         ; preserve reset map/RAM slot
+                push de                         ; preserve reset map/RAM primary
+                push bc                         ; preserve RAM secondary
                 xor a
                 ld hl,RAM_TEST3
                 ld (hl),a
@@ -369,11 +399,31 @@ bootstrap_primary_ram_found:
                 ld de,PAGE0_SLOT_HELPER
                 ld bc,slot_helpers_image_end-slot_helpers_image
                 ldir
+                pop bc
                 pop de
 
-; Record the primary MAIN-ROM slot before probing expansion state. The
-; RAMAD0-RAMAD3 bytes at F341h-F344h belong to the Disk-ROM communication
-; area and are deliberately not claimed.
+; Publish the full slot ID of the discovered RAM for Disk-ROM extensions.
+; B=4 is the unexpanded sentinel; otherwise B is the secondary slot number.
+                ld a,b
+                cp 4
+                ld a,e
+                jr z,bootstrap_ram_slot_ready
+                ld a,b
+                add a,a
+                add a,a
+                or e
+                or #80
+bootstrap_ram_slot_ready:
+                ld hl,RAMAD0
+                ld (hl),a
+                inc hl
+                ld (hl),a
+                inc hl
+                ld (hl),a
+                inc hl
+                ld (hl),a
+
+; Record the primary MAIN-ROM slot before probing expansion state.
                 ld a,d
                 and #03
                 ld (BIOSSLT),a
@@ -391,6 +441,8 @@ bootstrap_empty_hook:
                 ld (hl),#c9
                 add hl,de
                 djnz bootstrap_empty_hook
+
+                call init_disk_default_hooks
 
 ; Publish the eight write-only TMS9918 register values used by the boot UI.
 ; Firmware clients read these RAM shadows when changing individual bits.
@@ -427,6 +479,11 @@ bootstrap_empty_hook:
                 ld (SCNCNT),a
                 ld a,50
                 ld (REPCNT),a
+                xor a
+                ld (CAPST),a                    ; caps off at boot
+                in a,(PPI_CONTROL_C)
+                or #40
+                out (PPI_CONTROL_C),a           ; CAPS LED off
                 ld hl,KEYBUF
                 ld (PUTPNT),hl
                 ld (GETPNT),hl
@@ -586,7 +643,27 @@ cold_boot_jingle_gap:
 ; non-BIOS slot and can invoke INIT in page 1 or page 2.
                 im 1
                 call cold_boot_scan_cartridges
+                call H_STKE
+                call cold_boot_init_disk
                 ei
+                jr cold_boot_wait
+
+; Match the C-BIOS start-up sequence: initialize disk context and invoke the
+; disk-ROM bootstrap hook so the selected disk device can install itself before
+; the interactive menu is presented.
+cold_boot_init_disk:
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                ret nz                          ; payload menu takes precedence
+                ld a,(H_PHYD)
+                cp #f7
+                ret nz
+                ld a,1
+                ld (DEVICE),a
+                xor a
+                ld (DISK_SETUP),a
+                call H_RUNC
+                ret
 
 ; Wait for the translated Space character through the standard input path.
 cold_boot_wait:
@@ -939,12 +1016,89 @@ unsupported_call:
                 scf
                 ret
 
+; MSX1 mass-storage callouts.
+; These call into hook vectors when a disk ROM provides them; safe defaults are
+; installed at cold boot so read-only behavior is still defined without
+; additional mass-storage support.
+disk_phyio:
+                call H_PHYD
+                ret
+
+disk_format:
+                call H_FORM
+                ret
+
+disk_isflio:
+                xor a
+                call H_ISFL
+                ret
+
+disk_outdlp:
+                call H_OUTD
+                ret
+
+disk_getvcp:
+                ld l,2
+                call disk_getvc2
+                ret
+
+disk_getvc2:
+                ld a,(VOICEN)
+                push de
+                ld d,0
+                ld e,l
+                ld hl,VCBA
+                add hl,de
+                ld e,37
+disk_getvc2_loop:
+                or a
+                jr z,disk_getvc2_exit
+                add hl,de
+                dec a
+                jr disk_getvc2_loop
+disk_getvc2_exit:
+                pop de
+                scf
+                ret
+
+; Initialize disk-related hook vectors to safe defaults.
+;
+; H_PHYD, H_FORM and H_OUTD:
+;   - scf / ret (report not supported)
+; H_ISFL:
+;   - xor a / ret (no active transfer context)
+;
+; A default is stored as two instruction bytes; this is sufficient because all
+; current call sites use a direct CALL to this address.
+init_disk_default_hooks:
+                ld hl,H_PHYD
+                ld (hl),#37
+                inc hl
+                ld (hl),#c9
+
+                ld hl,H_FORM
+                ld (hl),#37
+                inc hl
+                ld (hl),#c9
+
+                ld hl,H_ISFL
+                ld (hl),#af
+                inc hl
+                ld (hl),#c9
+
+                ld hl,H_OUTD
+                ld (hl),#37
+                inc hl
+                ld (hl),#c9
+                ret
+
 ; Partial inline inter-slot call used by standard five-byte hooks:
 ;   RST 30h, slot byte, target word, RET.
 ; Parse the inline operands through the alternate BC/DE/HL set so the target
 ; receives the caller's normal BC/DE/HL values. IX/IY take the documented
 ; CALSLT target and slot inputs.
 callf:
+                ex af,af'
                 exx
                 pop hl
                 ld a,(hl)
@@ -961,6 +1115,7 @@ callf:
                 push bc
                 pop iy
                 exx
+                ex af,af'
                 jp calslt
 
 ; Partial MSX1 IM 1 handler. Preserve normal, index, and shadow registers,
@@ -1435,8 +1590,9 @@ posit:
                 ret
 
 ; Partial international-keyboard input. KEYINT records newly pressed matrix
-; positions in the standard 40-byte circular buffer. Lock states, function-key
-; expansion, dead keys, key click, and auto-repeat remain later M3 work.
+; positions in the standard 40-byte circular buffer. The CAPS lock toggles
+; letter case like the official BIOS; function-key expansion, dead keys, key
+; click, and auto-repeat remain later M3 work.
 keyboard_scan:
                 ld a,6
                 call snsmat
@@ -1455,7 +1611,7 @@ keyboard_scan_row:
                 ld c,a
                 ld a,b
                 cp 6
-                jr z,keyboard_scan_next
+                jr z,keyboard_scan_modifier
                 ld a,c
                 or a
                 jr z,keyboard_scan_next
@@ -1476,6 +1632,19 @@ keyboard_scan_next:
                 cp 9
                 jr nz,keyboard_scan_row
                 ret
+
+; Modifier-row edges never reach the buffer, but a new CAPS press toggles the
+; lock state and the keyboard LED, matching the official BIOS.
+keyboard_scan_modifier:
+                bit 3,c                         ; CAPS key edge?
+                jr z,keyboard_scan_next
+                ld a,(CAPST)
+                cpl
+                ld (CAPST),a
+                in a,(PPI_CONTROL_C)
+                xor #40                         ; CAPS LED follows the lock
+                out (PPI_CONTROL_C),a
+                jr keyboard_scan_next
 
 ; B is the matrix row, C contains newly pressed bits, and D contains the
 ; active-low Shift/Ctrl row. Enqueue every translatable edge from low to high
@@ -1522,15 +1691,35 @@ keyboard_translate_printable:
                 bit 0,d
                 jr nz,keyboard_translate_table
                 ld hl,keymap_shifted
+; CAPS flips letter case, so Shift and the lock invert each other exactly
+; like the official BIOS. Ctrl reduces letters to control codes in any case.
 keyboard_translate_table:
                 add hl,bc
                 ld a,(hl)
                 bit 1,d
-                ret nz
+                jr z,keyboard_translate_ctrl
+                ld c,a                          ; no Ctrl: apply CAPS
+                and #df
                 cp 'A'
-                ret c
+                jr c,keyboard_translate_keep
                 cp 'Z'+1
-                ret nc
+                jr nc,keyboard_translate_keep
+                ld a,(CAPST)
+                or a
+                jr z,keyboard_translate_keep
+                ld a,c
+                xor #20
+                ld c,a
+keyboard_translate_keep:
+                ld a,c
+                ret
+keyboard_translate_ctrl:
+                ld c,a
+                and #df                         ; letters fold to uppercase
+                cp 'A'
+                jr c,keyboard_translate_keep
+                cp 'Z'+1
+                jr nc,keyboard_translate_keep
                 and #1f                         ; Ctrl+A through Ctrl+Z
                 ret
 keyboard_translate_row7:
@@ -2562,6 +2751,8 @@ primary_slot_map_page0:
 ; called routine may destroy every normal register.
 calslt:
                 di
+                ex af,af'
+                exx
                 push iy
                 pop bc
                 bit 7,b
@@ -2573,7 +2764,7 @@ calslt:
                 cp #40
                 jr z,calslt_page_supported
                 cp #80
-                jp nz,unsupported_call
+                jr nz,calslt_unsupported
 calslt_page_supported:
                 ld a,b
                 and #03
@@ -2583,6 +2774,8 @@ calslt_page_supported:
                 out (PPI_SLOT),a
                 ld hl,calslt_return
                 push hl
+                exx
+                ex af,af'
                 jp (ix)
 
 ; Preserve the called routine's normal AF/BC/DE/HL results while recovering
@@ -2605,11 +2798,11 @@ calslt_expanded:
                 cp #40
                 jr z,calslt_expanded_page_supported
                 cp #80
-                jp nz,unsupported_call
+                jr nz,calslt_unsupported
 calslt_expanded_page_supported:
                 ld a,b
                 call expanded_slot_check
-                jp z,unsupported_call
+                jr z,calslt_unsupported
                 call expanded_temporary_select
                 push bc                        ; old selector, primary slot
                 call primary_slot_map
@@ -2617,7 +2810,14 @@ calslt_expanded_page_supported:
                 out (PPI_SLOT),a
                 ld hl,calslt_expanded_return
                 push hl
+                exx
+                ex af,af'
                 jp (ix)
+
+calslt_unsupported:
+                exx
+                ex af,af'
+                jp unsupported_call
 
 ; Recover restoration state through the alternate register set so the target
 ; routine's normal AF/BC/DE/HL results survive unchanged.
@@ -2822,17 +3022,17 @@ graphics2_vdp_registers:
 keymap_unshifted:
                 db '0', '1', '2', '3', '4', '5', '6', '7'
                 db '8', '9', '-', '=', #5c, '[', ']', ';'
-                db #27, '`', ',', '.', '/', 0,   'A', 'B'
-                db 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
-                db 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
-                db 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-keymap_shifted:
-                db ')', '!', '@', '#', '$', '%', '^', '&'
-                db '*', '(', '_', '+', '|', '{', '}', ':'
-                db '"', '~', '<', '>', '?', 0,   'a', 'b'
+                db #27, '`', ',', '.', '/', 0,   'a', 'b'
                 db 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'
                 db 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'
                 db 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+keymap_shifted:
+                db ')', '!', '@', '#', '$', '%', '^', '&'
+                db '*', '(', '_', '+', '|', '{', '}', ':'
+                db '"', '~', '<', '>', '?', 0,   'A', 'B'
+                db 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
+                db 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
+                db 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
 keymap_row7:
                 db 0,0,#1b,#09,#03,#08,0,#0d
 keymap_row8:

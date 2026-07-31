@@ -42,8 +42,9 @@ executing `RET`, so the original stack is visible again.
 `CALSLT` at `001Ch` takes the target address in IX and the slot ID in the high
 byte of IY. M1H accepts primary and expanded targets in page 1 or page 2. If
 the target returns, RainBIOS restores the exact previous primary and secondary
-selections and returns the target routine's normal registers and flags.
-Maskable interrupts are inhibited before the target is selected.
+selections and returns the target routine's normal registers and flags. Slot
+selection runs through the alternate banks so AF/BC/DE/HL reach the target
+unchanged. Maskable interrupts are inhibited before the target is selected.
 Targets in page 0 or page 3 remain rejected because they would hide the caller
 or its stack.
 
@@ -55,9 +56,10 @@ successful `ENASLT`, `RDSLT`, and `WRSLT`; `CALSLT` returns the flags produced
 by its target. The invalid-ID failure convention is a RainBIOS bring-up
 extension, not a claim about the standard BIOS contract.
 
-`CALLF` parses the standard inline slot byte and target word, then delegates
-primary or expanded page-1/page-2 calls to `CALSLT`. Page-0/page-3 targets
-remain pending.
+`CALLF` parses the standard inline slot byte and target word through the
+alternate banks, then delegates primary or expanded page-1/page-2 calls to
+`CALSLT` without changing the target's normal input registers. Page-0/page-3
+targets remain pending.
 
 The `test-openmsx-slots` target verifies register preservation, every primary
 page selection, physical-RAM reads and writes, exact map restoration, all

@@ -10,6 +10,7 @@ that missing behavior is visible and testable.
 | MSX1 main ROM | `0000h-7FFFh` | 32 KiB | Reset, slots, devices, BIOS ABI, cartridge startup |
 | MSX2 main ROM | `0000h-7FFFh` | 32 KiB | MSX1 ABI plus MSX2 dispatch and initialization |
 | MSX2 SUB-ROM | normally page 1 | 16 KiB | Extended VDP, clock, palette, and graphics ABI |
+| NMS 8250 disk ROM | `4000h-7FFFh` | 16 KiB | Optional read-only WD2793 PHYDIO extension |
 
 The main and SUB-ROM targets will share implementation modules but have
 different fixed-address front ends.
@@ -51,11 +52,13 @@ the primary map and expanded selector around these calls.
 M1D implements the primary-slot page-1/page-2 subset of `CALSLT`. IX supplies
 the target and the high byte of IY supplies the slot ID. The old PPI map lives
 in that call's page-3 stack frame while cartridge code runs, because the
-target is permitted to replace the normal registers. If it returns, a page-0
-continuation uses the alternate register set to restore the exact map while
-preserving the target's normal register and flag results. Separate stack
-frames also allow returning calls to nest. M1H adds secondary-selector
-metadata to the frame for expanded page-1/page-2 targets.
+target is permitted to replace the normal registers. Dispatch itself runs in
+the alternate AF/BC/DE/HL banks so the target receives the caller's exact
+normal inputs. If it returns, a page-0 continuation uses those alternate banks
+to restore the exact map while preserving the target's normal register and
+flag results. Separate stack frames also allow returning calls to nest. M1H
+adds secondary-selector metadata to the frame for expanded page-1/page-2
+targets.
 
 M1E scans the public cartridge header locations at `4000h` and `8000h` in
 each non-BIOS slot. A header beginning `41h,42h` with a nonzero
@@ -81,7 +84,26 @@ M1H performs a stackless pre-RAM expansion probe without changing the
 reset-selected page-0/page-1 subslots. Once RAM is live it publishes
 `EXPTBL`, the non-inverted selectors in `SLTTBL`, and the full `BIOSSLT`.
 Expanded page-3 calls keep restoration state in registers until the old
-secondary selector and primary map are both visible again.
+secondary selector and primary map are both visible again. Standard memory
+mappers receive the independent 64 KiB page baseline `3,2,1,0`; the discovered
+full RAM slot is published in `RAMAD0` through `RAMAD3` for extension ROMs.
+Sizing and allocating segments beyond that baseline remain pending.
+
+The disk bring-up path invokes `H.STKE` after all extension `INIT` routines,
+then prepares `DEVICE`/disk setup state and calls `H.RUNC` when a disk ROM has
+installed `H.PHYD`. The optional 16 KiB NMS 8250 disk extension separates a
+small production ROM shell from a shared WD2793 driver. Test shells include the
+same driver and add only `H.RUNC` probes. The production component installs
+`H.PHYD`, publishes one drive, and returns from startup without test behavior.
+
+The read-only driver accepts drive A and 720 KiB `F9h` media. It validates the
+complete logical-sector and RAM-buffer ranges before I/O, converts LBAs to
+80-track/two-side/nine-sector geometry, issues bounded seek and single-sector
+read commands, advances across side and track boundaries, and reports the
+number of fully completed sectors. Integration probes cover LBA 8 through 18,
+a direct seek to LBA 731, the final two sectors, a page-2/page-3 buffer crossing,
+no media, partial record-not-found, and write rejection on writable host media.
+See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
 M2A publishes the eight TMS9918 register shadows and current screen/table
 work variables. VDP register and address command pairs are protected from
@@ -95,8 +117,9 @@ M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated
 into the standard 40-byte circular `KEYBUF`. `CHSNS` tests its read/write
 pointers, `CHGET` blocks under `HALT` with interrupts enabled and consumes one
-character, and `KILBUF` resets both pointers. Shift, Ctrl, printable ASCII,
-and editing keys are supported; repeat, lock/dead-key state, key click,
+character, and `KILBUF` resets both pointers. Shift, Ctrl, CAPS lock (state
+in `CAPST` at its published address, LED through PPI port C bit 6), printable
+ASCII, and editing keys are supported; repeat, dead-key state, key click,
 function-key expansion, and break handling remain separate work.
 
 M3B implements the published `TAPION`, `TAPIN`, `TAPIOF`, `TAPOON`,
@@ -166,6 +189,10 @@ hardware.
 - Cassette probes decode public CAS data through the BIOS in openMSX and 1983,
   load and run a tokenized BBC BASIC program in 1983, and decode the header of
   a BBC BASIC SAVE waveform recorded by openMSX.
+- Disk probes cover safe no-device returns, extension bootstrap context,
+  production hook/drive registration, general read-only WD2793 transfers,
+  controller errors, and host-image immutability through public `PHYDIO` in
+  1983.
 - Positive and corrupt descriptor probes check menu state, fail-closed
   handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before
