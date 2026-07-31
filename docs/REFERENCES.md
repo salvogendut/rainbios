@@ -156,8 +156,8 @@ implementation inputs. They remain quarantined under
   `458e672afa370fdf8fafd6293308d0c72001505fd9f554ec5a6e94551b5c74d1`
 - Material consulted for disk validation: the documented NMS 8250 WD2793
   memory window in `TECHNICAL.md`, controller register behavior in
-  `src/wd2793.c`, and public register-level examples in
-  `tests/test_wd2793.c`
+  `src/wd2793.c`, raw-image geometry behavior in `src/floppy.c`, and public
+  register-level examples in `tests/test_wd2793.c`
 - Purpose: independent headless execution, CPU/VDP state reporting, final
   framebuffer capture, and read-only NMS 8250 floppy-path validation for the
   RainBIOS MSX1 ROM

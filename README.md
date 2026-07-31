@@ -126,20 +126,37 @@ make test-openmsx-bbcbasic-tape-save \
 Standard CAS streams are the supported input baseline. Replay of slow sampled
 WAV recordings still needs decoder hardening and is not claimed yet.
 
-The disk probes first verify safe no-device defaults and disk-ROM bootstrap,
-then mount a generated 720 KiB DSK read-only on the NMS 8250 profile. The final
-probe uses an original test disk ROM to read logical sector 1 through public
-`PHYDIO` and the emulated WD2793, checking the transferred count and three
-independent data markers:
+The optional source-built NMS 8250 disk extension provides read-only `PHYDIO`
+for drive A on 720 KiB `F9h` media. It supports arbitrary logical sectors and
+multi-sector reads across side and track boundaries, with bounded controller
+waits and standard error codes. Build the 16 KiB component with:
+
+```sh
+make nms8250-disk-rom
+```
+
+The output is `build/rainbios_nms8250_disk.rom`. Its precise buffer, error, and
+clobber contract is documented in
+[`docs/abi/nms8250-disk-rom.md`](docs/abi/nms8250-disk-rom.md).
+
+The disk probes verify safe no-device defaults, extension bootstrap, production
+hook/drive registration, cross-side/track reads, no-media handling, exact
+partial-transfer counts, and write rejection without changing a
+read/write-mounted image:
 
 ```sh
 make test-1983-disk-baseline
 make test-1983-disk-boot
 make test-1983-disk-read
+make test-1983-disk-no-media
+make test-1983-disk-partial-error
+make test-1983-disk-write-guard
+make test-1983-nms8250-disk-rom
 ```
 
-No proprietary disk firmware or media is distributed or required by these
-targets. Writable-media support remains out of scope for this baseline.
+No proprietary disk firmware or media is distributed or required. Disk boot,
+filesystems, formatting, drive B, and writable-media support remain out of
+scope for this component.
 
 An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
 `INIT` transfer in openMSX:

@@ -79,8 +79,15 @@ def main() -> int:
     parser.add_argument("--disk-rom", type=pathlib.Path)
     parser.add_argument("--disk-a", type=pathlib.Path)
     parser.add_argument("--floppy-mode", default="read-only")
+    parser.add_argument("--expect-disk-unchanged", action="store_true")
     parser.add_argument("--exit-after", type=int, default=300)
     arguments = parser.parse_args()
+
+    disk_before = None
+    if arguments.expect_disk_unchanged:
+        if arguments.disk_a is None:
+            parser.error("--expect-disk-unchanged requires --disk-a")
+        disk_before = arguments.disk_a.read_bytes()
 
     command = [
         arguments.emulator,
@@ -117,6 +124,12 @@ def main() -> int:
         stderr=subprocess.STDOUT,
         text=True,
     )
+    if disk_before is not None:
+        disk_after = arguments.disk_a.read_bytes()
+        if disk_after != disk_before:
+            arguments.disk_a.write_bytes(disk_before)
+            print("error: disk image changed during guarded run", file=sys.stderr)
+            return 1
     sys.stdout.write(result.stdout)
     if result.returncode:
         return result.returncode

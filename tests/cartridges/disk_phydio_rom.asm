@@ -1,116 +1,35 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
-; Test-only NMS 8250 disk extension. It installs PHYDIO and bootstrap hooks,
-; reads logical sector 1 through the WD2793, and validates the deterministic
-; read-only DSK fixture through RainBIOS's public PHYDIO entry.
+; Test shell for the production NMS 8250 read-only driver. It installs a
+; bootstrap hook, exercises parameter/write errors, then verifies multi-sector
+; reads across side, track, and RAM-page boundaries.
 
 PHYDIO          equ #0144
 H_RUNC          equ #fecb
-H_PHYD          equ #ffa7
 DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
-DISK_SLOT       equ #8f
-SECTOR_BUFFER   equ #9000
-PROBE_SECTOR    equ 1
-
-FDC_STATUS      equ #7ff8
-FDC_COMMAND     equ #7ff8
-FDC_TRACK       equ #7ff9
-FDC_SECTOR      equ #7ffa
-FDC_DATA        equ #7ffb
-FDC_SIDE        equ #7ffc
-FDC_DRIVE       equ #7ffd
-FDC_LINES       equ #7fff
 
                 org #4000
 
                 db #41,#42                     ; AB signature
-                dw disk_phydio_init
-                dw 0                           ; BASIC statement handler
-                dw 0                           ; device handler
-                dw 0                           ; BASIC text pointer
+                dw disk_phydio_test_init
+                dw 0,0,0
                 defs #4010-$,0
 
-disk_phydio_init:
-                ld de,disk_phydio_transfer
-                ld hl,H_PHYD
-                call disk_phydio_set_hook
-                ld de,disk_phydio_read
+                jp disk_phydio
+                defs #4030-$,#ff
+
+                include "disk_nms8250_driver.asm"
+
+disk_phydio_test_init:
+                call disk_driver_init
+                ld a,(DRVINF+1)
+                ld de,disk_phydio_test_run
                 ld hl,H_RUNC
-                call disk_phydio_set_hook
+                call disk_set_hook
                 ret
 
-disk_phydio_set_hook:
-                ld (hl),#f7                    ; RST 30h / CALLF
-                inc hl
-                ld (hl),DISK_SLOT
-                inc hl
-                ld (hl),e
-                inc hl
-                ld (hl),d
-                inc hl
-                ld (hl),#c9
-                ret
-
-; Exact read-only implementation needed by this fixture. The public PHYDIO
-; contract reports the requested transfer count in B and carry on failure.
-disk_phydio_transfer:
-                jp c,disk_phydio_transfer_error
-                or a
-                jr nz,disk_phydio_transfer_error
-                ld a,b
-                cp 1
-                jr nz,disk_phydio_transfer_error
-                ld a,c
-                cp #f9
-                jr nz,disk_phydio_transfer_error
-                ld a,d
-                or a
-                jr nz,disk_phydio_transfer_error
-                ld a,e
-                cp PROBE_SECTOR
-                jr nz,disk_phydio_transfer_error
-
-                ld a,#80                       ; drive A, motor on
-                ld (FDC_DRIVE),a
-                xor a
-                ld (FDC_TRACK),a
-                ld (FDC_SIDE),a
-                ld a,2                         ; logical sector 1
-                ld (FDC_SECTOR),a
-                ld a,#80                       ; read one sector
-                ld (FDC_COMMAND),a
-
-                ld de,512
-disk_phydio_wait_data:
-                ld a,(FDC_LINES)
-                bit 7,a                        ; DRQ is active low
-                jr nz,disk_phydio_wait_data
-                ld a,(FDC_DATA)
-                ld (hl),a
-                inc hl
-                dec de
-                ld a,d
-                or e
-                jr nz,disk_phydio_wait_data
-
-disk_phydio_wait_complete:
-                ld a,(FDC_LINES)
-                bit 6,a                        ; IRQ is active low
-                jr nz,disk_phydio_wait_complete
-                ld a,(FDC_STATUS)
-                and #9c                        ; not ready/RNF/CRC/lost data
-                jr nz,disk_phydio_transfer_error
-                ld b,1
-                xor a
-                ret
-
-disk_phydio_transfer_error:
-                ld a,16
-                scf
-                ret
-
-disk_phydio_read:
+disk_phydio_test_run:
                 ld a,(DEVICE)
                 cp 1
                 jp nz,disk_phydio_fail_device
@@ -118,64 +37,244 @@ disk_phydio_read:
                 or a
                 jp nz,disk_phydio_fail_setup
 
-                ld hl,SECTOR_BUFFER
-                ld de,SECTOR_BUFFER+1
-                ld bc,511
-                ld (hl),#a5
-                ldir
-
-                xor a                           ; drive A, read operation
-                ld b,1                         ; one sector
-                ld c,#f9                       ; 720 KiB media ID
-                ld de,PROBE_SECTOR
-                ld hl,SECTOR_BUFFER
+                ; Invalid drive.
+                ld a,1
+                ld b,1
+                ld c,#f9
+                ld de,8
+                ld hl,#8800
+                or a
                 call PHYDIO
-                jp c,disk_phydio_fail_read
+                jp nc,disk_phydio_fail_bad_drive
+                cp 12
+                jp nz,disk_phydio_fail_bad_drive
+                ld a,b
+                or a
+                jp nz,disk_phydio_fail_bad_drive
+
+                ; Invalid media descriptor.
+                xor a
+                ld b,1
+                ld c,#f8
+                ld de,8
+                ld hl,#8800
+                call PHYDIO
+                jp nc,disk_phydio_fail_bad_media
+                cp 12
+                jp nz,disk_phydio_fail_bad_media
+                ld a,b
+                or a
+                jp nz,disk_phydio_fail_bad_media
+
+                ; A zero-sector request is invalid.
+                xor a
+                ld b,0
+                ld c,#f9
+                ld de,8
+                ld hl,#8800
+                call PHYDIO
+                jp nc,disk_phydio_fail_zero_count
+                cp 12
+                jp nz,disk_phydio_fail_zero_count
+                ld a,b
+                or a
+                jp nz,disk_phydio_fail_zero_count
+
+                ; Reject a range extending beyond the final logical sector.
+                ld a,#a5
+                ld (#8800),a
+                xor a
+                ld b,2
+                ld c,#f9
+                ld de,1439
+                ld hl,#8800
+                call PHYDIO
+                jp nc,disk_phydio_fail_range_carry
+                cp 12
+                jp nz,disk_phydio_fail_range_code
+                ld a,b
+                or a
+                jp nz,disk_phydio_fail_range_count
+                ld a,(#8800)
+                cp #a5
+                jp nz,disk_phydio_fail_range_data
+
+                ; Page 1 contains the disk ROM and is not a valid buffer.
+                xor a
+                ld b,1
+                ld c,#f9
+                ld de,8
+                ld hl,#7f00
+                call PHYDIO
+                jp nc,disk_phydio_fail_buffer
+                cp 12
+                jp nz,disk_phydio_fail_buffer
+                ld a,b
+                or a
+                jp nz,disk_phydio_fail_buffer
+
+                ; Valid writes are rejected before issuing an FDC command.
+                xor a
+                ld b,1
+                ld c,#f9
+                ld de,8
+                ld hl,#8800
+                scf
+                call PHYDIO
+                jp nc,disk_phydio_fail_write
+                or a
+                jp nz,disk_phydio_fail_write
+                ld a,b
+                or a
+                jp nz,disk_phydio_fail_write
+
+                ; Eleven sectors cross side 0/1, track 0/1, and BFFFh/C000h.
+                ld a,#5a
+                ld (#abff),a
+                ld a,#a5
+                ld (#c200),a
+                xor a
+                ld b,11
+                ld c,#f9
+                ld de,8
+                ld hl,#ac00
+                call PHYDIO
+                jp c,disk_phydio_fail_boundary_read
+                ld a,b
+                cp 11
+                jp nz,disk_phydio_fail_boundary_count
+                ld b,11
+                ld de,8
+                ld hl,#ac00
+                call disk_phydio_check_sequence
+                jp c,disk_phydio_fail_boundary_data
+                ld a,(#abff)
+                cp #5a
+                jp nz,disk_phydio_fail_boundary_guard
+                ld a,(#c200)
+                cp #a5
+                jp nz,disk_phydio_fail_boundary_guard
+
+                ; Seek directly into the middle of the disk.
+                xor a
+                ld b,1
+                ld c,#f9
+                ld de,731
+                ld hl,#9000
+                call PHYDIO
+                jp c,disk_phydio_fail_middle_read
                 ld a,b
                 cp 1
-                jp nz,disk_phydio_fail_count
+                jp nz,disk_phydio_fail_middle_count
+                ld b,1
+                ld de,731
+                ld hl,#9000
+                call disk_phydio_check_sequence
+                jp c,disk_phydio_fail_middle_data
 
-                ld hl,SECTOR_BUFFER
-                ld de,disk_phydio_marker
-                ld b,disk_phydio_marker_end-disk_phydio_marker
-disk_phydio_compare_marker:
-                ld a,(de)
-                cp (hl)
-                jp nz,disk_phydio_fail_marker
-                inc de
-                inc hl
-                djnz disk_phydio_compare_marker
-
-                ld a,(SECTOR_BUFFER+256)
-                cp #3c
-                jp nz,disk_phydio_fail_middle
-                ld a,(SECTOR_BUFFER+510)
-                cp #a5
-                jp nz,disk_phydio_fail_suffix
-                ld a,(SECTOR_BUFFER+511)
-                cp #5a
-                jp nz,disk_phydio_fail_suffix
+                ; Read through the final logical sector.
+                xor a
+                ld b,2
+                ld c,#f9
+                ld de,1438
+                ld hl,#9200
+                call PHYDIO
+                jp c,disk_phydio_fail_final_read
+                ld a,b
+                cp 2
+                jp nz,disk_phydio_fail_final_count
+                ld b,2
+                ld de,1438
+                ld hl,#9200
+                call disk_phydio_check_sequence
+                jp c,disk_phydio_fail_final_data
 
 disk_phydio_read_pass:
                 jp disk_phydio_read_pass
 
-disk_phydio_fail_device:
-                jp disk_phydio_fail_device
-disk_phydio_fail_setup:
-                jp disk_phydio_fail_setup
-disk_phydio_fail_read:
-                jp disk_phydio_fail_read
-disk_phydio_fail_count:
-                jp disk_phydio_fail_count
-disk_phydio_fail_marker:
-                jp disk_phydio_fail_marker
-disk_phydio_fail_middle:
-                jp disk_phydio_fail_middle
-disk_phydio_fail_suffix:
-                jp disk_phydio_fail_suffix
+; Input HL points to B sectors whose first logical sector is DE.
+disk_phydio_check_sequence:
+                push bc
+                call disk_phydio_check_sector
+                pop bc
+                ret c
+                push de
+                ld de,512
+                add hl,de
+                pop de
+                inc de
+                djnz disk_phydio_check_sequence
+                or a
+                ret
 
-disk_phydio_marker:
-                db "RAINBIOS-PHYDIO"
-disk_phydio_marker_end:
+; Each generated sector carries its LBA at the front and independent markers
+; at offsets 256, 510, and 511. Preserve BC, DE, and HL for the caller.
+disk_phydio_check_sector:
+                push bc
+                push de
+                push hl
+                ld a,(hl)
+                cp 'R'
+                jr nz,disk_phydio_check_sector_fail
+                inc hl
+                ld a,(hl)
+                cp 'B'
+                jr nz,disk_phydio_check_sector_fail
+                inc hl
+                ld a,(hl)
+                cp e
+                jr nz,disk_phydio_check_sector_fail
+                inc hl
+                ld a,(hl)
+                cp d
+                jr nz,disk_phydio_check_sector_fail
+                ld bc,253
+                add hl,bc                       ; offset 256
+                ld a,e
+                xor #3c
+                cp (hl)
+                jr nz,disk_phydio_check_sector_fail
+                ld bc,254
+                add hl,bc                       ; offset 510
+                ld a,e
+                xor #a5
+                cp (hl)
+                jr nz,disk_phydio_check_sector_fail
+                inc hl
+                ld a,d
+                xor #5a
+                cp (hl)
+                jr nz,disk_phydio_check_sector_fail
+                or a
+                jr disk_phydio_check_sector_exit
+disk_phydio_check_sector_fail:
+                scf
+disk_phydio_check_sector_exit:
+                pop hl
+                pop de
+                pop bc
+                ret
+
+disk_phydio_fail_device:         jp disk_phydio_fail_device
+disk_phydio_fail_setup:          jp disk_phydio_fail_setup
+disk_phydio_fail_bad_drive:      jp disk_phydio_fail_bad_drive
+disk_phydio_fail_bad_media:      jp disk_phydio_fail_bad_media
+disk_phydio_fail_zero_count:     jp disk_phydio_fail_zero_count
+disk_phydio_fail_range_carry:    jp disk_phydio_fail_range_carry
+disk_phydio_fail_range_code:     jp disk_phydio_fail_range_code
+disk_phydio_fail_range_count:    jp disk_phydio_fail_range_count
+disk_phydio_fail_range_data:     jp disk_phydio_fail_range_data
+disk_phydio_fail_buffer:         jp disk_phydio_fail_buffer
+disk_phydio_fail_write:          jp disk_phydio_fail_write
+disk_phydio_fail_boundary_read:  jp disk_phydio_fail_boundary_read
+disk_phydio_fail_boundary_count: jp disk_phydio_fail_boundary_count
+disk_phydio_fail_boundary_data:  jp disk_phydio_fail_boundary_data
+disk_phydio_fail_boundary_guard: jp disk_phydio_fail_boundary_guard
+disk_phydio_fail_middle_read:    jp disk_phydio_fail_middle_read
+disk_phydio_fail_middle_count:   jp disk_phydio_fail_middle_count
+disk_phydio_fail_middle_data:    jp disk_phydio_fail_middle_data
+disk_phydio_fail_final_read:     jp disk_phydio_fail_final_read
+disk_phydio_fail_final_count:    jp disk_phydio_fail_final_count
+disk_phydio_fail_final_data:     jp disk_phydio_fail_final_data
 
                 defs #8000-$,#ff

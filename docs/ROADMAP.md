@@ -175,9 +175,13 @@ emulated machine layouts and real hardware.
 ## M6 — Completeness and optional system components
 
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
-and `H.RUNC` sequencing, and a reproducible 1983 test that reads a generated
-read-only DSK sector through `PHYDIO` and the NMS 8250 WD2793 path. General disk
-firmware, filesystem services, formatting, and writable media remain pending.
+and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
+Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
+side/track crossings on 720 KiB media. Reproducible 1983 probes cover success,
+no media, partial record-not-found counts, and write rejection without host
+image changes. Disk boot, filesystem services, formatting, drive B, other
+controllers, writable media, and real-hardware timing validation remain
+pending.
 
 - close remaining main BIOS and SUB-ROM ABI gaps;
 - characterize flags, clobbered registers, timing-sensitive I/O, and error

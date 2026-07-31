@@ -45,9 +45,28 @@ DISK_BASELINE_CART := $(BUILD_DIR)/cartridges/disk_baseline_input.rom
 DISK_BASELINE_CART_SYM := $(BUILD_DIR)/cartridges/disk_baseline_input.sym
 DISK_ROM_BOOT_CART := $(BUILD_DIR)/cartridges/disk_rom_boot_input.rom
 DISK_ROM_BOOT_CART_SYM := $(BUILD_DIR)/cartridges/disk_rom_boot_input.sym
-DISK_PHYDIO_ROM := $(BUILD_DIR)/cartridges/disk_phydio_rom.rom
-DISK_PHYDIO_ROM_SYM := $(BUILD_DIR)/cartridges/disk_phydio_rom.sym
+NMS8250_DISK_ROM := $(BUILD_DIR)/rainbios_nms8250_disk.rom
+NMS8250_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_nms8250_disk.sym
+NMS8250_DISK_SOURCES := src/disk_nms8250_rom.asm \
+	src/disk_nms8250_driver.asm
+DISK_PHYDIO_TEST_ROM := $(BUILD_DIR)/cartridges/disk_phydio_rom.rom
+DISK_PHYDIO_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_phydio_rom.sym
+DISK_PHYDIO_TEST_SOURCES := tests/cartridges/disk_phydio_rom.asm \
+	src/disk_nms8250_driver.asm
+DISK_NO_MEDIA_TEST_ROM := $(BUILD_DIR)/cartridges/disk_no_media_rom.rom
+DISK_NO_MEDIA_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_no_media_rom.sym
+DISK_NO_MEDIA_TEST_SOURCES := tests/cartridges/disk_no_media_rom.asm \
+	src/disk_nms8250_driver.asm
 DISK_PHYDIO_IMAGE := $(BUILD_DIR)/disks/disk-phydio.dsk
+DISK_PARTIAL_TEST_ROM := $(BUILD_DIR)/cartridges/disk_partial_error_rom.rom
+DISK_PARTIAL_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_partial_error_rom.sym
+DISK_PARTIAL_TEST_SOURCES := tests/cartridges/disk_partial_error_rom.asm \
+	src/disk_nms8250_driver.asm
+DISK_PARTIAL_IMAGE := $(BUILD_DIR)/disks/disk-partial-error.dsk
+DISK_PRODUCTION_INIT_CART := \
+	$(BUILD_DIR)/cartridges/disk_production_init_input.rom
+DISK_PRODUCTION_INIT_CART_SYM := \
+	$(BUILD_DIR)/cartridges/disk_production_init_input.sym
 TAPE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_input.rom
 TAPE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_input.sym
 TAPE_PROBE_IMAGE := $(BUILD_DIR)/cassettes/tape-probe.cas
@@ -125,6 +144,14 @@ EMULATOR_1983_DISK_ROM_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-rom-hook.ppm
 EMULATOR_1983_DISK_PHYDIO_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-phydio-read.ppm
+EMULATOR_1983_DISK_NO_MEDIA_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-no-media.ppm
+EMULATOR_1983_DISK_WRITE_GUARD_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-write-guard.ppm
+EMULATOR_1983_DISK_PARTIAL_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-partial-error.ppm
+EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
+	$(EMULATOR_1983_DIR)/nms8250-disk-rom.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -146,15 +173,19 @@ SOURCES := src/main_msx1.asm
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot test-1983-disk-read \
+	test-1983-disk-no-media test-1983-disk-write-guard \
+	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics check-bbcbasic \
-	check-bbcbasic-artifact clean
+	check-bbcbasic-artifact nms8250-disk-rom clean
 
 all: $(MSX1_ROM)
+
+nms8250-disk-rom: $(NMS8250_DISK_ROM)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -187,12 +218,66 @@ $(DISK_ROM_BOOT_CART): tests/cartridges/disk_rom_boot_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(DISK_ROM_BOOT_CART_SYM)
 
-$(DISK_PHYDIO_ROM): tests/cartridges/disk_phydio_rom.asm | $(BUILD_DIR)
+$(NMS8250_DISK_ROM): $(NMS8250_DISK_SOURCES) | $(BUILD_DIR)
+	$(RASM) $< -Isrc -ob $(NMS8250_DISK_ROM) \
+		-s -os $(NMS8250_DISK_ROM_SYM)
+
+$(NMS8250_DISK_ROM_SYM): $(NMS8250_DISK_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(NMS8250_DISK_SOURCES)) -Isrc \
+			-ob $(NMS8250_DISK_ROM) -s -os $@; \
+	fi
+
+$(DISK_PHYDIO_TEST_ROM): $(DISK_PHYDIO_TEST_SOURCES) | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(DISK_PHYDIO_ROM_SYM)
+	$(RASM) $< -Isrc -ob $(DISK_PHYDIO_TEST_ROM) \
+		-s -os $(DISK_PHYDIO_TEST_ROM_SYM)
+
+$(DISK_PHYDIO_TEST_ROM_SYM): $(DISK_PHYDIO_TEST_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(DISK_PHYDIO_TEST_SOURCES)) -Isrc \
+			-ob $(DISK_PHYDIO_TEST_ROM) -s -os $@; \
+	fi
+
+$(DISK_NO_MEDIA_TEST_ROM): $(DISK_NO_MEDIA_TEST_SOURCES) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -Isrc -ob $(DISK_NO_MEDIA_TEST_ROM) \
+		-s -os $(DISK_NO_MEDIA_TEST_ROM_SYM)
+
+$(DISK_NO_MEDIA_TEST_ROM_SYM): $(DISK_NO_MEDIA_TEST_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(DISK_NO_MEDIA_TEST_SOURCES)) -Isrc \
+			-ob $(DISK_NO_MEDIA_TEST_ROM) -s -os $@; \
+	fi
+
+$(DISK_PARTIAL_TEST_ROM): $(DISK_PARTIAL_TEST_SOURCES) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -Isrc -ob $(DISK_PARTIAL_TEST_ROM) \
+		-s -os $(DISK_PARTIAL_TEST_ROM_SYM)
+
+$(DISK_PARTIAL_TEST_ROM_SYM): $(DISK_PARTIAL_TEST_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(DISK_PARTIAL_TEST_SOURCES)) -Isrc \
+			-ob $(DISK_PARTIAL_TEST_ROM) -s -os $@; \
+	fi
+
+$(DISK_PRODUCTION_INIT_CART): \
+		tests/cartridges/disk_production_init_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $(DISK_PRODUCTION_INIT_CART) \
+		-s -os $(DISK_PRODUCTION_INIT_CART_SYM)
+
+$(DISK_PRODUCTION_INIT_CART_SYM): $(DISK_PRODUCTION_INIT_CART)
+	@if test ! -f "$@"; then \
+		$(RASM) tests/cartridges/disk_production_init_input.asm \
+			-ob $(DISK_PRODUCTION_INIT_CART) -s -os $@; \
+	fi
 
 $(DISK_PHYDIO_IMAGE): tools/make_test_disk.py | $(BUILD_DIR)
 	$(PYTHON) $< $@
+
+$(DISK_PARTIAL_IMAGE): tools/make_test_disk.py | $(BUILD_DIR)
+	$(PYTHON) $< --one-side $@
 
 $(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -216,8 +301,9 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
-test: $(MSX1_ROM)
+test: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
+	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	$(PYTHON) -m unittest discover -s tests -v
 
 $(OPENMSX_MACHINE): tests/openmsx/RainBIOS_MSX1.xml.in $(MSX1_ROM)
@@ -640,19 +726,82 @@ test-1983-disk-boot: \
 		--size 640x480 $(EMULATOR_1983_DISK_ROM_SCREEN)
 
 test-1983-disk-read: \
-		$(MSX1_ROM) $(DISK_PHYDIO_ROM) $(DISK_PHYDIO_IMAGE)
+		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \
+		$(DISK_PHYDIO_TEST_ROM_SYM) $(DISK_PHYDIO_IMAGE)
 	mkdir -p $(EMULATOR_1983_DIR)
 	$(PYTHON) tools/run_1983_disk_baseline.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
-		--disk-rom "$(DISK_PHYDIO_ROM)" \
-		--symbols "$(DISK_PHYDIO_ROM_SYM)" \
+		--disk-rom "$(DISK_PHYDIO_TEST_ROM)" \
+		--symbols "$(DISK_PHYDIO_TEST_ROM_SYM)" \
 		--expected-pass-label disk_phydio_read_pass \
 		--expected-slot FC --exit-after 1200 \
 		--disk-a "$(DISK_PHYDIO_IMAGE)" --floppy-mode read-only \
 		--screenshot "$(EMULATOR_1983_DISK_PHYDIO_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_PHYDIO_SCREEN)
+
+test-1983-disk-no-media: $(MSX1_ROM) $(DISK_NO_MEDIA_TEST_ROM) \
+		$(DISK_NO_MEDIA_TEST_ROM_SYM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(DISK_NO_MEDIA_TEST_ROM)" \
+		--symbols "$(DISK_NO_MEDIA_TEST_ROM_SYM)" \
+		--expected-pass-label disk_no_media_pass \
+		--expected-slot FC --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_DISK_NO_MEDIA_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DISK_NO_MEDIA_SCREEN)
+
+test-1983-disk-write-guard: \
+		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \
+		$(DISK_PHYDIO_TEST_ROM_SYM) $(DISK_PHYDIO_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(DISK_PHYDIO_TEST_ROM)" \
+		--symbols "$(DISK_PHYDIO_TEST_ROM_SYM)" \
+		--expected-pass-label disk_phydio_read_pass \
+		--expected-slot FC --exit-after 1200 \
+		--disk-a "$(DISK_PHYDIO_IMAGE)" --floppy-mode read-write \
+		--expect-disk-unchanged \
+		--screenshot "$(EMULATOR_1983_DISK_WRITE_GUARD_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DISK_WRITE_GUARD_SCREEN)
+
+test-1983-disk-partial-error: \
+		$(MSX1_ROM) $(DISK_PARTIAL_TEST_ROM) \
+		$(DISK_PARTIAL_TEST_ROM_SYM) $(DISK_PARTIAL_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(DISK_PARTIAL_TEST_ROM)" \
+		--symbols "$(DISK_PARTIAL_TEST_ROM_SYM)" \
+		--expected-pass-label disk_partial_error_pass \
+		--expected-slot FC --exit-after 1200 \
+		--disk-a "$(DISK_PARTIAL_IMAGE)" --floppy-mode read-only \
+		--screenshot "$(EMULATOR_1983_DISK_PARTIAL_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DISK_PARTIAL_SCREEN)
+
+test-1983-nms8250-disk-rom: $(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(DISK_PRODUCTION_INIT_CART) $(DISK_PRODUCTION_INIT_CART_SYM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--cartridge "$(DISK_PRODUCTION_INIT_CART)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--symbols "$(DISK_PRODUCTION_INIT_CART_SYM)" \
+		--expected-pass-label disk_production_init_pass \
+		--expected-slot F4 --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_NMS8250_DISK_ROM_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_NMS8250_DISK_ROM_SCREEN)
 
 test-1983-external-cartridges: test-1983-external-arkano \
 		test-1983-external-diagnostics
