@@ -60,6 +60,9 @@ def main() -> int:
     parser.add_argument("--expected-slot", default="F4")
     parser.add_argument("--expected-vdp-r0")
     parser.add_argument("--expected-vdp-r1")
+    parser.add_argument("--paste-text")
+    parser.add_argument("--paste-at", type=int)
+    parser.add_argument("--paste-repeat", type=int)
     arguments = parser.parse_args()
     command = [
         arguments.emulator,
@@ -85,6 +88,14 @@ def main() -> int:
         "--screenshot",
         str(arguments.screenshot),
     ]
+    for option, value in (
+        ("--paste-text", arguments.paste_text),
+        ("--paste-at", arguments.paste_at),
+        ("--paste-repeat", arguments.paste_repeat),
+    ):
+        if value is not None:
+            command.append(option)
+            command.append(str(value))
     result = subprocess.run(
         command,
         stdout=subprocess.PIPE,

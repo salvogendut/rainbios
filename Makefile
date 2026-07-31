@@ -157,6 +157,8 @@ EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-diagnostics.ppm
+EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN3_SCREEN := \
+	$(EMULATOR_1983_DIR)/external-diagnostics-screen3.ppm
 LOGO_DIR := $(BUILD_DIR)/logo
 LOGO_STAMP := $(LOGO_DIR)/.converted
 SOURCES := src/main_msx1.asm
@@ -182,7 +184,8 @@ SOURCES := src/main_msx1.asm
 	test-1983-cartridge test-external-cartridges \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
-	test-1983-external-arkano test-1983-external-diagnostics check-bbcbasic \
+	test-1983-external-arkano test-1983-external-diagnostics \
+	test-1983-external-diagnostics-screen3 check-bbcbasic \
 	check-bbcbasic-artifact nms8250-disk-rom clean
 
 all: $(MSX1_ROM)
@@ -839,8 +842,23 @@ test-1983-external-diagnostics: $(MSX1_ROM) $(MSX_DIAGNOSTICS_ROM)
 	$(PYTHON) tools/check_boot_screenshot.py --min-colors 2 \
 		--size 640x480 $(EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN)
 
+test-1983-external-diagnostics-screen3: $(MSX1_ROM) $(MSX_DIAGNOSTICS_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_cartridge.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(MSX_DIAGNOSTICS_ROM)" \
+		--screenshot "$(EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN3_SCREEN)" \
+		--exit-after 4500 --expected-slot D4 \
+		--expected-vdp-r0 00 --expected-vdp-r1 E8 \
+		--paste-text "4 " --paste-at 600 --paste-repeat 450
+	$(PYTHON) tools/check_boot_screenshot.py --min-colors 2 \
+		--size 640x480 $(EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN3_SCREEN)
+
+test-1983-external-cartridges: test-1983-external-arkano \
+	test-1983-external-diagnostics test-1983-external-diagnostics-screen3
+
 test-external-cartridges: test-openmsx-external-cartridges \
-		test-1983-external-cartridges
+	test-1983-external-cartridges
 
 check-bbcbasic:
 	$(PYTHON) tools/check_bbcbasic_dependency.py \
