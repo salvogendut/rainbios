@@ -69,6 +69,7 @@ def main() -> int:
     parser.add_argument("--emulator", required=True)
     parser.add_argument("--models", type=pathlib.Path, required=True)
     parser.add_argument("--model", default="msx1")
+    parser.add_argument("--region", default="ntsc")
     parser.add_argument("--bios", type=pathlib.Path, required=True)
     parser.add_argument("--cartridge", type=pathlib.Path)
     parser.add_argument("--symbols", type=pathlib.Path, required=True)
@@ -78,6 +79,7 @@ def main() -> int:
     parser.add_argument("--disk-rom", type=pathlib.Path)
     parser.add_argument("--disk-a", type=pathlib.Path)
     parser.add_argument("--floppy-mode", default="read-only")
+    parser.add_argument("--exit-after", type=int, default=300)
     arguments = parser.parse_args()
 
     command = [
@@ -89,13 +91,13 @@ def main() -> int:
         "--model",
         arguments.model,
         "--region",
-        "ntsc",
+        arguments.region,
         "--bios",
         str(arguments.bios),
         "--headless",
         "--unthrottled",
         "--exit-after",
-        "300",
+        str(arguments.exit_after),
         "--dump-state",
         "--screenshot",
         str(arguments.screenshot),

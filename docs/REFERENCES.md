@@ -12,10 +12,13 @@ reviewable.
   open-source cross-check of published VDP input ordering and externally
   observable screen-mode behavior; later, `src/slot.asm` solely to cross-check
   the observable requirement that temporary secondary selections are mirrored
-  in `SLTTBL` and restored afterward
+  in `SLTTBL` and restored afterward; later, the extension initialization and
+  boot-call ordering in `src/main.asm` and the documented `RAMAD0`-`RAMAD3`
+  interface locations in `src/disk.asm`
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
-- Excluded: copying or adapting device or service implementation routines
+- Excluded: copying or adapting device or service implementation routines,
+  including the C-BIOS disk driver
 - RainBIOS use: interface and observable behavior facts only; no implementation
   code or assets copied
 - Reference checksums:
@@ -29,6 +32,8 @@ reviewable.
     `fa1b00b72dd6736a47873f7f38bbef289c8720fea4fe74b7962b79d1c808b5d4`
   - `src/slot.asm`:
     `552fefd09c228cf569ac1ccb916a355362ccc70b5c90bcd3cae1d46fee6d6144`
+  - `src/disk.asm`:
+    `5c2abd2accf995cb8f567d5527cb199a1a9170bc9131a47449f3d2ac757fe583`
 
 The openMSX MSX1 machine configuration was later adapted as an integration
 test fixture in `tests/openmsx`. Its license and copyright notices are retained
@@ -74,9 +79,10 @@ open-source implementation difference is not copied.
 - Material consulted: Chapter 2 interrupt model; Chapter 3 slot
   initialization; Chapter 5 cartridge headers, section 3 international
   keyboard/character input, and section 7 inter-slot call interfaces;
-  Appendix 1 interrupt/VDP/mode/console call contracts; Appendix 4 MAIN-ROM
-  work-area and hook listings; Appendix 8 control-character assignments; and
-  the published cassette motor, leader, framed-byte, and tape-format behavior
+  Appendix 1 interrupt/VDP/mode/console and `PHYDIO` call contracts; Appendix 4
+  MAIN-ROM work-area and hook listings; Appendix 8 control-character
+  assignments; and the published cassette motor, leader, framed-byte, and
+  tape-format behavior
 - Purpose: define the M1 slot-call register contract and the documented
   `F380h-FFCAh` work-area layout
 - RainBIOS use: interface and behavioral facts only
@@ -143,13 +149,20 @@ implementation inputs. They remain quarantined under
 
 - Project: adjacent open-source `1983` MSX/MSX2 emulator
 - Repository revision at latest test:
-  `c9828586fcadf912f2d685c9f8d1f71eba665fda`
-- Tested binary self-identification: `git c982858`
+  `74c9148c68d421e4cf8c3be06b31bfe530858124`
+- License: GPL-2.0 in the repository `LICENSE`
+- Tested binary self-identification: `git 74c9148`
 - Tested binary SHA-256:
-  `f12aa243a65667bef09830642e9fa17a70f20355d6da60b7e1388170d086a952`
-- Purpose: independent headless execution, CPU/VDP state reporting, and final
-  framebuffer capture for the RainBIOS MSX1 ROM
-- RainBIOS use: validation tool only; no emulator implementation code copied
+  `458e672afa370fdf8fafd6293308d0c72001505fd9f554ec5a6e94551b5c74d1`
+- Material consulted for disk validation: the documented NMS 8250 WD2793
+  memory window in `TECHNICAL.md`, controller register behavior in
+  `src/wd2793.c`, and public register-level examples in
+  `tests/test_wd2793.c`
+- Purpose: independent headless execution, CPU/VDP state reporting, final
+  framebuffer capture, and read-only NMS 8250 floppy-path validation for the
+  RainBIOS MSX1 ROM
+- RainBIOS use: validation tool and documented hardware-behavior cross-check;
+  no emulator implementation code copied
 
 ## 2026-07-30 — Opaque cartridge smoke-test inputs
 

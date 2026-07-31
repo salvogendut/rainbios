@@ -51,11 +51,13 @@ the primary map and expanded selector around these calls.
 M1D implements the primary-slot page-1/page-2 subset of `CALSLT`. IX supplies
 the target and the high byte of IY supplies the slot ID. The old PPI map lives
 in that call's page-3 stack frame while cartridge code runs, because the
-target is permitted to replace the normal registers. If it returns, a page-0
-continuation uses the alternate register set to restore the exact map while
-preserving the target's normal register and flag results. Separate stack
-frames also allow returning calls to nest. M1H adds secondary-selector
-metadata to the frame for expanded page-1/page-2 targets.
+target is permitted to replace the normal registers. Dispatch itself runs in
+the alternate AF/BC/DE/HL banks so the target receives the caller's exact
+normal inputs. If it returns, a page-0 continuation uses those alternate banks
+to restore the exact map while preserving the target's normal register and
+flag results. Separate stack frames also allow returning calls to nest. M1H
+adds secondary-selector metadata to the frame for expanded page-1/page-2
+targets.
 
 M1E scans the public cartridge header locations at `4000h` and `8000h` in
 each non-BIOS slot. A header beginning `41h,42h` with a nonzero
@@ -81,7 +83,19 @@ M1H performs a stackless pre-RAM expansion probe without changing the
 reset-selected page-0/page-1 subslots. Once RAM is live it publishes
 `EXPTBL`, the non-inverted selectors in `SLTTBL`, and the full `BIOSSLT`.
 Expanded page-3 calls keep restoration state in registers until the old
-secondary selector and primary map are both visible again.
+secondary selector and primary map are both visible again. Standard memory
+mappers receive the independent 64 KiB page baseline `3,2,1,0`; the discovered
+full RAM slot is published in `RAMAD0` through `RAMAD3` for extension ROMs.
+Sizing and allocating segments beyond that baseline remain pending.
+
+The disk bring-up path invokes `H.STKE` after all extension `INIT` routines,
+then prepares `DEVICE`/disk setup state and calls `H.RUNC` when a disk ROM has
+installed `H.PHYD`. A source-built test disk ROM installs those hooks and a
+read-only PHYDIO implementation for the NMS 8250 WD2793 window. Its 1983 probe
+mounts a generated 720 KiB DSK, reads logical sector 1 through BIOS entry
+`0144h`, and checks the reported count plus data at the beginning, middle, and
+end of the 512-byte transfer. This is an integration baseline, not general disk
+firmware or writable-media support.
 
 M2A publishes the eight TMS9918 register shadows and current screen/table
 work variables. VDP register and address command pairs are protected from
@@ -166,6 +180,9 @@ hardware.
 - Cassette probes decode public CAS data through the BIOS in openMSX and 1983,
   load and run a tokenized BBC BASIC program in 1983, and decode the header of
   a BBC BASIC SAVE waveform recorded by openMSX.
+- Disk probes cover safe no-device returns, extension bootstrap context, and a
+  reproducible read-only WD2793 sector transfer through public `PHYDIO` in
+  1983.
 - Positive and corrupt descriptor probes check menu state, fail-closed
   handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before

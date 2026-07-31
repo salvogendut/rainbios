@@ -11,6 +11,10 @@ VDP_CONTROL     equ #99
 PSG_ADDRESS     equ #a0
 PSG_WRITE       equ #a1
 PSG_READ        equ #a2
+MAPPER_PAGE0    equ #fc
+MAPPER_PAGE1    equ #fd
+MAPPER_PAGE2    equ #fe
+MAPPER_PAGE3    equ #ff
 PPI_SLOT        equ #a8
 PPI_KEYBOARD    equ #a9
 PPI_CONTROL_C   equ #aa
@@ -61,11 +65,13 @@ PAYLOAD_RAM_END equ #f396
 TAPE_PERIOD     equ #f398
 TAPE_LEVEL      equ #f399
 TAPE_SYNC       equ #f39a
+RAMAD0          equ #f341
 H_PHYD          equ #ffa7
 H_FORM          equ #ffac
 H_ISFL          equ #fedf
 H_OUTD          equ #fee4
 H_RUNC          equ #fecb
+H_STKE          equ #feda
 DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
 PTRFIL          equ #f864
@@ -228,6 +234,18 @@ cold_boot:
                 out (PPI_CONTROL),a             ; cassette motor off
                 ld a,#0b
                 out (PPI_CONTROL),a             ; cassette output high
+
+; Give standard memory mappers four independent 16 KiB pages. Machines without
+; a mapper ignore these reserved ports; mapper sizing beyond 64 KiB is deferred.
+                ld a,3
+                out (MAPPER_PAGE0),a
+                ld a,2
+                out (MAPPER_PAGE1),a
+                ld a,1
+                out (MAPPER_PAGE2),a
+                xor a
+                out (MAPPER_PAGE3),a
+
                 in a,(PPI_SLOT)
                 ld d,a                          ; original primary-slot map
                 ld e,0                          ; candidate primary RAM slot
@@ -363,7 +381,8 @@ bootstrap_primary_ram_found:
 ; Initialize the published system work area without touching FFFFh, which is
 ; the secondary-slot register on expanded-slot machines.
                 ld sp,STACK_TOP
-                push de                         ; preserve reset map/RAM slot
+                push de                         ; preserve reset map/RAM primary
+                push bc                         ; preserve RAM secondary
                 xor a
                 ld hl,RAM_TEST3
                 ld (hl),a
@@ -379,11 +398,31 @@ bootstrap_primary_ram_found:
                 ld de,PAGE0_SLOT_HELPER
                 ld bc,slot_helpers_image_end-slot_helpers_image
                 ldir
+                pop bc
                 pop de
 
-; Record the primary MAIN-ROM slot before probing expansion state. The
-; RAMAD0-RAMAD3 bytes at F341h-F344h belong to the Disk-ROM communication
-; area and are deliberately not claimed.
+; Publish the full slot ID of the discovered RAM for Disk-ROM extensions.
+; B=4 is the unexpanded sentinel; otherwise B is the secondary slot number.
+                ld a,b
+                cp 4
+                ld a,e
+                jr z,bootstrap_ram_slot_ready
+                ld a,b
+                add a,a
+                add a,a
+                or e
+                or #80
+bootstrap_ram_slot_ready:
+                ld hl,RAMAD0
+                ld (hl),a
+                inc hl
+                ld (hl),a
+                inc hl
+                ld (hl),a
+                inc hl
+                ld (hl),a
+
+; Record the primary MAIN-ROM slot before probing expansion state.
                 ld a,d
                 and #03
                 ld (BIOSSLT),a
@@ -598,6 +637,7 @@ cold_boot_jingle_gap:
 ; non-BIOS slot and can invoke INIT in page 1 or page 2.
                 im 1
                 call cold_boot_scan_cartridges
+                call H_STKE
                 call cold_boot_init_disk
                 ei
                 jr cold_boot_wait
@@ -1052,6 +1092,7 @@ init_disk_default_hooks:
 ; receives the caller's normal BC/DE/HL values. IX/IY take the documented
 ; CALSLT target and slot inputs.
 callf:
+                ex af,af'
                 exx
                 pop hl
                 ld a,(hl)
@@ -1068,6 +1109,7 @@ callf:
                 push bc
                 pop iy
                 exx
+                ex af,af'
                 jp calslt
 
 ; Partial MSX1 IM 1 handler. Preserve normal, index, and shadow registers,
@@ -2669,6 +2711,8 @@ primary_slot_map_page0:
 ; called routine may destroy every normal register.
 calslt:
                 di
+                ex af,af'
+                exx
                 push iy
                 pop bc
                 bit 7,b
@@ -2680,7 +2724,7 @@ calslt:
                 cp #40
                 jr z,calslt_page_supported
                 cp #80
-                jp nz,unsupported_call
+                jr nz,calslt_unsupported
 calslt_page_supported:
                 ld a,b
                 and #03
@@ -2690,6 +2734,8 @@ calslt_page_supported:
                 out (PPI_SLOT),a
                 ld hl,calslt_return
                 push hl
+                exx
+                ex af,af'
                 jp (ix)
 
 ; Preserve the called routine's normal AF/BC/DE/HL results while recovering
@@ -2712,11 +2758,11 @@ calslt_expanded:
                 cp #40
                 jr z,calslt_expanded_page_supported
                 cp #80
-                jp nz,unsupported_call
+                jr nz,calslt_unsupported
 calslt_expanded_page_supported:
                 ld a,b
                 call expanded_slot_check
-                jp z,unsupported_call
+                jr z,calslt_unsupported
                 call expanded_temporary_select
                 push bc                        ; old selector, primary slot
                 call primary_slot_map
@@ -2724,7 +2770,14 @@ calslt_expanded_page_supported:
                 out (PPI_SLOT),a
                 ld hl,calslt_expanded_return
                 push hl
+                exx
+                ex af,af'
                 jp (ix)
+
+calslt_unsupported:
+                exx
+                ex af,af'
+                jp unsupported_call
 
 ; Recover restoration state through the alternate register set so the target
 ; routine's normal AF/BC/DE/HL results survive unchanged.

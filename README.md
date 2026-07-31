@@ -126,6 +126,21 @@ make test-openmsx-bbcbasic-tape-save \
 Standard CAS streams are the supported input baseline. Replay of slow sampled
 WAV recordings still needs decoder hardening and is not claimed yet.
 
+The disk probes first verify safe no-device defaults and disk-ROM bootstrap,
+then mount a generated 720 KiB DSK read-only on the NMS 8250 profile. The final
+probe uses an original test disk ROM to read logical sector 1 through public
+`PHYDIO` and the emulated WD2793, checking the transferred count and three
+independent data markers:
+
+```sh
+make test-1983-disk-baseline
+make test-1983-disk-boot
+make test-1983-disk-read
+```
+
+No proprietary disk firmware or media is distributed or required by these
+targets. Writable-media support remains out of scope for this baseline.
+
 An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
 `INIT` transfer in openMSX:
 

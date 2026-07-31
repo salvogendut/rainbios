@@ -8,14 +8,14 @@ address,name,kind,status,milestone,notes
 0010,CHRGTR,jump,stub,M6,
 0014,WRSLT,jump,partial,M1,Writes primary or expanded slots on all four pages and restores the exact prior primary and secondary selections
 0018,OUTDO,jump,stub,M6,
-001C,CALSLT,jump,partial,M1,Calls page-1/page-2 targets in primary or expanded slots and restores both selectors when the target returns
+001C,CALSLT,jump,partial,M1,Calls page-1/page-2 targets with exact normal inputs in primary or expanded slots and restores both selectors when the target returns
 0020,DCOMPR,jump,partial,M0,Needs flag and clobber conformance tests
 0024,ENASLT,jump,partial,M1,Supports primary and validated expanded slot IDs on all four pages and updates SLTTBL
 0028,GETYPR,jump,stub,M6,
 002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
 002C,IDBYT2,data,partial,M0,US keyboard and BASIC identifiers
 002D,VERSION,data,partial,M0,MSX1 generation identifier
-0030,CALLF,jump,partial,M1,Supports inline calls to primary or expanded page-1/page-2 targets through CALSLT
+0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs
 0038,KEYINT,jump,partial,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY
 003B,INITIO,jump,stub,M1,
 003E,INIFNK,jump,stub,M3,
