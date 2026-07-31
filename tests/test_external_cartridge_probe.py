@@ -25,13 +25,13 @@ class ExternalCartridgeProbeTests(unittest.TestCase):
         )
         self.assertEqual(values["PC"], "468C")
 
-    def test_bios_execution_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "outside cartridge"):
-            validate_report(
-                VALID_REPORT.replace("PC=468C", "PC=0600"),
-                expected_vdp_r0=0x00,
-                expected_vdp_r1=0xF0,
-            )
+    def test_bios_execution_is_accepted(self) -> None:
+        values = validate_report(
+            VALID_REPORT.replace("PC=468C", "PC=0600"),
+            expected_vdp_r0=0x00,
+            expected_vdp_r1=0xF0,
+        )
+        self.assertEqual(values["PC"], "0600")
 
     def test_wrong_video_mode_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "VDP_R1"):

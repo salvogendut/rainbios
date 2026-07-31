@@ -1392,6 +1392,10 @@ write_vdp_register_block_loop:
 
 ; SCREEN 0: 40x24 text, name table at 0000h and font at 0800h.
 initxt:
+                ld a,(RG1SAV)
+                and #e7
+                or #50                         ; M1 selects text, display on
+                push af
                 ld hl,text40_vdp_registers
                 call write_vdp_register_block
                 ld hl,#0000
@@ -1416,13 +1420,18 @@ initxt:
                 ld a,1
                 ld (CSRY),a
                 ld (CSRX),a
-                ld b,#f0
+                pop af
+                ld b,a
                 ld c,1
                 jp wrtvdp
 
 ; SCREEN 1: 32x24 text/tiles. This first slice supplies the project font,
 ; clears the name and color tables, and hides sprites.
 init32:
+                ld a,(RG1SAV)
+                and #e7
+                or #40                         ; display on
+                push af
                 ld hl,text32_vdp_registers
                 call write_vdp_register_block
                 ld hl,#1800
@@ -1455,7 +1464,8 @@ init32:
                 ld a,1
                 ld (CSRY),a
                 ld (CSRX),a
-                ld b,#e0
+                pop af
+                ld b,a
                 ld c,1
                 jp wrtvdp
 
@@ -1463,6 +1473,10 @@ init32:
 ; the name table. Clear the bitmap and select white over black for every
 ; eight-pixel colour cell so callers begin with deterministic graphics VRAM.
 initgrp:
+                ld a,(RG1SAV)
+                and #e7
+                or #40                         ; display on
+                push af
                 ld hl,graphics2_vdp_registers
                 call write_vdp_register_block
                 ld hl,#1800
@@ -1499,7 +1513,8 @@ initgrp_name_loop:
                 ld (SCRMOD),a
                 ld a,(LINL32)
                 ld (LINLEN),a
-                ld b,#e0
+                pop af
+                ld b,a
                 ld c,1
                 jp wrtvdp
 

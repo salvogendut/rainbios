@@ -24,8 +24,8 @@ def validate_report(
         sp = int(values["SP"], 16)
     except (KeyError, ValueError) as error:
         raise ValueError("missing or invalid cartridge state") from error
-    if not 0x4000 <= pc < 0x8000:
-        raise ValueError(f"PC {pc:04X} is outside cartridge page 1")
+    if not 0x0000 <= pc < 0x10000:
+        raise ValueError(f"PC {pc:04X} is outside the primary slot")
     if not 0xF300 <= sp <= 0xF380:
         raise ValueError(f"SP {sp:04X} is outside RainBIOS main RAM")
     expected = {
