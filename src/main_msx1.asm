@@ -1728,20 +1728,51 @@ console_scroll_copy:
                 jr nz,console_scroll_copy
                 ret
 
+; Clear the current screen and home the cursor. Text modes clear their name
+; table with spaces; Graphics II clears the pattern and colour planes so the
+; visible bitmap empties to the background; multicolor clears its colour table.
 cls:
                 push hl
                 ld a,(SCRMOD)
                 cp 1
                 jr z,cls_screen1
+                cp 2
+                jr z,cls_screen2
+                cp 3
+                jr z,cls_screen3
                 ld hl,#0000
                 ld bc,960
-                jr cls_fill
+                jr cls_text_fill
 cls_screen1:
                 ld hl,#1800
                 ld bc,768
-cls_fill:
+cls_text_fill:
                 ld a,#20
                 call filvrm
+                jr cls_home
+cls_screen2:
+                ld hl,#0000
+                ld bc,#1800
+                xor a
+                call filvrm
+                ld hl,#2000
+                ld bc,#1800
+                ld a,(BAKCLR)
+                call filvrm
+                jr cls_home
+cls_screen3:
+                ld a,(BAKCLR)
+                and #0f
+                ld b,a
+                rlca
+                rlca
+                rlca
+                rlca
+                or b
+                ld hl,(NAMBAS)
+                ld bc,768
+                call filvrm
+cls_home:
                 ld a,1
                 ld (CSRX),a
                 ld (CSRY),a

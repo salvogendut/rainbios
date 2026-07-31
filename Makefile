@@ -78,10 +78,15 @@ TAPE_SAVE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_save_input.sym
 BBC_TAPE_IMAGE := $(BUILD_DIR)/cassettes/bbcbasic-tape.cas
 INVALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/invalid_payload.rom
 INVALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/invalid_payload.sym
+CLS_INPUT_CART := $(BUILD_DIR)/cartridges/cls_input.rom
+CLS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/cls_input.sym
 OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
 OPENMSX_CART_SCREEN := $(OPENMSX_ROOT)/rainbios_cartridge.png
+OPENMSX_CLS_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CLS_CARTRIDGE.xml
+OPENMSX_CLS_REPORT := $(OPENMSX_M1_REPORT_DIR)/cls.txt
 OPENMSX_EXPANDED_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_EXPANDED_CARTRIDGE.xml
 OPENMSX_EXPANDED_CART_REPORT := \
@@ -167,6 +172,7 @@ SOURCES := src/main_msx1.asm
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots \
 	test-openmsx-services test-openmsx-keyboard test-openmsx-font \
+	test-openmsx-cls \
 	test-openmsx-tape \
 	test-1983-tape \
 	test-openmsx-cartridge test-1983 \
@@ -214,6 +220,10 @@ $(MENU_INPUT_CART): tests/cartridges/menu_input.asm | $(BUILD_DIR)
 $(GRAPHICS_INPUT_CART): tests/cartridges/graphics_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(GRAPHICS_INPUT_CART_SYM)
+
+$(CLS_INPUT_CART): tests/cartridges/cls_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(CLS_INPUT_CART_SYM)
 
 $(DISK_BASELINE_CART): tests/cartridges/disk_baseline_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -450,6 +460,25 @@ $(OPENMSX_CART_MACHINE): \
 	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
 		-e 's|@CARTRIDGE_ROM@|$(abspath $(DIAGNOSTIC_CART))|' \
 		$< > $@
+
+$(OPENMSX_CLS_MACHINE): \
+		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(CLS_INPUT_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(CLS_INPUT_CART))|' \
+		-e 's|RainBIOS_M1_CARTRIDGE|RainBIOS_M1_CLS_CARTRIDGE|' \
+		-e 's|RainBIOS-MSX1-M1-CARTRIDGE|RainBIOS-MSX1-M1-CLS-CARTRIDGE|' \
+		$< > $@
+
+test-openmsx-cls: $(OPENMSX_CLS_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_CLS_CARTRIDGE \
+		-command "set cls_output {$(abspath $(OPENMSX_CLS_REPORT))}" \
+		-script "$(abspath tests/openmsx/cls_probe.tcl)"
+	$(PYTHON) tools/check_cls_probe.py $(OPENMSX_CLS_REPORT)
 
 test-openmsx-cartridge: $(OPENMSX_CART_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
