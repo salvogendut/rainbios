@@ -43,6 +43,8 @@ GRAPHICS_INPUT_CART := $(BUILD_DIR)/cartridges/graphics_input.rom
 GRAPHICS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/graphics_input.sym
 DISK_BASELINE_CART := $(BUILD_DIR)/cartridges/disk_baseline_input.rom
 DISK_BASELINE_CART_SYM := $(BUILD_DIR)/cartridges/disk_baseline_input.sym
+DISK_ROM_BOOT_CART := $(BUILD_DIR)/cartridges/disk_rom_boot_input.rom
+DISK_ROM_BOOT_CART_SYM := $(BUILD_DIR)/cartridges/disk_rom_boot_input.sym
 TAPE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_input.rom
 TAPE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_input.sym
 TAPE_PROBE_IMAGE := $(BUILD_DIR)/cassettes/tape-probe.cas
@@ -116,6 +118,8 @@ EMULATOR_1983_BBC_TAPE_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-tape.ppm
 EMULATOR_1983_DISK_BASELINE_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-baseline.ppm
+EMULATOR_1983_DISK_ROM_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-rom-hook.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -136,7 +140,7 @@ SOURCES := src/main_msx1.asm
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
-	test-1983-disk-baseline \
+	test-1983-disk-baseline test-1983-disk-boot \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
@@ -173,6 +177,10 @@ $(GRAPHICS_INPUT_CART): tests/cartridges/graphics_input.asm | $(BUILD_DIR)
 $(DISK_BASELINE_CART): tests/cartridges/disk_baseline_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(DISK_BASELINE_CART_SYM)
+
+$(DISK_ROM_BOOT_CART): tests/cartridges/disk_rom_boot_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_ROM_BOOT_CART_SYM)
 
 $(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -604,6 +612,20 @@ test-1983-disk-baseline: \
 		--screenshot "$(EMULATOR_1983_DISK_BASELINE_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_BASELINE_SCREEN)
+
+test-1983-disk-boot: \
+		$(MSX1_ROM) $(DISK_ROM_BOOT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --bios "$(MSX1_ROM)" \
+		--symbols "$(DISK_ROM_BOOT_CART_SYM)" \
+		--expected-pass-label disk_rom_boot_pass \
+		--expected-slot FC \
+		--disk-rom "$(DISK_ROM_BOOT_CART)" \
+		--screenshot "$(EMULATOR_1983_DISK_ROM_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DISK_ROM_SCREEN)
 
 test-1983-external-cartridges: test-1983-external-arkano \
 		test-1983-external-diagnostics

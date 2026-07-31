@@ -65,6 +65,9 @@ H_PHYD          equ #ffa7
 H_FORM          equ #ffac
 H_ISFL          equ #fedf
 H_OUTD          equ #fee4
+H_RUNC          equ #fecb
+DEVICE          equ #fd99
+DISK_SETUP      equ #fb29
 PTRFIL          equ #f864
 VOICEN          equ #fb38
 VCBA            equ #fb41
@@ -595,7 +598,26 @@ cold_boot_jingle_gap:
 ; non-BIOS slot and can invoke INIT in page 1 or page 2.
                 im 1
                 call cold_boot_scan_cartridges
+                call cold_boot_init_disk
                 ei
+                jr cold_boot_wait
+
+; Match the C-BIOS start-up sequence: initialize disk context and invoke the
+; disk-ROM bootstrap hook so the selected disk device can install itself before
+; the interactive menu is presented.
+cold_boot_init_disk:
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                ret nz                          ; payload menu takes precedence
+                ld a,(H_PHYD)
+                cp #f7
+                ret nz
+                ld a,1
+                ld (DEVICE),a
+                xor a
+                ld (DISK_SETUP),a
+                call H_RUNC
+                ret
 
 ; Wait for the translated Space character through the standard input path.
 cold_boot_wait:

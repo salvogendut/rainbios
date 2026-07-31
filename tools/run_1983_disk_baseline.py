@@ -68,12 +68,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--emulator", required=True)
     parser.add_argument("--models", type=pathlib.Path, required=True)
+    parser.add_argument("--model", default="msx1")
     parser.add_argument("--bios", type=pathlib.Path, required=True)
-    parser.add_argument("--cartridge", type=pathlib.Path, required=True)
+    parser.add_argument("--cartridge", type=pathlib.Path)
     parser.add_argument("--symbols", type=pathlib.Path, required=True)
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
     parser.add_argument("--expected-slot", default="F4")
     parser.add_argument("--expected-pass-label", default="disk_baseline_pass")
+    parser.add_argument("--disk-rom", type=pathlib.Path)
     parser.add_argument("--disk-a", type=pathlib.Path)
     parser.add_argument("--floppy-mode", default="read-only")
     arguments = parser.parse_args()
@@ -85,15 +87,11 @@ def main() -> int:
         "--models",
         str(arguments.models),
         "--model",
-        "msx1",
+        arguments.model,
         "--region",
         "ntsc",
         "--bios",
         str(arguments.bios),
-        "--cart",
-        str(arguments.cartridge),
-        "--mapper",
-        "linear",
         "--headless",
         "--unthrottled",
         "--exit-after",
@@ -102,6 +100,12 @@ def main() -> int:
         "--screenshot",
         str(arguments.screenshot),
     ]
+    if arguments.cartridge:
+        command.extend(
+            ["--cart", str(arguments.cartridge), "--mapper", "linear"]
+        )
+    if arguments.disk_rom:
+        command.extend(["--disk-rom", str(arguments.disk_rom)])
     if arguments.disk_a:
         command.extend(["--disk-a", str(arguments.disk_a), "--floppy-mode", arguments.floppy_mode])
 
