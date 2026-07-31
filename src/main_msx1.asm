@@ -30,6 +30,11 @@ LINL40          equ #f3ae
 LINL32          equ #f3af
 LINLEN          equ #f3b0
 CRTCNT          equ #f3b1
+MLTNAM          equ #f3d1
+MLTCOL          equ #f3d3
+MLTCGP          equ #f3d5
+MLTATR          equ #f3d7
+MLTPAT          equ #f3d9
 CSRY            equ #f3dc
 CSRX            equ #f3dd
 SCNCNT          equ #f3f6
@@ -131,18 +136,18 @@ STACK_TOP       equ #f380
                 jp ldirmv                       ; 0059 LDIRMV
                 jp ldirvm                       ; 005C LDIRVM
                 jp chgmod                       ; 005F CHGMOD
-                jp unsupported_call             ; 0062 CHGCLR
+                jp chgclr                       ; 0062 CHGCLR
                 defs #0066-$,#ff
                 jp nmi_handler                  ; 0066 NMI
                 jp unsupported_call             ; 0069 CLRSPR
                 jp initxt                       ; 006C INITXT
                 jp init32                       ; 006F INIT32
                 jp initgrp                      ; 0072 INITGRP
-                jp unsupported_call             ; 0075 INIMLT
+                jp inimlt                       ; 0075 INIMLT
                 jp unsupported_call             ; 0078 SETTXT
                 jp unsupported_call             ; 007B SETT32
                 jp unsupported_call             ; 007E SETGRP
-                jp unsupported_call             ; 0081 SETMLT
+                jp setmlt                       ; 0081 SETMLT
                 jp unsupported_call             ; 0084 CALPAT
                 jp unsupported_call             ; 0087 CALATR
                 jp unsupported_call             ; 008A GSPSIZ
@@ -475,6 +480,14 @@ bootstrap_empty_hook:
                 ld (PATBAS),hl
                 ld hl,#1b00
                 ld (ATRBAS),hl
+                ld hl,#0800
+                ld (MLTNAM),hl
+                ld hl,#0000
+                ld (MLTCGP),hl
+                ld hl,#1b00
+                ld (MLTATR),hl
+                ld hl,#3800
+                ld (MLTPAT),hl
                 ld a,1
                 ld (SCNCNT),a
                 ld a,50
@@ -1215,7 +1228,143 @@ wrtvdp:
                 pop af
                 ret
 
-; Minimal MSX1 mode dispatcher. Screen 3 remains explicitly unsupported.
+; $0062 CHGCLR: apply FORCLR/BAKCLR/BDRCLR to the current screen. The text
+; color and border come from the VDP R7 register; Screen 1 additionally
+; recolors its 32 color-table cells with (FORCLR<<4)|BAKCLR.
+chgclr:
+                ld a,(FORCLR)
+                rlca
+                rlca
+                rlca
+                rlca
+                and #f0
+                ld b,a
+                ld a,(BDRCLR)
+                or b
+                ld b,a
+                ld c,7
+                call wrtvdp
+                ld a,(SCRMOD)
+                cp 1
+                ret nz
+                ld a,(FORCLR)
+                rlca
+                rlca
+                rlca
+                rlca
+                and #f0
+                ld b,a
+                ld a,(BAKCLR)
+                or b
+                ld hl,#2000
+                ld bc,32
+                jp filvrm
+
+; $0081 SETMLT: switch the VDP to multicolor (Screen 3) using the MLTNAM,
+; MLTCOL, MLTCGP, MLTATR and MLTPAT base addresses. Those five RAM variables
+; are contiguous and map one-to-one onto the R2-R6 base registers.
+setmlt:
+                ld a,(R0SAV)
+                and #f1
+                ld b,a
+                ld c,0
+                call wrtvdp
+                ld a,(RG1SAV)
+                and #e7
+                or #08                         ; M2 selects multicolor
+                ld b,a
+                ld c,1
+                call wrtvdp
+                ld hl,setmlt_shift_table
+                ld de,MLTNAM
+                ld c,2
+setmlt_base_loop:
+                ld b,(hl)                      ; shift count for register c
+                inc hl
+                ld a,(de)
+                ld l,a
+                inc de
+                ld a,(de)
+                ld h,a
+                inc de
+                xor a
+setmlt_shift_loop:
+                add hl,hl
+                adc a,a
+                djnz setmlt_shift_loop
+                ld b,a
+                call wrtvdp
+                inc c
+                ld a,c
+                cp 7
+                jr nz,setmlt_base_loop
+                ret
+setmlt_shift_table:
+                db 6,10,5,9,5                  ; R2..R6
+
+; $0075 INIMLT: initialize multicolor mode. Publish the MLT* base addresses,
+; hide sprites, seed the name table with the canonical six-band color ramp so
+; callers that do not redraw still get a visible screen, and clear the pattern
+; plane to the background color.
+inimlt:
+                call disscr
+                ld a,3
+                ld (SCRMOD),a
+                call chgclr
+                ld hl,(MLTNAM)
+                ld (NAMBAS),hl
+                ld hl,(MLTCGP)
+                ld (CGPBAS),hl
+                ld hl,(MLTATR)
+                ld (ATRBAS),hl
+                ld hl,(MLTPAT)
+                ld (PATBAS),hl
+                call setmlt
+                ld hl,(ATRBAS)
+                ld a,#d0
+                call wrtvrm                     ; hide sprites
+                ld hl,(NAMBAS)
+                call setwrt
+                di
+                xor a
+                ld b,6
+inimlt_group:
+                push af
+                ld e,4
+inimlt_row:
+                push af
+                ld c,32
+inimlt_col:
+                out (VDP_DATA),a
+                inc a
+                dec c
+                jr nz,inimlt_col
+                pop af
+                dec e
+                jr nz,inimlt_row
+                pop af
+                add a,32
+                djnz inimlt_group
+                ei
+                ld a,(BAKCLR)
+                and #0f
+                ld b,a
+                rlca
+                rlca
+                rlca
+                rlca
+                or b
+                ld hl,(CGPBAS)
+                ld bc,#0800
+                call filvrm
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
+                ld a,(LINL32)
+                ld (LINLEN),a
+                jp enascr
+
+; Minimal MSX1 mode dispatcher for Screens 0-3.
 chgmod:
                 or a
                 jp z,initxt
@@ -1223,6 +1372,8 @@ chgmod:
                 jp z,init32
                 cp 2
                 jp z,initgrp
+                cp 3
+                jp z,inimlt
                 jp unsupported_call
 
 ; Program all eight TMS9918 registers from HL. The public WRTVDP path updates
