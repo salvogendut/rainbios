@@ -35,6 +35,7 @@ OPENMSX_EXPANDED_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/expanded-slot-calls.txt
 OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
 OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
+OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
 MENU_INPUT_CART := $(BUILD_DIR)/cartridges/menu_input.rom
@@ -163,7 +164,8 @@ SOURCES := src/main_msx1.asm
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots \
-	test-openmsx-services test-openmsx-keyboard test-openmsx-tape \
+	test-openmsx-services test-openmsx-keyboard test-openmsx-font \
+	test-openmsx-tape \
 	test-1983-tape \
 	test-openmsx-cartridge test-1983 \
 	test-openmsx-expanded-cartridge \
@@ -428,6 +430,15 @@ test-openmsx-keyboard: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set keyboard_output {$(abspath $(OPENMSX_KEYBOARD_REPORT))}" \
 		-script "$(abspath tests/openmsx/keyboard_probe.tcl)"
 	$(PYTHON) tools/check_keyboard_probe.py $(OPENMSX_KEYBOARD_REPORT)
+
+test-openmsx-font: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set font_output {$(abspath $(OPENMSX_FONT_REPORT))}" \
+		-script "$(abspath tests/openmsx/font_probe.tcl)"
+	$(PYTHON) tools/check_font_probe.py $(OPENMSX_FONT_REPORT)
 
 $(OPENMSX_CART_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \

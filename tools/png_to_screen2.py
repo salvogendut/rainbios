@@ -27,8 +27,10 @@ BOOT_NOTICE_BOX = (40, 176, 216, 192)
 BOOT_NOTICE_Y = 180
 
 # Original project 5x7 bitmap alphabet. Each integer is one five-pixel row.
-# Generated font data is therefore BSD-3-Clause, while the logo image and its
-# converted Graphics II tables remain CC0-1.0.
+# Uppercase letters use all seven rows. Lowercase letters use an x-height
+# body in rows 2-6, ascenders rising to row 1, and descenders (g, j, p, q, y)
+# carrying an eighth row. Generated font data is therefore BSD-3-Clause, while
+# the logo image and its converted Graphics II tables remain CC0-1.0.
 GLYPHS_5X7 = {
     " ": (0, 0, 0, 0, 0, 0, 0),
     "!": (0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0, 0b00100),
@@ -89,6 +91,32 @@ GLYPHS_5X7 = {
     "X": (0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001),
     "Y": (0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100),
     "Z": (0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111),
+    "a": (0, 0, 0b01110, 0b00001, 0b01111, 0b10001, 0b01111),
+    "b": (0, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b11110),
+    "c": (0, 0, 0b01110, 0b10000, 0b10000, 0b10000, 0b01110),
+    "d": (0, 0b00001, 0b00001, 0b01111, 0b10001, 0b10001, 0b01111),
+    "e": (0, 0, 0b01110, 0b10001, 0b11111, 0b10000, 0b01110),
+    "f": (0, 0b00110, 0b01000, 0b11110, 0b01000, 0b01000, 0b01000),
+    "g": (0, 0, 0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b01110),
+    "h": (0, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b10001),
+    "i": (0b00100, 0, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100),
+    "j": (0b00100, 0, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110),
+    "k": (0, 0b10000, 0b10000, 0b10000, 0b11000, 0b10100, 0b10010),
+    "l": (0, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000),
+    "m": (0, 0, 0b11110, 0b10001, 0b10010, 0b10010, 0b10010),
+    "n": (0, 0, 0b11110, 0b10001, 0b10001, 0b10001, 0b10001),
+    "o": (0, 0, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110),
+    "p": (0, 0, 0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000),
+    "q": (0, 0, 0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00011),
+    "r": (0, 0, 0b11110, 0b10001, 0b10000, 0b10000, 0b10000),
+    "s": (0, 0, 0b01111, 0b10000, 0b01110, 0b00001, 0b11110),
+    "t": (0, 0b01110, 0b00100, 0b11110, 0b00100, 0b00100, 0b00100),
+    "u": (0, 0, 0b10001, 0b10001, 0b10001, 0b10001, 0b01111),
+    "v": (0, 0, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100),
+    "w": (0, 0, 0b10001, 0b10001, 0b10101, 0b10101, 0b01010),
+    "x": (0, 0, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001),
+    "y": (0, 0, 0b10001, 0b10001, 0b01010, 0b00100, 0b01000, 0b10000),
+    "z": (0, 0, 0b11111, 0b00010, 0b00100, 0b01000, 0b11111),
     "[": (0b01110, 0b01000, 0b01000, 0b01000, 0b01000, 0b01000, 0b01110),
     "\\": (0b10000, 0b01000, 0b00100, 0b00010, 0b00001, 0, 0),
     "]": (0b01110, 0b00010, 0b00010, 0b00010, 0b00010, 0b00010, 0b01110),
@@ -243,10 +271,6 @@ def build_font() -> bytes:
         offset = ord(character) * 8
         for row_index, row_bits in enumerate(rows):
             font[offset + row_index] = row_bits << 2
-        if "A" <= character <= "Z":
-            lowercase_offset = ord(character.lower()) * 8
-            for row_index, row_bits in enumerate(rows):
-                font[lowercase_offset + row_index] = row_bits << 2
     return bytes(font)
 
 
