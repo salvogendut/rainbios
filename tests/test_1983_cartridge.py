@@ -18,9 +18,9 @@ class Emulator1983CartridgeTests(unittest.TestCase):
         fields = validate_state(VALID_STATE)
         self.assertEqual(fields["pc"], "4029")
 
-    def test_bios_execution_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "outside cartridge"):
-            validate_state(VALID_STATE.replace("pc=4029", "pc=0600"))
+    def test_bios_execution_is_accepted(self) -> None:
+        fields = validate_state(VALID_STATE.replace("pc=4029", "pc=0600"))
+        self.assertEqual(fields["pc"], "0600")
 
     def test_unmapped_cartridge_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "slot"):

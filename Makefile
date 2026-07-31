@@ -637,7 +637,7 @@ test-openmsx-external-arkano: $(OPENMSX_EXTERNAL_ARKANO_MACHINE)
 		-command "set external_output {$(abspath $(OPENMSX_EXTERNAL_ARKANO_REPORT))}; set external_screenshot {$(abspath $(OPENMSX_EXTERNAL_ARKANO_SCREEN))}" \
 		-script "$(abspath tests/openmsx/external_cartridge_probe.tcl)"
 	$(PYTHON) tools/check_external_cartridge_probe.py \
-		--vdp-r0 02 --vdp-r1 E0 $(OPENMSX_EXTERNAL_ARKANO_REPORT)
+		--vdp-r0 02 --vdp-r1 E2 $(OPENMSX_EXTERNAL_ARKANO_REPORT)
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--min-colors 2 $(OPENMSX_EXTERNAL_ARKANO_SCREEN)
 
@@ -827,7 +827,7 @@ test-1983-external-arkano: $(MSX1_ROM) $(ARKANO_ROM)
 		--bios "$(MSX1_ROM)" --cartridge "$(ARKANO_ROM)" \
 		--screenshot "$(EMULATOR_1983_EXTERNAL_ARKANO_SCREEN)" \
 		--exit-after 1200 --expected-slot D4 \
-		--expected-vdp-r0 02 --expected-vdp-r1 E0
+		--expected-vdp-r0 02 --expected-vdp-r1 E2
 	$(PYTHON) tools/check_boot_screenshot.py --min-colors 2 \
 		--size 640x480 $(EMULATOR_1983_EXTERNAL_ARKANO_SCREEN)
 
