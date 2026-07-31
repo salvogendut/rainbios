@@ -117,8 +117,9 @@ M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated
 into the standard 40-byte circular `KEYBUF`. `CHSNS` tests its read/write
 pointers, `CHGET` blocks under `HALT` with interrupts enabled and consumes one
-character, and `KILBUF` resets both pointers. Shift, Ctrl, printable ASCII,
-and editing keys are supported; repeat, lock/dead-key state, key click,
+character, and `KILBUF` resets both pointers. Shift, Ctrl, CAPS lock (state
+in `CAPST` at its published address, LED through PPI port C bit 6), printable
+ASCII, and editing keys are supported; repeat, dead-key state, key click,
 function-key expansion, and break handling remain separate work.
 
 M3B implements the published `TAPION`, `TAPIN`, `TAPIOF`, `TAPOON`,

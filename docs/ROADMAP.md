@@ -119,9 +119,10 @@ Status: in progress.
 
 M3A initializes the standard 40-byte key buffer and matrix work areas, scans
 international rows 0-8 from `KEYINT`, translates new printable and editing-key
-presses with Shift/Ctrl, and implements partial `CHSNS`/`CHGET` plus complete
-buffer clearing through `KILBUF`. A physical-matrix openMSX probe covers
-Shift+A and blocking Return input. The pinned BBC BASIC payload then passes
+presses with Shift/Ctrl, toggles the standard `CAPST` lock (and its LED) on
+CAPS presses, and implements partial `CHSNS`/`CHGET` plus complete buffer
+clearing through `KILBUF`. A physical-matrix openMSX probe covers Shift+A,
+blocking Return input, and both CAPS states. The pinned BBC BASIC payload then passes
 its editing, expression, program, error, timing, and timeout sequence with
 zero ROM writes; 1983 independently renders its banner and prompt.
 
@@ -131,7 +132,7 @@ input/output calls. Original fixtures confirm raw CAS input in openMSX and
 from BBC BASIC `SAVE` in openMSX. Standard CAS input is the current baseline;
 slow sampled-WAV replay remains pending.
 
-- complete auto-repeat, lock/dead-key state, function-key expansion, key click,
+- complete auto-repeat, dead-key state, function-key expansion, key click,
   and break handling;
 - implement PSG initialization, joystick, trigger, and paddle calls;
 - implement or explicitly classify printer and remaining basic-device calls;

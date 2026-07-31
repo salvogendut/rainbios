@@ -45,6 +45,7 @@ NEWKEY          equ #fbe5
 KEYBUF          equ #fbf0
 KEYBUF_END      equ #fc18
 JIFFY           equ #fc9e
+CAPST           equ #fcab
 SCRMOD          equ #fcaf
 BOTTOM          equ #fc48
 HIMEM           equ #fc4a
@@ -478,6 +479,11 @@ bootstrap_empty_hook:
                 ld (SCNCNT),a
                 ld a,50
                 ld (REPCNT),a
+                xor a
+                ld (CAPST),a                    ; caps off at boot
+                in a,(PPI_CONTROL_C)
+                or #40
+                out (PPI_CONTROL_C),a           ; CAPS LED off
                 ld hl,KEYBUF
                 ld (PUTPNT),hl
                 ld (GETPNT),hl
@@ -1584,8 +1590,9 @@ posit:
                 ret
 
 ; Partial international-keyboard input. KEYINT records newly pressed matrix
-; positions in the standard 40-byte circular buffer. Lock states, function-key
-; expansion, dead keys, key click, and auto-repeat remain later M3 work.
+; positions in the standard 40-byte circular buffer. The CAPS lock toggles
+; letter case like the official BIOS; function-key expansion, dead keys, key
+; click, and auto-repeat remain later M3 work.
 keyboard_scan:
                 ld a,6
                 call snsmat
@@ -1604,7 +1611,7 @@ keyboard_scan_row:
                 ld c,a
                 ld a,b
                 cp 6
-                jr z,keyboard_scan_next
+                jr z,keyboard_scan_modifier
                 ld a,c
                 or a
                 jr z,keyboard_scan_next
@@ -1625,6 +1632,19 @@ keyboard_scan_next:
                 cp 9
                 jr nz,keyboard_scan_row
                 ret
+
+; Modifier-row edges never reach the buffer, but a new CAPS press toggles the
+; lock state and the keyboard LED, matching the official BIOS.
+keyboard_scan_modifier:
+                bit 3,c                         ; CAPS key edge?
+                jr z,keyboard_scan_next
+                ld a,(CAPST)
+                cpl
+                ld (CAPST),a
+                in a,(PPI_CONTROL_C)
+                xor #40                         ; CAPS LED follows the lock
+                out (PPI_CONTROL_C),a
+                jr keyboard_scan_next
 
 ; B is the matrix row, C contains newly pressed bits, and D contains the
 ; active-low Shift/Ctrl row. Enqueue every translatable edge from low to high
@@ -1671,15 +1691,35 @@ keyboard_translate_printable:
                 bit 0,d
                 jr nz,keyboard_translate_table
                 ld hl,keymap_shifted
+; CAPS flips letter case, so Shift and the lock invert each other exactly
+; like the official BIOS. Ctrl reduces letters to control codes in any case.
 keyboard_translate_table:
                 add hl,bc
                 ld a,(hl)
                 bit 1,d
-                ret nz
+                jr z,keyboard_translate_ctrl
+                ld c,a                          ; no Ctrl: apply CAPS
+                and #df
                 cp 'A'
-                ret c
+                jr c,keyboard_translate_keep
                 cp 'Z'+1
-                ret nc
+                jr nc,keyboard_translate_keep
+                ld a,(CAPST)
+                or a
+                jr z,keyboard_translate_keep
+                ld a,c
+                xor #20
+                ld c,a
+keyboard_translate_keep:
+                ld a,c
+                ret
+keyboard_translate_ctrl:
+                ld c,a
+                and #df                         ; letters fold to uppercase
+                cp 'A'
+                jr c,keyboard_translate_keep
+                cp 'Z'+1
+                jr nc,keyboard_translate_keep
                 and #1f                         ; Ctrl+A through Ctrl+Z
                 ret
 keyboard_translate_row7:
@@ -2982,17 +3022,17 @@ graphics2_vdp_registers:
 keymap_unshifted:
                 db '0', '1', '2', '3', '4', '5', '6', '7'
                 db '8', '9', '-', '=', #5c, '[', ']', ';'
-                db #27, '`', ',', '.', '/', 0,   'A', 'B'
-                db 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
-                db 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
-                db 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-keymap_shifted:
-                db ')', '!', '@', '#', '$', '%', '^', '&'
-                db '*', '(', '_', '+', '|', '{', '}', ':'
-                db '"', '~', '<', '>', '?', 0,   'a', 'b'
+                db #27, '`', ',', '.', '/', 0,   'a', 'b'
                 db 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'
                 db 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'
                 db 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+keymap_shifted:
+                db ')', '!', '@', '#', '$', '%', '^', '&'
+                db '*', '(', '_', '+', '|', '{', '}', ':'
+                db '"', '~', '<', '>', '?', 0,   'A', 'B'
+                db 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
+                db 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
+                db 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
 keymap_row7:
                 db 0,0,#1b,#09,#03,#08,0,#0d
 keymap_row8:
