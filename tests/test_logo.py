@@ -50,14 +50,18 @@ class LogoConversionTest(unittest.TestCase):
             SCREEN1_COLOR_SIZE,
         )
 
-    def test_lowercase_letters_have_readable_boot_glyphs(self):
+    def test_lowercase_letters_have_distinct_readable_glyphs(self):
         font = (OUTPUT / "boot_font.bin").read_bytes()
         for uppercase in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
             lowercase = uppercase.lower()
             with self.subTest(lowercase=lowercase):
-                self.assertEqual(
+                self.assertNotEqual(
                     font[ord(lowercase) * 8 : (ord(lowercase) + 1) * 8],
                     font[ord(uppercase) * 8 : (ord(uppercase) + 1) * 8],
+                )
+                self.assertNotEqual(
+                    font[ord(lowercase) * 8 : (ord(lowercase) + 1) * 8],
+                    bytes(8),
                 )
 
     def test_printable_ascii_has_a_visible_glyph(self):
