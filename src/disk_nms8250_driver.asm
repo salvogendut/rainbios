@@ -6,20 +6,37 @@
 H_PHYD          equ #ffa7
 DRVINF          equ #fb21
 
-FDC_STATUS      equ #7ff8
-FDC_COMMAND     equ #7ff8
-FDC_TRACK       equ #7ff9
-FDC_SECTOR      equ #7ffa
-FDC_DATA        equ #7ffb
-FDC_SIDE        equ #7ffc
-FDC_DRIVE       equ #7ffd
-FDC_LINES       equ #7fff
+; The NMS 8250 controller window is fixed at #7ff8. A test shell may define
+; FDC_BASE before including this driver to redirect the window to a RAM test
+; double; production builds keep the hardware address.
+                ifndef FDC_BASE
+FDC_BASE        equ #7ff8
+                endif
+FDC_STATUS      equ FDC_BASE+0
+FDC_COMMAND     equ FDC_BASE+0
+FDC_TRACK       equ FDC_BASE+1
+FDC_SECTOR      equ FDC_BASE+2
+FDC_DATA        equ FDC_BASE+3
+FDC_SIDE        equ FDC_BASE+4
+FDC_DRIVE       equ FDC_BASE+5
+FDC_LINES       equ FDC_BASE+7
 
 DISK_MEDIA      equ #f9
 DISK_SECTORS    equ 1440
 DISK_TRACK_SIZE equ 18
 DISK_SIDE_SIZE  equ 9
 DISK_RAM_LIMIT  equ #f000
+DISK_SECTOR_SIZE equ 512
+DISK_CLUSTER_SIZE equ 2
+DISK_FAT_SIZE   equ 3
+DISK_FAT_COUNT  equ 2
+DISK_ROOT_ENTRIES equ 112
+DISK_RESERVED   equ 1
+DISK_DIR_SIZE   equ DISK_ROOT_ENTRIES*32/DISK_SECTOR_SIZE
+DISK_FIRST_FAT  equ DISK_RESERVED
+DISK_FIRST_DIR  equ DISK_RESERVED+DISK_FAT_COUNT*DISK_FAT_SIZE
+DISK_FIRST_DATA equ DISK_FIRST_DIR+DISK_DIR_SIZE
+DISK_CLUSTERS   equ (DISK_SECTORS-DISK_FIRST_DATA)/DISK_CLUSTER_SIZE
 
 disk_driver_init:
                 push iy
@@ -426,3 +443,82 @@ disk_wait_irq_loop:
 disk_wait_irq_done:
                 or a
                 ret
+
+; DSKCHG entry. A is the drive number, B and C the media descriptors, and HL
+; the base of the DPB. The medium-change flag is drained from the drive
+; register and the controller status is probed without starting a command;
+; both are single reads, so this never spins. Returns carry clear with B = FFh
+; when the medium has changed, 1 when it is still in place, and 0 when the
+; state is unknown (drive not ready). A drive number other than A reports
+; error 12.
+disk_dskchg:
+                or a
+                jr nz,disk_dskchg_bad_parameter
+                ld a,(FDC_DRIVE)               ; bit 2 clear means disk changed
+                bit 2,a
+                jr nz,disk_dskchg_probe_unchanged
+                ld a,(FDC_STATUS)
+                bit 7,a
+                jr nz,disk_dskchg_unknown
+                ld b,#ff
+                jr disk_dskchg_success
+disk_dskchg_probe_unchanged:
+                ld a,(FDC_STATUS)
+                bit 7,a
+                jr nz,disk_dskchg_unknown
+                ld b,1
+disk_dskchg_success:
+                xor a
+                ret
+disk_dskchg_unknown:
+                xor a
+                ld b,a
+                ret
+disk_dskchg_bad_parameter:
+                ld a,12
+                ld b,0
+                scf
+                ret
+
+; GETDPB entry. A is the drive number, B the media descriptor read from the
+; FAT, and C the expected media descriptor. Publishes the fixed F9 DPB in the
+; 18 bytes HL+1..HL+18 and returns carry clear with A and B zero, preserving
+; DE and HL. The drive number byte at HL and the FAT pointer at HL+19 are
+; maintained by the DOS kernel. A drive number other than A reports error 12.
+disk_getdpb:
+                or a
+                jr nz,disk_getdpb_bad_parameter
+                push de
+                push hl
+                ex de,hl                     ; DE = DPB base
+                inc de                       ; DE = first published byte
+                ld hl,disk_dpb               ; HL = source block
+                ld bc,18
+                ldir
+                pop hl
+                pop de
+                xor a
+                ld b,a
+                ret
+disk_getdpb_bad_parameter:
+                ld a,12
+                ld b,0
+                scf
+                ret
+
+; Fixed 720 KiB F9 DPB in the layout published by GETDPB. The first byte and
+; the last two bytes of the per-drive parameter block belong to the kernel.
+disk_dpb:
+                db DISK_MEDIA                  ; MEDIA
+                dw DISK_SECTOR_SIZE            ; SECBIZ
+                db (DISK_SECTOR_SIZE/32)-1     ; DIRMSK
+                db 4                           ; DIRSHFT
+                db DISK_CLUSTER_SIZE-1         ; CLUSMSK
+                db 2                           ; CLUSSHFT
+                dw DISK_FIRST_FAT              ; FIRFAT
+                db DISK_FAT_COUNT              ; FATCNT
+                db DISK_ROOT_ENTRIES           ; MAXENT
+                dw DISK_FIRST_DATA             ; FIRREC
+                dw DISK_CLUSTERS+1             ; MAXCLUS
+                db DISK_FAT_SIZE               ; FATSIZ
+                dw DISK_FIRST_DIR              ; FIRDIR

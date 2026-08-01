@@ -180,9 +180,15 @@ and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
 Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
 side/track crossings on 720 KiB media. Reproducible 1983 probes cover success,
 no media, partial record-not-found counts, and write rejection without host
-image changes. Disk boot, filesystem services, formatting, drive B, other
-controllers, writable media, and real-hardware timing validation remain
-pending.
+image changes. An openMSX controller test double injects stuck IRQ, stuck DRQ,
+CRC, lost-data, and seek/not-found/not-ready faults to exercise the driver's
+timeout and error-mapping branches. `DSKCHG` reports changed, unchanged, and
+unknown states from the WD2793 drive register and status without ever starting
+the motor, and `GETDPB` publishes the fixed F9 DPB without touching the
+controller; both report error 12 for drives other than A and are validated by
+1983 probes with and without a mounted image. Disk boot, filesystem services,
+formatting, drive B, other controllers, writable media, and real-hardware
+timing validation remain pending.
 
 - close remaining main BIOS and SUB-ROM ABI gaps;
 - characterize flags, clobbered registers, timing-sensitive I/O, and error

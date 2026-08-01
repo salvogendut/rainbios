@@ -35,6 +35,71 @@ On success carry is clear, A is zero, and B is the requested sector count. On
 failure carry is set, A is an error code, and B is the number of fully completed
 sectors. AF, C, DE, HL, IX, IY, and alternate registers are clobbered.
 
+## DSKCHG contract
+
+Standard `DSKCHG` entry `4013h`. Inputs follow the MSX-DOS `DSKCHG` calling
+convention:
+
+| Input | Supported value |
+| --- | --- |
+| A | `00h`, drive A |
+| B | ignored; the kernel passes `00h` |
+| C | `F9h`, expected media descriptor |
+| HL | Base of the 21-byte DPB |
+
+The medium-change flag is drained from the WD2793 drive register and the
+controller status is probed without issuing a command; both are single reads,
+so the call never spins or starts the motor. On success carry is clear and A is
+zero, with B reporting the change state:
+
+| B | Meaning |
+| --- | --- |
+| `FFh` | The medium has changed since the last `DSKCHG`; the FAT and data buffers must be discarded |
+| `01h` | The medium is still in place |
+| `00h` | Unknown (drive not ready) |
+
+A drive number other than A reports error 12 with carry set and B zero. C, DE,
+and HL are clobbered.
+
+## GETDPB contract
+
+Standard `GETDPB` entry `4016h`. Inputs follow the MSX-DOS `GETDPB` calling
+convention:
+
+| Input | Supported value |
+| --- | --- |
+| A | `00h`, drive A |
+| B | ignored; the kernel passes the descriptor read from the FAT |
+| C | `F9h`, expected media descriptor |
+| HL | Base of the 21-byte per-drive parameter block |
+
+The fixed F9 DPB is published in the 18 bytes `HL+1` through `HL+18`. The drive
+number byte at `HL` and the FAT buffer pointer at `HL+19..HL+20` belong to the
+kernel and are left untouched. On success carry is clear and A and B are zero,
+and DE and HL are preserved. A drive number other than A reports error 12 with
+carry set and B zero.
+
+The published 720 KiB F9 layout is:
+
+| Field | Offset | Value |
+| --- | --- | --- |
+| MEDIA | HL+1 | `F9h` |
+| SECBIZ | HL+2 | `0200h` (512) |
+| DIRMSK | HL+4 | `0Fh` |
+| DIRSHFT | HL+5 | `04h` |
+| CLUSMSK | HL+6 | `01h` |
+| CLUSSHFT | HL+7 | `02h` |
+| FIRFAT | HL+8 | `0001h` |
+| FATCNT | HL+10 | `02h` |
+| MAXENT | HL+11 | `70h` (112) |
+| FIRREC | HL+12 | `000Eh` (14) |
+| MAXCLUS | HL+14 | `02CAh` (714) |
+| FATSIZ | HL+16 | `03h` |
+| FIRDIR | HL+17 | `0007h` |
+
+The `MAXCLUS` value is `DISK_CLUSTERS + 1`, so DOS stores the true count minus
+one in the FAT, matching the MSX-DOS `DSKCHG`/`GETDPB` usage.
+
 ## Error codes
 
 | A | Meaning |
@@ -71,7 +136,11 @@ motor, and reports only the completely validated sector prefix.
 ## Limitations
 
 The current component does not provide disk boot, FAT or DOS services,
-`DSKCHG`, `GETDPB`, formatting, drive B, writes, or controllers other than the
-NMS 8250 memory-mapped WD2793. Emulator validation does not establish real
-hardware DRQ timing, motor spin-up timing, or side/drive polarity; those remain
-explicit compatibility work.
+`DSKCHG` media-change driven DOS calls, formatting, drive B, writes, or
+controllers other than the NMS 8250 memory-mapped WD2793. The change state is
+synthesized from the WD2793 drive register and controller status rather than a
+mechanical switch, so it cannot distinguish a swapped medium of identical
+geometry from the originally mounted image. Emulator validation does not
+establish real hardware DRQ timing, motor spin-up timing, or side/drive
+polarity; those remain explicit compatibility work with a concrete test plan in
+`docs/HARDWARE_TEST.md`.

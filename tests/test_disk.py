@@ -72,6 +72,32 @@ class DiskRomLayoutTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.rom = DISK_ROM_PATH.read_bytes()
 
+    def _dpb_file_offset(self) -> int:
+        expected = bytes(
+            (
+                0xF9,  # MEDIA
+                0x00, 0x02,  # SECBIZ 512
+                0x0F,  # DIRMSK
+                0x04,  # DIRSHFT
+                0x01,  # CLUSMSK
+                0x02,  # CLUSSHFT
+                0x01, 0x00,  # FIRFAT 1
+                0x02,  # FATCNT
+                0x70,  # MAXENT 112
+                0x0E, 0x00,  # FIRREC 14
+                0xCA, 0x02,  # MAXCLUS 714
+                0x03,  # FATSIZ
+                0x07, 0x00,  # FIRDIR 7
+            )
+        )
+        occurrences = [
+            index
+            for index in range(len(self.rom) - len(expected) + 1)
+            if self.rom[index : index + len(expected)] == expected
+        ]
+        self.assertEqual(len(occurrences), 1)
+        return occurrences[0]
+
     def test_rom_is_a_16_kib_extension(self) -> None:
         self.assertEqual(len(self.rom), 0x4000)
         self.assertEqual(self.rom[:2], b"AB")
@@ -81,6 +107,33 @@ class DiskRomLayoutTests(unittest.TestCase):
 
     def test_standard_dskio_entry_is_a_jump(self) -> None:
         self.assertEqual(self.rom[0x10], 0xC3)
+
+    def test_dskchg_and_getdpb_entries_are_jumps(self) -> None:
+        for offset in (0x13, 0x16):
+            self.assertEqual(self.rom[offset], 0xC3)
+        for target in (
+            int.from_bytes(self.rom[0x14:0x16], "little"),
+            int.from_bytes(self.rom[0x17:0x19], "little"),
+        ):
+            self.assertGreaterEqual(target, 0x4000)
+            self.assertLess(target, 0x8000)
+
+    def test_getdpb_publishes_the_f9_dpb(self) -> None:
+        self._dpb_file_offset()
+
+    def test_getdpb_copies_the_dpb_block_with_ldir(self) -> None:
+        self.assertEqual(self.rom[0x16], 0xC3)
+        target = int.from_bytes(self.rom[0x17:0x19], "little") - 0x4000
+        code = self.rom[target : target + 32]
+        # LDIR copies from (HL) to (DE); GETDPB publishes at HL+1 so it must
+        # place the DPB block in HL and DE at the DPB base before incrementing.
+        self.assertIn(bytes((0xEB, 0x13)), code)  # EX DE,HL ; INC DE
+        self.assertIn(bytes((0x01, 0x12, 0x00, 0xED, 0xB0)), code)  # LD BC,18 ; LDIR
+        dpb_address = 0x4000 + self._dpb_file_offset()
+        self.assertIn(
+            bytes((0x21, dpb_address & 0xFF, dpb_address >> 8)),
+            code,  # LD HL,disk_dpb
+        )
 
     def test_choice_reports_no_format_options(self) -> None:
         self.assertEqual(self.rom[0x19], 0xC3)

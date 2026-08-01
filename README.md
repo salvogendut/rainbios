@@ -127,9 +127,11 @@ Standard CAS streams are the supported input baseline. Replay of slow sampled
 WAV recordings still needs decoder hardening and is not claimed yet.
 
 The optional source-built NMS 8250 disk extension provides read-only `PHYDIO`
-for drive A on 720 KiB `F9h` media. It supports arbitrary logical sectors and
-multi-sector reads across side and track boundaries, with bounded controller
-waits and standard error codes. Build the 16 KiB component with:
+for drive A on 720 KiB `F9h` media, plus `DSKCHG` and `GETDPB`. It supports
+arbitrary logical sectors and multi-sector reads across side and track
+boundaries, reports medium change state without starting the motor, publishes
+the fixed F9 DPB, and bounds all controller waits, returning standard error
+codes. Build the 16 KiB component with:
 
 ```sh
 make nms8250-disk-rom
@@ -141,7 +143,8 @@ clobber contract is documented in
 
 The disk probes verify safe no-device defaults, extension bootstrap, production
 hook/drive registration, cross-side/track reads, no-media handling, exact
-partial-transfer counts, and write rejection without changing a
+partial-transfer counts, `DSKCHG` changed/unchanged/unknown states with and
+without media, `GETDPB` DPB publication, and write rejection without changing a
 read/write-mounted image:
 
 ```sh
@@ -149,6 +152,8 @@ make test-1983-disk-baseline
 make test-1983-disk-boot
 make test-1983-disk-read
 make test-1983-disk-no-media
+make test-1983-disk-dskchg-getdpb
+make test-1983-disk-dskchg-no-media
 make test-1983-disk-partial-error
 make test-1983-disk-write-guard
 make test-1983-nms8250-disk-rom

@@ -294,3 +294,29 @@ This revision builds a 16 KiB `basic.rom`, a 7 KiB RAM segment, and a separate
 MSX payload would therefore require a source-level port, not a binary wrapper.
 BBC BASIC is now the selected first payload; SE BASIC remains an optional
 future experiment, and the adjacent upstream checkout is to remain unmodified.
+
+## 2026-08-01 — MSX Wiki disk-ROM and DPB pages
+
+- Pages consulted:
+  - `https://www.msx.org/wiki/Disk-ROM_Bios`
+  - `https://www.msx.org/wiki/DPB`
+- Material consulted: the `DSKCHG` and `GETDPB` entry contract and the full
+  21-byte per-drive parameter block layout (`DRIVE`, `MEDIA`, `SECBIZ`,
+  `DIRMSK`, `DIRSHFT`, `CLUSMSK`, `CLUSSHFT`, `FIRFAT`, `FATCNT`, `MAXENT`,
+  `FIRREC`, `MAXCLUS`, `FATSIZ`, `FIRDIR`, `FATPT`)
+- Purpose: fix the exact byte layout the disk ROM must publish at `HL+1..HL+18`
+  and the caller/callee register expectations
+- RainBIOS use: interface and behavioral facts only
+
+## 2026-08-01 — RookieDrive FDD disk ROM and MSX-DOS 1 kernel source
+
+- Upstream repository: `https://github.com/Konamiman/RookieDrive-FDD-ROM`
+- Material consulted: `msx/bank0/kernel.asm` (downloaded 2026-08-01, 8,779
+  lines), the public MSX-DOS 1 kernel implementation
+- Material consulted in `kernel.asm`: the `DSKCHG` call site and its return
+  handling (`B=FFh` forces FAT/data-buffer reload, `B=1` means unchanged,
+  `B=0` means unknown), the `GETDPB` call site, and the 21-byte DPB ownership
+  split (kernel maintains the `DRIVE` byte and the FAT pointer at `HL+19`)
+- Purpose: cross-check the MSX-DOS 1 kernel's exact calling convention and
+  DPB byte ownership before implementing RainBIOS `DSKCHG`/`GETDPB`
+- RainBIOS use: interface and behavioral facts only; no code copied

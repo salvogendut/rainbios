@@ -12,8 +12,8 @@
                 defs #4010-$,0
 
                 jp disk_phydio                 ; 4010 DSKIO
-                jp disk_unsupported            ; 4013 DSKCHG
-                jp disk_unsupported            ; 4016 GETDPB
+                jp disk_dskchg                 ; 4013 DSKCHG
+                jp disk_getdpb                 ; 4016 GETDPB
                 jp disk_no_choice              ; 4019 CHOICE
                 jp disk_unsupported            ; 401C DSKFMT
                 jp disk_motor_off              ; 401F MTOFF

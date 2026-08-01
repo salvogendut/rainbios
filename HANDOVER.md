@@ -24,7 +24,7 @@ changes in a dirty worktree.
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
 | MSX1 main BIOS | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS |
-| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO implemented |
+| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB implemented |
 | BBC BASIC payload | Built in sibling repository | `../bbcbasic-z80-msx/build/msx-console/bbcbasic_msx_console.rom` | Integrated optional payload |
 | MSX2 main BIOS | Not yet available | Planned 32 KiB ROM | M5 pending |
 | MSX2 SUB-ROM | Not yet available | Planned 16 KiB ROM | M5 pending |
@@ -90,14 +90,18 @@ The optional NMS 8250 disk-ROM layer:
 - returns standard errors for write protection, no media, data errors, seek
   errors, record-not-found, bad parameters, and timeouts;
 - returns B as the exact number of fully completed sectors on runtime failure;
-- rejects writes before issuing a WD2793 write command.
+- rejects writes before issuing a WD2793 write command;
+- reports medium change state from the WD2793 drive register and controller
+  status without ever starting the motor or issuing a command;
+- publishes the fixed F9 DPB and preserves the kernel-owned drive and FAT
+  pointer bytes.
 
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
-The disk ROM does not yet provide disk boot, FAT or DOS services, `DSKCHG`,
-`GETDPB`, formatting, drive B, writes, non-NMS controllers, or real-hardware
-timing guarantees. Destination buffers must remain within `8000h-EFFFh` while
-the extension occupies page 1.
+The disk ROM does not yet provide disk boot, FAT or DOS services, formatting,
+drive B, writes, non-NMS controllers, or real-hardware timing guarantees.
+Destination buffers must remain within `8000h-EFFFh` while the extension
+occupies page 1.
 
 ## Floppy Test Design
 
@@ -119,11 +123,30 @@ Coverage includes:
 - a direct seek to LBA 731;
 - the final two logical sectors;
 - no-media error 2 with zero completed sectors;
-- record-not-found error 8 with exactly one completed sector.
+- record-not-found error 8 with exactly one completed sector;
+- `GETDPB` error 12 for drives other than A;
+- `GETDPB` publishing the exact 18-byte F9 DPB at `HL+1` while preserving the
+  kernel drive byte, the FAT pointer, DE, and HL;
+- `DSKCHG` error 12 for drives other than A;
+- `DSKCHG` reporting a changed medium (`B=FFh`) on the first call after mount
+  and an unchanged medium (`B=01h`) on the next call;
+- `DSKCHG` reporting an unknown state (`B=00h`) without an error when the drive
+  has no media, with `GETDPB` still publishing the DPB.
 
 The 1983 emulator models controller state and raw media but idealizes motor,
 seek, and per-byte DRQ timing. Passing emulator tests does not prove real
 hardware timing or polarity.
+
+A separate openMSX fault-injection fixture redirects the shared driver to a RAM
+controller double at `#e000` (`FDC_BASE`), so a write watchpoint can program
+WD2793 STATUS/TRACK/LINES between the driver's own reads. It covers error paths
+a raw DSK image cannot reach: stuck seek IRQ, seek not-ready timeout and
+not-ready, seek CRC, record-missing, verify, stuck read DRQ, stuck read IRQ,
+early IRQ, read CRC, lost data, not-found, not-ready, and an inconsistent
+status. A clean seek+read control runs first; each fault scenario asserts the
+exact error code the driver must return, and any mismatch parks the cartridge
+on a named `disk_fault_fail_*` loop that the probe turns into a FAIL report.
+See `tests/openmsx/disk_fault_probe.tcl`.
 
 ## Build And Validation
 
@@ -142,6 +165,8 @@ make test-1983-disk-baseline
 make test-1983-disk-boot
 make test-1983-disk-read
 make test-1983-disk-no-media
+make test-1983-disk-dskchg-getdpb
+make test-1983-disk-dskchg-no-media
 make test-1983-disk-partial-error
 make test-1983-disk-write-guard
 make test-1983-nms8250-disk-rom
@@ -160,11 +185,15 @@ openMSX is installed as a Flatpak on the current workstation. Use:
 
 ```sh
 make test-openmsx-slots test-openmsx-expanded-slots test-openmsx-services \
+  test-openmsx-disk-fault \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
 The Flatpak may print an ALSA sequencer permission warning; the headless test
-reports still validate successfully.
+reports still validate successfully. The Flatpak runs `-command` and `-script`
+in separate Tcl interpreters, so the disk-fault runner generates a wrapper
+script that defines `disk_fault_output`, `disk_fault_pass`, and
+`disk_fault_fails` before sourcing the probe.
 
 Before committing, also run:
 
@@ -189,7 +218,10 @@ is:
 
 ## Recommended Next Work
 
-The immediate floppy priority is real NMS 8250-compatible hardware validation:
+The immediate floppy priority is real NMS 8250-compatible hardware validation.
+`docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ
+service rate against the DD byte-cell window (item 13) and the LINES polarity
+assumptions (items 2-3):
 
 1. Confirm drive-select, motor, and side-register polarity.
 2. Measure whether the ROM DRQ loop services a real double-density byte stream
@@ -198,16 +230,17 @@ The immediate floppy priority is real NMS 8250-compatible hardware validation:
 4. Record the machine/controller revision and observed timing in the
    compatibility documentation.
 
-If hardware is unavailable, the next emulator-backed slice should add explicit
-controller fault injection or a controller test double for stuck IRQ, stuck
-DRQ, CRC, lost-data, and seek-error paths. This would execute timeout and status
-mapping branches that raw DSK images cannot naturally reach.
+The emulator-backed controller fault-injection slice is complete: the openMSX
+test double exercises the timeout, status-mapping, and error-return branches
+that raw DSK images cannot reach. Real hardware can now be used to confirm that
+the injected polarity assumptions (LINES bit 6 as inverted IRQ) match the NMS
+8250.
 
 After timing/error behavior is established, the next functional disk milestone
-should be chosen explicitly. The smallest useful progression is read-only
-`DSKCHG` and `GETDPB`, followed by a minimal deterministic boot-sector path.
-Filesystem services, drive B, formatting, and writes should remain separate
-milestones with their own tests and provenance.
+should be chosen explicitly. The read-only `DSKCHG` and `GETDPB` entries are
+complete; the smallest useful progression from here is a minimal deterministic
+boot-sector path. Filesystem services, drive B, formatting, and writes should
+remain separate milestones with their own tests and provenance.
 
 Broader project work can instead return to the unfinished M1-M4 items in
 `docs/ROADMAP.md`; do not imply that floppy support makes the main BIOS complete.
@@ -226,10 +259,15 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `docs/REFERENCES.md` | Exact implementation/test references |
 | `tools/make_test_disk.py` | Deterministic raw DSK fixture generator |
 | `tools/run_1983_disk_baseline.py` | Symbol-based disk integration runner |
+| `tools/run_openmsx_disk_fault.py` | Symbol-based openMSX fault-injection runner |
 | `tests/cartridges/disk_phydio_rom.asm` | General read and validation probe |
 | `tests/cartridges/disk_no_media_rom.asm` | No-media probe |
+| `tests/cartridges/disk_dskchg_getdpb_rom.asm` | DSKCHG/GETDPB probe with a mounted image |
+| `tests/cartridges/disk_dskchg_no_media_rom.asm` | DSKCHG/GETDPB probe without media |
 | `tests/cartridges/disk_partial_error_rom.asm` | Partial-transfer accounting probe |
 | `tests/cartridges/disk_production_init_input.asm` | Production hook/drive registration probe |
+| `tests/cartridges/disk_fault_rom.asm` | Controller fault-injection cartridge |
+| `tests/openmsx/disk_fault_probe.tcl` | openMSX WD2793 controller test double |
 
 ## Engineering Notes
 

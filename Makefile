@@ -58,6 +58,17 @@ DISK_NO_MEDIA_TEST_ROM := $(BUILD_DIR)/cartridges/disk_no_media_rom.rom
 DISK_NO_MEDIA_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_no_media_rom.sym
 DISK_NO_MEDIA_TEST_SOURCES := tests/cartridges/disk_no_media_rom.asm \
 	src/disk_nms8250_driver.asm
+DISK_DSKCHG_TEST_ROM := $(BUILD_DIR)/cartridges/disk_dskchg_getdpb_rom.rom
+DISK_DSKCHG_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_dskchg_getdpb_rom.sym
+DISK_DSKCHG_TEST_SOURCES := tests/cartridges/disk_dskchg_getdpb_rom.asm \
+	src/disk_nms8250_driver.asm
+DISK_DSKCHG_NO_MEDIA_TEST_ROM := \
+	$(BUILD_DIR)/cartridges/disk_dskchg_no_media_rom.rom
+DISK_DSKCHG_NO_MEDIA_TEST_ROM_SYM := \
+	$(BUILD_DIR)/cartridges/disk_dskchg_no_media_rom.sym
+DISK_DSKCHG_NO_MEDIA_TEST_SOURCES := \
+	tests/cartridges/disk_dskchg_no_media_rom.asm \
+	src/disk_nms8250_driver.asm
 DISK_PHYDIO_IMAGE := $(BUILD_DIR)/disks/disk-phydio.dsk
 DISK_PARTIAL_TEST_ROM := $(BUILD_DIR)/cartridges/disk_partial_error_rom.rom
 DISK_PARTIAL_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_partial_error_rom.sym
@@ -68,6 +79,10 @@ DISK_PRODUCTION_INIT_CART := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.rom
 DISK_PRODUCTION_INIT_CART_SYM := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.sym
+DISK_FAULT_TEST_ROM := $(BUILD_DIR)/cartridges/disk_fault_rom.rom
+DISK_FAULT_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_fault_rom.sym
+DISK_FAULT_TEST_SOURCES := tests/cartridges/disk_fault_rom.asm \
+	src/disk_nms8250_driver.asm
 TAPE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_input.rom
 TAPE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_input.sym
 TAPE_PROBE_IMAGE := $(BUILD_DIR)/cassettes/tape-probe.cas
@@ -84,6 +99,9 @@ OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
 OPENMSX_CART_SCREEN := $(OPENMSX_ROOT)/rainbios_cartridge.png
+OPENMSX_FAULT_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_DISK_FAULT.xml
+OPENMSX_FAULT_REPORT := $(OPENMSX_M1_REPORT_DIR)/disk-fault.txt
 OPENMSX_CLS_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CLS_CARTRIDGE.xml
 OPENMSX_CLS_REPORT := $(OPENMSX_M1_REPORT_DIR)/cls.txt
@@ -176,6 +194,7 @@ SOURCES := src/main_msx1.asm
 	test-openmsx-tape \
 	test-1983-tape \
 	test-openmsx-cartridge test-1983 \
+	test-openmsx-disk-fault \
 	test-openmsx-expanded-cartridge \
 	test-1983-expanded \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
@@ -184,6 +203,7 @@ SOURCES := src/main_msx1.asm
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot test-1983-disk-read \
 	test-1983-disk-no-media test-1983-disk-write-guard \
+	test-1983-disk-dskchg-getdpb test-1983-disk-dskchg-no-media \
 	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
@@ -265,6 +285,29 @@ $(DISK_NO_MEDIA_TEST_ROM_SYM): $(DISK_NO_MEDIA_TEST_ROM)
 			-ob $(DISK_NO_MEDIA_TEST_ROM) -s -os $@; \
 	fi
 
+$(DISK_DSKCHG_TEST_ROM): $(DISK_DSKCHG_TEST_SOURCES) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -Isrc -ob $(DISK_DSKCHG_TEST_ROM) \
+		-s -os $(DISK_DSKCHG_TEST_ROM_SYM)
+
+$(DISK_DSKCHG_TEST_ROM_SYM): $(DISK_DSKCHG_TEST_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(DISK_DSKCHG_TEST_SOURCES)) -Isrc \
+			-ob $(DISK_DSKCHG_TEST_ROM) -s -os $@; \
+	fi
+
+$(DISK_DSKCHG_NO_MEDIA_TEST_ROM): $(DISK_DSKCHG_NO_MEDIA_TEST_SOURCES) | \
+		$(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -Isrc -ob $(DISK_DSKCHG_NO_MEDIA_TEST_ROM) \
+		-s -os $(DISK_DSKCHG_NO_MEDIA_TEST_ROM_SYM)
+
+$(DISK_DSKCHG_NO_MEDIA_TEST_ROM_SYM): $(DISK_DSKCHG_NO_MEDIA_TEST_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(DISK_DSKCHG_NO_MEDIA_TEST_SOURCES)) -Isrc \
+			-ob $(DISK_DSKCHG_NO_MEDIA_TEST_ROM) -s -os $@; \
+	fi
+
 $(DISK_PARTIAL_TEST_ROM): $(DISK_PARTIAL_TEST_SOURCES) | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -Isrc -ob $(DISK_PARTIAL_TEST_ROM) \
@@ -274,6 +317,17 @@ $(DISK_PARTIAL_TEST_ROM_SYM): $(DISK_PARTIAL_TEST_ROM)
 	@if test ! -f "$@"; then \
 		$(RASM) $(firstword $(DISK_PARTIAL_TEST_SOURCES)) -Isrc \
 			-ob $(DISK_PARTIAL_TEST_ROM) -s -os $@; \
+	fi
+
+$(DISK_FAULT_TEST_ROM): $(DISK_FAULT_TEST_SOURCES) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -Isrc -ob $(DISK_FAULT_TEST_ROM) \
+		-s -os $(DISK_FAULT_TEST_ROM_SYM)
+
+$(DISK_FAULT_TEST_ROM_SYM): $(DISK_FAULT_TEST_ROM)
+	@if test ! -f "$@"; then \
+		$(RASM) $(firstword $(DISK_FAULT_TEST_SOURCES)) -Isrc \
+			-ob $(DISK_FAULT_TEST_ROM) -s -os $@; \
 	fi
 
 $(DISK_PRODUCTION_INIT_CART): \
@@ -489,6 +543,28 @@ test-openmsx-cartridge: $(OPENMSX_CART_MACHINE)
 		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
 	$(PYTHON) tools/check_cartridge_probe.py $(OPENMSX_CART_REPORT)
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_CART_SCREEN)
+
+$(OPENMSX_FAULT_MACHINE): \
+		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(DISK_FAULT_TEST_ROM)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(DISK_FAULT_TEST_ROM))|' \
+		-e 's|RainBIOS_M1_CARTRIDGE|RainBIOS_M1_DISK_FAULT|' \
+		-e 's|RainBIOS-MSX1-M1-CARTRIDGE|RainBIOS-MSX1-M1-DISK-FAULT|' \
+		-e 's|Cartridge probe fixture|Controller fault-injection fixture|' \
+		$< > $@
+
+test-openmsx-disk-fault: $(OPENMSX_FAULT_MACHINE) $(DISK_FAULT_TEST_ROM_SYM)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	$(PYTHON) tools/run_openmsx_disk_fault.py \
+		--openmsx "$(OPENMSX)" \
+		--home "$(abspath $(OPENMSX_HOME))" \
+		--user-data "$(abspath $(OPENMSX_SHARE))" \
+		--machine RainBIOS_M1_DISK_FAULT \
+		--script tests/openmsx/disk_fault_probe.tcl \
+		--symbols "$(DISK_FAULT_TEST_ROM_SYM)" \
+		--report "$(abspath $(OPENMSX_FAULT_REPORT))"
 
 $(OPENMSX_EXPANDED_CART_MACHINE): \
 		tests/openmsx/RainBIOS_M1_EXPANDED_CARTRIDGE.xml.in \
@@ -797,6 +873,36 @@ test-1983-disk-no-media: $(MSX1_ROM) $(DISK_NO_MEDIA_TEST_ROM) \
 		--screenshot "$(EMULATOR_1983_DISK_NO_MEDIA_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_NO_MEDIA_SCREEN)
+
+test-1983-disk-dskchg-getdpb: $(MSX1_ROM) $(DISK_DSKCHG_TEST_ROM) \
+		$(DISK_DSKCHG_TEST_ROM_SYM) $(DISK_PHYDIO_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(DISK_DSKCHG_TEST_ROM)" \
+		--symbols "$(DISK_DSKCHG_TEST_ROM_SYM)" \
+		--expected-pass-label disk_dskchg_getdpb_pass \
+		--expected-slot FC --exit-after 1200 \
+		--disk-a "$(DISK_PHYDIO_IMAGE)" --floppy-mode read-only \
+		--screenshot "$(EMULATOR_1983_DIR)/disk-dskchg-getdpb.ppm"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DIR)/disk-dskchg-getdpb.ppm
+
+test-1983-disk-dskchg-no-media: $(MSX1_ROM) \
+		$(DISK_DSKCHG_NO_MEDIA_TEST_ROM) \
+		$(DISK_DSKCHG_NO_MEDIA_TEST_ROM_SYM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(DISK_DSKCHG_NO_MEDIA_TEST_ROM)" \
+		--symbols "$(DISK_DSKCHG_NO_MEDIA_TEST_ROM_SYM)" \
+		--expected-pass-label disk_dskchg_no_media_pass \
+		--expected-slot FC --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_DIR)/disk-dskchg-no-media.ppm"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DIR)/disk-dskchg-no-media.ppm
 
 test-1983-disk-write-guard: \
 		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \
