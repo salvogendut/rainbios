@@ -99,6 +99,12 @@ INVALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/invalid_payload.rom
 INVALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/invalid_payload.sym
 CLS_INPUT_CART := $(BUILD_DIR)/cartridges/cls_input.rom
 CLS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/cls_input.sym
+VALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/payload_valid.rom
+VALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/payload_valid.sym
+MENU_DISK2_INPUT_CART := $(BUILD_DIR)/cartridges/menu_disk2_input.rom
+MENU_DISK2_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_disk2_input.sym
+MENU_DISK3_INPUT_CART := $(BUILD_DIR)/cartridges/menu_disk3_input.rom
+MENU_DISK3_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_disk3_input.sym
 OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
@@ -184,6 +190,10 @@ EMULATOR_1983_DISK_BOOT_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot.ppm
 EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot-fallback.ppm
+EMULATOR_1983_DISK_BOOT_MENU_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-boot-menu.ppm
+EMULATOR_1983_DISK_MENU_STUB_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-menu-stub.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -211,6 +221,7 @@ SOURCES := src/main_msx1.asm
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot \
 	test-1983-disk-boot-production test-1983-disk-boot-fallback \
+	test-1983-disk-boot-menu test-1983-disk-menu-stub \
 	test-1983-disk-read test-1983-disk-no-media \
 	test-1983-disk-write-guard \
 	test-1983-disk-dskchg-getdpb test-1983-disk-dskchg-no-media \
@@ -352,6 +363,36 @@ $(DISK_PRODUCTION_INIT_CART_SYM): $(DISK_PRODUCTION_INIT_CART)
 			-ob $(DISK_PRODUCTION_INIT_CART) -s -os $@; \
 	fi
 
+$(VALID_PAYLOAD_CART): tests/cartridges/payload_valid.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $(VALID_PAYLOAD_CART) -s -os $(VALID_PAYLOAD_CART_SYM)
+
+$(VALID_PAYLOAD_CART_SYM): $(VALID_PAYLOAD_CART)
+	@if test ! -f "$@"; then \
+		$(RASM) tests/cartridges/payload_valid.asm \
+			-ob $(VALID_PAYLOAD_CART) -s -os $@; \
+	fi
+
+$(MENU_DISK2_INPUT_CART): tests/cartridges/menu_disk2_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $(MENU_DISK2_INPUT_CART) -s -os $(MENU_DISK2_INPUT_CART_SYM)
+
+$(MENU_DISK2_INPUT_CART_SYM): $(MENU_DISK2_INPUT_CART)
+	@if test ! -f "$@"; then \
+		$(RASM) tests/cartridges/menu_disk2_input.asm \
+			-ob $(MENU_DISK2_INPUT_CART) -s -os $@; \
+	fi
+
+$(MENU_DISK3_INPUT_CART): tests/cartridges/menu_disk3_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $(MENU_DISK3_INPUT_CART) -s -os $(MENU_DISK3_INPUT_CART_SYM)
+
+$(MENU_DISK3_INPUT_CART_SYM): $(MENU_DISK3_INPUT_CART)
+	@if test ! -f "$@"; then \
+		$(RASM) tests/cartridges/menu_disk3_input.asm \
+			-ob $(MENU_DISK3_INPUT_CART) -s -os $@; \
+	fi
+
 $(DISK_PHYDIO_IMAGE): tools/make_test_disk.py | $(BUILD_DIR)
 	$(PYTHON) $< $@
 
@@ -393,7 +434,8 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
-test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN)
+test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
+	$(VALID_PAYLOAD_CART)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
@@ -894,6 +936,38 @@ test-1983-disk-boot-fallback: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 		--screenshot "$(EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN)
+
+test-1983-disk-boot-menu: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(VALID_PAYLOAD_CART) $(MENU_DISK2_INPUT_CART) \
+		$(DISK_BOOT_SECTOR_SYM) $(DISK_BOOT_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--payload "$(VALID_PAYLOAD_CART)" \
+		--input-cartridge "$(MENU_DISK2_INPUT_CART)" \
+		--symbols "$(DISK_BOOT_SECTOR_SYM)" \
+		--expected-pass-label disk_boot_pass \
+		--expected-slot FC --exit-after 1200 \
+		--disk-a "$(DISK_BOOT_IMAGE)" --floppy-mode read-only \
+		--screenshot "$(EMULATOR_1983_DISK_BOOT_MENU_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 --min-colors 2 $(EMULATOR_1983_DISK_BOOT_MENU_SCREEN)
+
+test-1983-disk-menu-stub: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(MENU_DISK3_INPUT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--input-cartridge "$(MENU_DISK3_INPUT_CART)" \
+		--expect-fallback --expected-slot F0 --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_DISK_MENU_STUB_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 --min-colors 2 $(EMULATOR_1983_DISK_MENU_STUB_SCREEN)
 
 test-1983-disk-read: \
 		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \

@@ -213,11 +213,19 @@ sector, and reaches a labelled spin; a separate probe confirms that a missing or
 non-bootable medium falls back to the interactive menu with the RainBIOS stack
 intact.
 
+The Space-key boot menu now offers three options. Option 1 starts BBC BASIC,
+option 2 re-enters the `H.RUNC` bootstrap so MSX DOS can be booted from drive A
+on demand (a valid payload holds back the cold-boot auto-boot so the menu is
+reachable; the menu boot and the reserved option-3 stub are covered by 1983),
+and option 3 is a stub reserved for a future IDE-cartridge boot (Sunrise IDE /
+SD Mapper V2) behind a presence probe.
+
 - boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
   contract (requires provenance-cleared DOS files);
 - provide the documented loader inputs `HL`/`DE` (disk error handler and
   `ENAKRN` entry) once a real kernel consumes them;
-- expose disk boot as a menu action (option 2) alongside run-BASIC;
+- implement option 3: detect an IDE cartridge (Sunrise IDE / SD Mapper V2)
+  with a presence probe and boot from it;
 - filesystem services, formatting, drive B, other controllers, writable media,
   and real-hardware timing validation remain pending.
 

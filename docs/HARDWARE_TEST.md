@@ -145,6 +145,15 @@ continues.
     stack is the RainBIOS stack, and the interactive menu appears.
 27. **Second boot attempt.** Confirm the hook is only invoked once per cold boot
     and never re-entered after a warm return.
+28. **Menu disk boot.** With a valid payload present (which holds back the
+    cold-boot auto-boot), press Space to open the boot menu and then `2`. Confirm
+    the same bootable disk boots: the loader runs from `C000h`, can call `DSKIO`
+    (`4010h`) for further sectors, and never falls through to the BASIC prompt.
+    Confirm option 2 is a no-op (menu stays up) with an empty or non-bootable
+    drive or when no disk ROM is installed.
+29. **Reserved IDE option.** With the boot menu open, press `3`. Confirm the
+    reserved IDE-cartridge option currently returns to the menu without entering
+    a payload or booting anything.
 
 ## Data-integrity soak
 

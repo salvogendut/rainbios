@@ -772,7 +772,34 @@ cold_boot_options_name_block:
 cold_boot_options_wait:
                 call chget
                 cp '1'
+                jr z,cold_boot_launch_payload
+                cp '2'
+                jr z,cold_boot_options_boot_disk
+                cp '3'
+                jr z,cold_boot_options_ide
+                jr cold_boot_options_wait
+
+; Boot MSX DOS from drive A through the disk-ROM bootstrap hook. The disk driver
+; installs H_RUNC and publishes H_PHYD during cartridge discovery; the probe
+; below keeps an absent disk ROM from turning the key into a stray hook call.
+; disk_boot transfers control to the loader at C000h+1Eh when a bootable medium
+; is present, so a return always means the menu should continue.
+cold_boot_options_boot_disk:
+                ld a,(H_PHYD)
+                cp #f7
                 jr nz,cold_boot_options_wait
+                ld a,1
+                ld (DEVICE),a
+                xor a
+                ld (DISK_SETUP),a
+                call H_RUNC
+                jr cold_boot_options_wait
+
+; Reserved for a future IDE-cartridge boot (Sunrise IDE / SD Mapper V2). The
+; menu advertises option 3, but presence detection and the IDE bootstrap have
+; not landed yet, so the key currently falls back to the menu.
+cold_boot_options_ide:
+                jr cold_boot_options_wait
 
 ; Enter a validated page-1 payload without a return address. Page 0 remains
 ; the BIOS, pages 2/3 remain the selected contiguous RAM, SP is restored to

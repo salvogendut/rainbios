@@ -35,6 +35,9 @@ class BasicDependencyLockTests(unittest.TestCase):
         from tools.png_to_screen2 import OPTIONS_LINES
 
         self.assertEqual(OPTIONS_LINES[5], "1  START BBC BASIC")
+        self.assertEqual(OPTIONS_LINES[6], "2  BOOT MSX DOS")
+        self.assertEqual(OPTIONS_LINES[7], "3  BOOT IDE CARTRIDGE")
+        self.assertEqual(OPTIONS_LINES[8], "PRESS 1 2 OR 3")
 
 
 if __name__ == "__main__":

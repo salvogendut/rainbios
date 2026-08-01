@@ -88,6 +88,8 @@ def main() -> int:
     parser.add_argument("--disk-rom", type=pathlib.Path, required=True)
     parser.add_argument("--disk-a", type=pathlib.Path)
     parser.add_argument("--floppy-mode", default="read-only")
+    parser.add_argument("--payload", type=pathlib.Path)
+    parser.add_argument("--input-cartridge", type=pathlib.Path)
     parser.add_argument("--symbols", type=pathlib.Path)
     parser.add_argument("--expected-pass-label", default="disk_boot_pass")
     parser.add_argument("--expected-slot", default="FC")
@@ -118,6 +120,14 @@ def main() -> int:
         "--disk-rom",
         str(arguments.disk_rom),
     ]
+    if arguments.payload:
+        command.extend(
+            ["--cart1", str(arguments.payload), "--mapper1", "linear"]
+        )
+    if arguments.input_cartridge:
+        command.extend(
+            ["--cart2", str(arguments.input_cartridge), "--mapper2", "linear"]
+        )
     if arguments.disk_a:
         command.extend(
             [

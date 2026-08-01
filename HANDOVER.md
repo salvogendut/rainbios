@@ -100,6 +100,11 @@ The optional NMS 8250 disk-ROM layer:
   `C000h+1Eh` with `A = 0` and carry set, or returns so the interactive menu
   continues.
 
+The Space-key boot menu invokes the same bootstrap on demand: option 2 boots
+MSX DOS from drive A, and option 3 is a stub reserved for a future
+IDE-cartridge boot. The cold-boot auto-boot yields to a valid payload so the
+menu can be reached with a bootable disk already inserted.
+
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
 The disk ROM loads and runs an MSX-DOS-style boot sector but does not yet load a
@@ -128,6 +133,11 @@ Coverage includes:
   page-3 RAM (`test-1983-disk-boot-production`), and a missing or non-bootable
   medium returns to the interactive menu with the RainBIOS stack intact
   (`test-1983-disk-boot-fallback`);
+
+- the menu disk-boot path: a valid payload holds back the cold-boot auto-boot,
+  the Space-key menu selects option 2, and the same fixture boots
+  (`test-1983-disk-boot-menu`), while option 3 stays in the menu as a reserved
+  stub (`test-1983-disk-menu-stub`);
 
 - production `H.PHYD` and `DRVINF` registration;
 - invalid drive, media ID, zero count, logical range, and buffer range;

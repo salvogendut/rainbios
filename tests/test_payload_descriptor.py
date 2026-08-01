@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import unittest
 
 from tools.payload_descriptor import descriptor_from_rom, parse_descriptor
+
+
+ROOT = Path(__file__).resolve().parents[1]
+VALID_PAYLOAD_ROM = ROOT / "build" / "cartridges" / "payload_valid.rom"
 
 
 BBC_BASIC_DESCRIPTOR = bytes.fromhex(
@@ -43,6 +48,13 @@ class PayloadDescriptorTests(unittest.TestCase):
         unknown[-1] = (-sum(unknown[:-1])) & 0xFF
         with self.assertRaisesRegex(ValueError, "unsupported payload type"):
             parse_descriptor(bytes(unknown))
+
+    def test_valid_payload_fixture_claims_cleanly(self) -> None:
+        rom = VALID_PAYLOAD_ROM.read_bytes()
+        descriptor = descriptor_from_rom(rom)
+        self.assertEqual(descriptor.entry, 0x4010)
+        self.assertEqual((descriptor.ram_start, descriptor.ram_end), (0x8000, 0xC000))
+        self.assertEqual(descriptor.ram_pages, 2)
 
 
 if __name__ == "__main__":

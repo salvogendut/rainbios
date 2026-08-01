@@ -52,15 +52,17 @@ Space opens the early boot-menu preview. Asset provenance and release status
 are tracked in
 [docs/ASSETS.md](docs/ASSETS.md).
 
-The menu launches the separately built
+The Space-key menu offers option 1 to launch the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
-payload when its versioned descriptor and requirements validate. Invalid
-descriptors are not advertised or entered. The console, keyboard, timing,
-Graphics II, cassette-load, and menu paths pass executable BASIC tests. Its
-open-source core and new BSD-3-Clause MSX port can be distributed with
-RainBIOS while remaining a distinct build artifact. The cartridge is pinned
-by source revision, size, and SHA-256 digest. The dependency, license,
-packaging, and platform boundary are described in
+payload when its versioned descriptor and requirements validate, option 2 to
+boot MSX DOS from drive A through the disk-ROM `H.RUNC` hook, and option 3 to
+boot from an IDE cartridge (Sunrise IDE / SD Mapper V2), currently a reserved
+stub. Invalid descriptors are not advertised or entered. The console,
+keyboard, timing, Graphics II, cassette-load, and menu paths pass executable
+BASIC tests. Its open-source core and new BSD-3-Clause MSX port can be
+distributed with RainBIOS while remaining a distinct build artifact. The
+cartridge is pinned by source revision, size, and SHA-256 digest. The
+dependency, license, packaging, and platform boundary are described in
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
 
 An optional openMSX machine-definition check is available:
@@ -149,7 +151,9 @@ without media, `GETDPB` DPB publication, write rejection without changing a
 read/write-mounted image, and the full cold-boot disk path — the production ROM
 boots a deterministic 720 KiB `F9h` fixture whose boot sector calls `DSKIO`
 from page-3 RAM and reaches a pass marker, and falls back to the interactive
-menu with an empty or non-bootable drive:
+menu with an empty or non-bootable drive. A valid payload holds back the
+cold-boot auto-boot so the Space-key menu can select option 2 and reach the
+same fixture, and option 3 stays in the menu as a reserved stub:
 
 ```sh
 make test-1983-disk-baseline
@@ -163,6 +167,8 @@ make test-1983-disk-write-guard
 make test-1983-nms8250-disk-rom
 make test-1983-disk-boot-production
 make test-1983-disk-boot-fallback
+make test-1983-disk-boot-menu
+make test-1983-disk-menu-stub
 ```
 
 No proprietary disk firmware or media is distributed or required. Filesystems,
