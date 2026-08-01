@@ -60,20 +60,21 @@ SLTTBL          equ #fcc5
 HOOKBASE        equ #fd9a
 
 RAM_TEST2       equ #bfff
-RAM_TEST3       equ #f380
-PAGE0_SLOT_HELPER equ #f380
-PAGE0_READ_HELPER equ #f383
-PAGE0_WRITE_HELPER equ #f38b
-CART_SCAN_SLOT  equ #f392
-PAYLOAD_SLOT    equ #f393
-PAYLOAD_ENTRY   equ #f394
-PAYLOAD_RAM_END equ #f396
-TAPE_PERIOD     equ #f398
-TAPE_LEVEL      equ #f399
-TAPE_SYNC       equ #f39a
-IDE_SLOT        equ #f39b
-SD_FLAGS        equ #f39c
-SD_INIT_TRIES   equ #f39d
+RAM_TEST3       equ #f37f
+RDPRIM          equ #f380
+WRPRIM          equ #f385
+CLPRIM          equ #f38c
+CLPRM1          equ #f398
+CART_SCAN_SLOT  equ #f300
+PAYLOAD_SLOT    equ #f301
+PAYLOAD_ENTRY   equ #f302
+PAYLOAD_RAM_END equ #f304
+TAPE_PERIOD     equ #f306
+TAPE_LEVEL      equ #f307
+TAPE_SYNC       equ #f308
+IDE_SLOT        equ #f309
+SD_FLAGS        equ #f30a
+SD_INIT_TRIES   equ #f30b
 RAMAD0          equ #f341
 H_PHYD          equ #ffa7
 H_FORM          equ #ffac
@@ -83,9 +84,17 @@ H_RUNC          equ #fecb
 H_STKE          equ #feda
 DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
+NEXTOR_BOOT_DRIVE equ #f2fd
+NEXTOR_DOS_VERSION equ #f313
+NEXTOR_VERSION  equ #f318
 PTRFIL          equ #f864
 VOICEN          equ #fb38
 VCBA            equ #fb41
+MEMSIZ          equ #f672
+STKTOP          equ #f674
+INITIAL_MEMSIZ  equ #f168
+INITIAL_STKTOP  equ #f0a0
+EXTENSION_STACK equ #f092
 STACK_TOP       equ #f380
 
                 org #0000
@@ -393,22 +402,28 @@ bootstrap_primary_ram_found:
                 push de                         ; preserve reset map/RAM primary
                 push bc                         ; preserve RAM secondary
                 xor a
-                ld hl,RAM_TEST3
+                ld hl,#f380
                 ld (hl),a
-                ld de,RAM_TEST3+1
+                ld de,#f381
                 ld bc,#0c7e                    ; clear F381h through FFFEh
                 ldir
 
-; Page-0 slot operations must finish from mapped RAM because the BIOS
-; disappears immediately after the PPI write. Install original switch,
-; read/restore, and write/restore helpers before recovering the saved reset
-; mapping and selected RAM slot.
+; Install the standardized primary-slot read, write, and call primitives at
+; F380h-F399h before any extension ROM can use them.
                 ld hl,slot_helpers_image
-                ld de,PAGE0_SLOT_HELPER
+                ld de,RDPRIM
                 ld bc,slot_helpers_image_end-slot_helpers_image
                 ldir
                 pop bc
                 pop de
+
+; F300h-F37Fh is the pre-DOS scratch area. Initialize it to safe returns, then
+; use its first bytes only until a disk kernel takes ownership.
+                ld hl,#f300
+                ld (hl),#c9
+                ld de,#f301
+                ld bc,#007f
+                ldir
 
 ; Publish the full slot ID of the discovered RAM for Disk-ROM extensions.
 ; B=4 is the unexpanded sentinel; otherwise B is the secondary slot number.
@@ -440,6 +455,10 @@ bootstrap_ram_slot_ready:
                 ld (BOTTOM),hl
                 ld hl,STACK_TOP
                 ld (HIMEM),hl
+                ld hl,INITIAL_MEMSIZ
+                ld (MEMSIZ),hl
+                ld hl,INITIAL_STKTOP
+                ld (STKTOP),hl
 
 ; Empty hooks begin with RET.
                 ld hl,HOOKBASE
@@ -661,9 +680,11 @@ cold_boot_jingle_gap:
 ; continue; a game may keep control instead. M1E scans 4000h and 8000h in each
 ; non-BIOS slot and can invoke INIT in page 1 or page 2.
                 im 1
+                ld sp,EXTENSION_STACK
                 call cold_boot_scan_cartridges
                 call H_STKE
                 call cold_boot_init_disk
+                ld sp,STACK_TOP
                 ei
                 jr cold_boot_wait
 
@@ -671,18 +692,7 @@ cold_boot_jingle_gap:
 ; disk-ROM bootstrap hook so the selected disk device can install itself before
 ; the interactive menu is presented.
 cold_boot_init_disk:
-                ld a,(PAYLOAD_SLOT)
-                cp #ff
-                ret nz                          ; payload menu takes precedence
-                ld a,(H_PHYD)
-                cp #f7
-                ret nz
-                ld a,1
-                ld (DEVICE),a
-                xor a
-                ld (DISK_SETUP),a
-                call H_RUNC
-                ret
+                jp cold_boot_init_disk_impl
 
 ; Wait for the translated Space character through the standard input path.
 cold_boot_wait:
@@ -791,9 +801,9 @@ cold_boot_options_wait:
 ; disk_boot transfers control to the loader at C000h+1Eh when a bootable medium
 ; is present, so a return always means the menu should continue.
 cold_boot_options_boot_disk:
-                ld a,(H_PHYD)
-                cp #f7
-                jr nz,cold_boot_options_wait
+                ld a,(H_RUNC)
+                cp #c9
+                jr z,cold_boot_options_wait
                 ld a,1
                 ld (DEVICE),a
                 xor a
@@ -808,7 +818,17 @@ cold_boot_options_boot_disk:
 ; menu should continue.
 cold_boot_options_ide:
                 call ide_boot
-                jr cold_boot_options_wait
+                ld h,2
+                ld l,12
+                call posit
+                ld hl,storage_boot_failed_message
+cold_boot_options_ide_status:
+                ld a,(hl)
+                or a
+                jr z,cold_boot_options_wait
+                call chput
+                inc hl
+                jr cold_boot_options_ide_status
 
 ; Enter a validated page-1 payload without a return address. Page 0 remains
 ; the BIOS, pages 2/3 remain the selected contiguous RAM, SP is restored to
@@ -921,9 +941,9 @@ cold_boot_read_cartridge_init:
                 ret nz
                 jr cold_boot_call_cartridge
 ; Sunrise IDE / SD Mapper cartridges publish the shared "AB" header with the
-; INIT pointer at 40F6h. They are pure storage devices whose INIT must not run
-; during a RainBIOS scan, so record the slot and keep the ordinary cartridge
-; contract intact by returning without calling it.
+; INIT pointer at 40F6h. Record the slot for RainBIOS's direct fallback loader,
+; then follow the ordinary cartridge contract and invoke INIT. A disk kernel
+; can allocate its work area and install H.RUNC for the standard boot path.
 cold_boot_check_ide:
                 ld a,d
                 cp #40
@@ -933,7 +953,7 @@ cold_boot_check_ide:
                 jr nz,cold_boot_call_cartridge
                 ld a,(CART_SCAN_SLOT)
                 ld (IDE_SLOT),a
-                ret
+                jr cold_boot_call_cartridge
 cold_boot_call_cartridge:
                 push de
                 pop ix
@@ -942,7 +962,6 @@ cold_boot_call_cartridge:
                 ld c,0
                 push bc
                 pop iy
-                ei
                 call calslt
                 di
                 ret
@@ -1444,7 +1463,7 @@ write_vdp_register_block_loop:
 ; SCREEN 0: 40x24 text, name table at 0000h and font at 0800h.
 initxt:
                 ld a,(RG1SAV)
-                and #e7
+                and #e0
                 or #50                         ; M1 selects text, display on
                 push af
                 ld hl,text40_vdp_registers
@@ -1480,7 +1499,7 @@ initxt:
 ; clears the name and color tables, and hides sprites.
 init32:
                 ld a,(RG1SAV)
-                and #e7
+                and #e0
                 or #40                         ; display on
                 push af
                 ld hl,text32_vdp_registers
@@ -1525,7 +1544,7 @@ init32:
 ; eight-pixel colour cell so callers begin with deterministic graphics VRAM.
 initgrp:
                 ld a,(RG1SAV)
-                and #e7
+                and #e0
                 or #40                         ; display on
                 push af
                 ld hl,graphics2_vdp_registers
@@ -2103,6 +2122,26 @@ wrtvrm:
                 ret
 
 filvrm:
+                jp filvrm_impl
+
+; Nextor 2.1 calls the original MSX BIOS keyboard decoder at this undocumented
+; address while distinguishing Russian and international keyboards. KILBUF is
+; called first, so queue a non-"J" marker to select the international layout.
+                defs #0d89-$,#ff
+nextor_keyboard_layout_probe:
+                push af
+                push bc
+                push de
+                push hl
+                ld a,"N"
+                call keyboard_buffer_put
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+filvrm_impl:
                 push af
                 call setwrt
                 pop af
@@ -2117,6 +2156,177 @@ filvrm_loop:
                 jr filvrm_loop
 filvrm_done:
                 pop af
+                ret
+
+cold_boot_init_disk_impl:
+                call cold_boot_valid_payload
+                ret c                           ; validated payload keeps the menu
+                ld a,(H_RUNC)
+                cp #c9
+                ret z
+                call cold_boot_select_sd_card
+                jr nc,cold_boot_init_disk_kernel
+                call cold_boot_phyd_boot
+                ret
+cold_boot_init_disk_kernel:
+                ld a,(DEVICE)
+                or a
+                jr nz,cold_boot_init_disk_device_ready
+                inc a
+                ld (DEVICE),a
+cold_boot_init_disk_device_ready:
+                xor a
+                ld (DISK_SETUP),a
+                call H_RUNC
+                ret
+
+; The SD Mapper driver exposes both physical cards as Nextor drives. Let the
+; user choose when both are mounted, then seed Nextor's initialized boot-drive
+; byte before H.RUNC performs its non-returning cleanup and boot pass. Other
+; disk kernels and one-card setups retain their normal automatic selection.
+cold_boot_select_sd_card:
+                ld a,(NEXTOR_DOS_VERSION)
+                cp #99
+                jp nz,cold_boot_select_sd_not_mapper
+                ld a,(NEXTOR_VERSION)
+                or a
+                jp z,cold_boot_select_sd_not_mapper
+                ld a,(IDE_SLOT)
+                bit 7,a
+                jp z,cold_boot_select_sd_not_mapper
+                ld h,#40
+                call enaslt
+                call sd_mapper_probe
+                jr c,cold_boot_select_sd_restore_none
+                ld b,0
+                ld a,1
+                ld (SD_MAPPER_SELECT),a
+                ld a,(SD_MAPPER_SELECT)
+                bit 1,a
+                jr nz,cold_boot_select_sd_check_b
+                set 0,b
+cold_boot_select_sd_check_b:
+                ld a,2
+                ld (SD_MAPPER_SELECT),a
+                ld a,(SD_MAPPER_SELECT)
+                bit 1,a
+                jr nz,cold_boot_select_sd_restore
+                set 1,b
+cold_boot_select_sd_restore:
+                ld a,b
+                push af
+                xor a
+                ld (SD_MAPPER_SELECT),a
+                ld (SD_MAPPER_BANK),a
+                ld a,(BIOSSLT)
+                ld h,#40
+                call enaslt
+                pop af
+                cp 4
+                jr z,cold_boot_select_sd_not_mapper
+                or a
+                jr z,cold_boot_select_sd_no_media
+                cp 3
+                jr nz,cold_boot_select_sd_not_mapper
+                ld a,(DEVICE)
+                cp 1
+                jr nz,cold_boot_select_sd_not_mapper
+                ld a,(H_PHYD)
+                cp #37
+                jr nz,cold_boot_select_sd_not_mapper
+                ld hl,sd_boot_choice_message
+cold_boot_select_sd_message:
+                ld a,(hl)
+                or a
+                jr z,cold_boot_select_sd_input
+                call chput
+                inc hl
+                jr cold_boot_select_sd_message
+cold_boot_select_sd_input:
+                call chget
+                and #df
+                cp 'A'
+                jr z,cold_boot_select_sd_a
+                cp 'B'
+                jr nz,cold_boot_select_sd_input
+                ld a,2
+                jr cold_boot_select_sd_selected
+cold_boot_select_sd_a:
+                ld a,1
+cold_boot_select_sd_selected:
+                ld (NEXTOR_BOOT_DRIVE),a
+                ld a,#0d
+                call chput
+                ld a,#0a
+                call chput
+                or a
+                ret
+cold_boot_select_sd_restore_none:
+                ld b,4
+                jr cold_boot_select_sd_restore
+cold_boot_select_sd_not_mapper:
+                or a
+                ret
+cold_boot_select_sd_no_media:
+                ld a,(DEVICE)
+                cp 1
+                jr nz,cold_boot_select_sd_not_mapper
+                scf
+                ret
+
+; If an empty SD Mapper displaced another disk kernel's H.RUNC hook, retain its
+; standard H.PHYD path. This is the same cold-boot sector contract used by the
+; production NMS 8250 disk ROM and returns when drive A is not bootable.
+cold_boot_phyd_boot:
+                ld hl,#c000
+                ld de,0
+                ld bc,#01f9
+                xor a
+                call H_PHYD
+                ret c
+                ld a,(#c000)
+                cp #eb
+                jr z,cold_boot_phyd_go
+                cp #e9
+                ret nz
+cold_boot_phyd_go:
+                ld sp,#e000
+                xor a
+                scf
+                jp #c01e
+
+; PAYLOAD_SLOT shares the pre-DOS scratch area and can be overwritten by a disk
+; kernel allocation. Recheck the immutable descriptor before allowing a payload
+; to suppress H.RUNC. Carry is set only for the RBP1 magic validated earlier.
+cold_boot_valid_payload:
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                jr z,cold_boot_valid_payload_no
+                ld e,a
+                ld hl,#7ff0
+                ld a,e
+                call rdslt
+                cp 'R'
+                jr nz,cold_boot_valid_payload_no
+                inc hl
+                ld a,e
+                call rdslt
+                cp 'B'
+                jr nz,cold_boot_valid_payload_no
+                inc hl
+                ld a,e
+                call rdslt
+                cp 'P'
+                jr nz,cold_boot_valid_payload_no
+                inc hl
+                ld a,e
+                call rdslt
+                cp '1'
+                jr nz,cold_boot_valid_payload_no
+                scf
+                ret
+cold_boot_valid_payload_no:
+                or a
                 ret
 
 ldirmv:
@@ -2608,7 +2818,11 @@ rdslt:
                 jr nz,rdslt_direct
                 bit 6,h
                 jr nz,rdslt_direct
-                call PAGE0_READ_HELPER
+                push de
+                call RDPRIM
+                ld b,e
+                pop de
+                ld a,b
                 ret
 rdslt_direct:
                 out (PPI_SLOT),a
@@ -2637,7 +2851,8 @@ rdslt_expanded:
                 jr nz,rdslt_expanded_direct
                 bit 6,h
                 jr nz,rdslt_expanded_direct
-                call PAGE0_READ_HELPER
+                call RDPRIM
+                ld a,e
                 jr rdslt_expanded_restore
 rdslt_expanded_direct:
                 out (PPI_SLOT),a
@@ -2721,7 +2936,7 @@ wrslt:
                 jr nz,wrslt_direct
                 bit 6,h
                 jr nz,wrslt_direct
-                call PAGE0_WRITE_HELPER
+                call WRPRIM
                 ret
 wrslt_direct:
                 out (PPI_SLOT),a
@@ -2744,7 +2959,7 @@ wrslt_expanded:
                 jr nz,wrslt_expanded_direct
                 bit 6,h
                 jr nz,wrslt_expanded_direct
-                call PAGE0_WRITE_HELPER
+                call WRPRIM
                 jr wrslt_expanded_restore
 wrslt_expanded_direct:
                 out (PPI_SLOT),a
@@ -3052,11 +3267,22 @@ calslt_expanded_page_supported:
                 call expanded_slot_check
                 jr z,calslt_unsupported
                 call expanded_temporary_select
-                push bc                        ; old selector, primary slot
+                ld e,b                         ; old secondary selector
                 call primary_slot_map
-                push de                        ; exact old primary map in D
                 out (PPI_SLOT),a
+                ld l,e
+                push hl                        ; selector restored after return
+                ld b,d
+                push bc                        ; old primary map, primary slot
+                ld hl,SLTTBL
+                ld a,l
+                add a,c
+                ld l,a
+                push hl                        ; selector mirror address
                 ld hl,calslt_expanded_return
+                push hl
+                push de                        ; inner old primary map in D
+                ld hl,calslt_return
                 push hl
                 exx
                 ex af,af'
@@ -3067,15 +3293,17 @@ calslt_unsupported:
                 ex af,af'
                 jp unsupported_call
 
-; Recover restoration state through the alternate register set so the target
-; routine's normal AF/BC/DE/HL results survive unchanged.
+; Expanded-slot software may patch the saved primary and secondary selectors
+; in the standard CALSLT frame after changing the RAM slot configuration.
+; Recover those live values through the alternate register set so the target's
+; normal AF/BC/DE/HL results survive unchanged.
 calslt_expanded_return:
                 ex af,af'
                 exx
-                pop bc                         ; B = old primary map
-                pop de                         ; D = old selector, E = primary
-                ld c,e
-                ld a,d
+                pop hl                         ; selector mirror address
+                pop bc                         ; B = primary map, C = primary
+                pop de                         ; E = secondary selector
+                ld a,e
                 call expanded_store_selector
                 call expanded_write_selector
                 ld a,b
@@ -3139,7 +3367,28 @@ enaslt_page0:
                 in a,(PPI_SLOT)
                 and #fc
                 or c
-                jp PAGE0_SLOT_HELPER
+
+; Execute the permanent page-0 switch from a stack trampoline. The generated
+; code restores IY, IX, and HL before the PPI write, then returns through the
+; caller's original stack frame after page 0 has changed.
+                push hl
+                push ix
+                push iy
+                ld ix,0
+                add ix,sp
+                ld bc,#c9a8                    ; OUT operand, RET
+                push bc
+                ld bc,#d3e1                    ; POP HL, OUT opcode
+                push bc
+                ld bc,#e1dd                    ; POP IX
+                push bc
+                ld bc,#e1fd                    ; POP IY
+                push bc
+                ld bc,#f9dd                    ; LD SP,IX
+                push bc
+                ld iy,0
+                add iy,sp
+                jp (iy)
 
 enaslt_direct:
                 ld c,a
@@ -3245,14 +3494,31 @@ snsmat:
                 in a,(PPI_KEYBOARD)
                 ret
 
-; Copied to F380h-F391h during cold boot. These instructions are original
-; RainBIOS code for operations that temporarily remove page-0 BIOS visibility.
+; Standardized F380h-F399h primary-slot primitives. Callers prepare complete
+; old/new PPI images; CLPRIM also receives the target in IX and target AF in
+; the alternate set, with the old PPI image saved on the stack.
 slot_helpers_image:
-                db #d3,PPI_SLOT,#c9             ; switch page 0, return caller
-                db #d3,PPI_SLOT,#46,#7a         ; read byte, restore old map
-                db #d3,PPI_SLOT,#78,#c9
-                db #d3,PPI_SLOT,#73,#7a         ; write byte, restore old map
-                db #d3,PPI_SLOT,#c9
+                out (PPI_SLOT),a
+                ld e,(hl)
+                jr slot_helper_restore
+slot_helper_write:
+                out (PPI_SLOT),a
+                ld (hl),e
+slot_helper_restore:
+                ld a,d
+                out (PPI_SLOT),a
+                ret
+slot_helper_call:
+                out (PPI_SLOT),a
+                ex af,af'
+                call CLPRM1
+                ex af,af'
+                pop af
+                out (PPI_SLOT),a
+                ex af,af'
+                ret
+slot_helper_jump:
+                jp (ix)
 slot_helpers_image_end:
 
                 include "ide_nms8250_driver.asm"
@@ -3293,6 +3559,12 @@ jingle_notes:
                 db #aa,#00                     ; E5
                 db #8f,#00                     ; G5
                 db #6b,#00                     ; C6
+
+sd_boot_choice_message:
+                db #0d,#0a,"SELECT SD BOOT CARD: A OR B? ",0
+
+storage_boot_failed_message:
+                db "STORAGE BOOT FAILED",0
 
 boot_font:
                 incbin "boot_font.bin"

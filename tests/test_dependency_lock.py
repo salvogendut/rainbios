@@ -36,7 +36,7 @@ class BasicDependencyLockTests(unittest.TestCase):
 
         self.assertEqual(OPTIONS_LINES[5], "1  START BBC BASIC")
         self.assertEqual(OPTIONS_LINES[6], "2  BOOT MSX DOS")
-        self.assertEqual(OPTIONS_LINES[7], "3  BOOT IDE CARTRIDGE")
+        self.assertEqual(OPTIONS_LINES[7], "3  BOOT IDE OR SD")
         self.assertEqual(OPTIONS_LINES[8], "PRESS 1 2 OR 3")
 
 

@@ -63,6 +63,20 @@ class MainRomLayoutTest(unittest.TestCase):
         self.assertEqual(self.rom[rslreg : rslreg + 3], bytes((0xDB, 0xA8, 0xC9)))
         self.assertEqual(self.rom[wslreg : wslreg + 3], bytes((0xD3, 0xA8, 0xC9)))
 
+    def test_nextor_keyboard_layout_compatibility_entry(self):
+        filvrm = int.from_bytes(self.rom[0x0057:0x0059], "little")
+        self.assertEqual(self.rom[filvrm], 0xC3)  # JP relocated implementation
+        self.assertEqual(
+            self.rom[0x0D89:0x0D90],
+            bytes((0xF5, 0xC5, 0xD5, 0xE5, 0x3E, ord("N"), 0xCD)),
+        )
+        self.assertEqual(
+            self.rom[0x0D92:0x0D97], bytes((0xE1, 0xD1, 0xC1, 0xF1, 0xC9))
+        )
+        target = int.from_bytes(self.rom[0x0D90:0x0D92], "little")
+        self.assertGreaterEqual(target, 0x0200)
+        self.assertLess(target, len(self.rom))
+
     def test_abi_addresses_are_unique_and_ordered(self):
         addresses = [int(row["address"], 16) for row in self.abi]
         self.assertEqual(addresses, sorted(addresses))

@@ -9,9 +9,9 @@ import pathlib
 
 
 EXPECTED = {
-    "HELPER": "D3,A8,C9",
-    "READHELPER": "D3,A8,46,7A,D3,A8,78,C9",
-    "WRITEHELPER": "D3,A8,73,7A,D3,A8,C9",
+    "RDPRIM": "D3,A8,5E,18,03",
+    "WRPRIM": "D3,A8,73,7A,D3,A8,C9",
+    "CLPRIM": "D3,A8,08,CD,98,F3,08,F1,D3,A8,08,C9,DD,E9",
     "RSLREG": "E4,2345,6789,ABCD,A5,E4",
     "WSLREG": "E4,1357,2468,9ABC,A4,E4",
     "ENASLT1": "F4,0",

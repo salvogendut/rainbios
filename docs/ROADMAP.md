@@ -218,11 +218,25 @@ option 2 re-enters the drive-A `H.RUNC` boot-sector path on demand (a valid
 payload holds back the cold-boot auto-boot so the menu is reachable), and
 option 3 boots Sunrise IDE and SD Mapper V2 cartridges through
 RainBIOS's own page-0 ATA/SPI backends. The scan recognizes the shared
-storage-ROM header without calling the Nextor `INIT`, records its slot, and
-option 3 maps the cartridge in page 1, probes its controller type, reads sector
-0 into `C000h`, validates `EBh`/`E9h`, and enters `C000h+1Eh`. The 1983 fixtures
-then read sector 1 directly through the selected controller and reach labelled
-pass loops; no-medium cases restore the BIOS map and return to the menu.
+storage-ROM header, records its slot, and follows its standard `INIT`. A disk
+kernel can install `H.RUNC` and take over cold boot; otherwise option 3 maps the
+cartridge in page 1, probes its controller type, reads sector 0 into `C000h`,
+validates `EBh`/`E9h`, and enters `C000h+1Eh`. The 1983 fixtures then read sector
+1 directly through the selected controller and reach labelled pass loops;
+no-medium cases restore the extension-owned pre-call map and return to the menu.
+
+Local Sunrise IDE and SD Mapper cartridges plus a FAT16 image now complete the
+standard path: cartridge `INIT`, disk-work-area allocation, `H.RUNC`,
+`NEXTOR.SYS` 2.12, and the final prompt are verified end to end. SD coverage
+includes card-A/card-B automatic boot, dual-card selection, and no-card menu
+fallback. These paths also cover the pre-DOS stack, the mapper-compatible
+expanded `CALSLT` frame, and Nextor's direct use of the original-BIOS keyboard
+decoder at `0D89h`.
+
+RainBIOS provides the firmware interfaces needed by disk systems; it will not
+bundle or prescribe a DOS. Users supply the system of their choice, while the
+test matrix uses the freely available Nextor as its primary compatibility
+target.
 
 - boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
   contract (requires provenance-cleared DOS files);
@@ -230,8 +244,8 @@ pass loops; no-medium cases restore the BIOS map and return to the menu.
   `ENAKRN` entry) once a real kernel consumes them;
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
-- filesystem services, formatting, drive B, other controllers, writable media,
-  and real-hardware timing validation remain pending.
+- filesystem services, formatting, floppy drive B, other controllers, writable
+  media, and real-hardware timing validation remain pending.
 
 “Complete” means documented compatibility for the public interfaces and boot
 behavior; it does not mean byte identity with any existing ROM.

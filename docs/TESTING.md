@@ -152,13 +152,53 @@ make test-1983 \
 | Target | Coverage |
 | --- | --- |
 | `test-1983-ide-boot` | Sunrise ATA sector 0 boot plus a second-sector loader read |
-| `test-1983-ide-menu` | Sunrise cartridge with no medium restores the BIOS map |
+| `test-1983-ide-menu` | Sunrise cartridge with no medium restores the pre-call map |
 | `test-1983-sd-boot` | SD Mapper SPI initialization, sector 0 boot, and second CMD17 read |
-| `test-1983-sd-menu` | SD Mapper with no card restores the BIOS map |
+| `test-1983-sd-menu` | SD Mapper with no card restores the pre-call map |
+| `test-1983-sd-empty-floppy` | Empty SD Mapper does not suppress a bootable production floppy |
+| `test-1983-sd-empty-sunrise` | Empty SD Mapper preserves a second Nextor kernel and Sunrise boot |
+| `test-1983-nextor` | Sunrise `INIT`, `H.RUNC`, `NEXTOR.SYS`, and rendered `A:\>` prompt |
+| `test-1983-nextor-sd` | SD Mapper one-card auto-boot plus dual-card chooser selection and matching Nextor prompts |
 
 The storage tests default to local ROMs under `../1983/ROMS`. Override
-`SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs are used
-only as black-box cartridge shells; RainBIOS does not enter their Nextor INIT.
+`SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs remain
+black-box inputs, but RainBIOS now follows their standard `AB` header `INIT`
+and invokes a non-empty `H.RUNC` hook before falling back to its direct
+controller loaders.
+
+For an interactive check with the deterministic test media, launch either:
+
+```sh
+make run-1983-ide-boot
+make run-1983-sd-boot
+```
+
+Press Space and then `3`. A successful second-sector read displays `IDE BOOT
+PASS` or `SD BOOT PASS`; F12 exits 1983. Connecting an extension from 1983's
+overlay resets the emulated machine, so these targets attach the controller and
+media before startup. These fixtures validate RainBIOS's boot-sector contract;
+they are not Nextor or MSX-DOS system images.
+
+The explicit Nextor test uses local, non-redistributed system files and requires
+`sfdisk`, `mkfs.fat`, and mtools `mcopy`. Its defaults are
+`../1983/DOS/NEXTOR.SYS` and `../1983/DOS/COMMAND2.COM`; override `NEXTOR_SYS`
+or `NEXTOR_COMMAND` as needed. The generated FAT16 image is mounted read-only:
+
+```sh
+make test-1983-nextor
+make test-1983-nextor-sd
+```
+
+Success requires the Nextor 2.12 banner and rendered prompt area, not merely
+transfer into an unknown boot sector. The SD target independently verifies
+automatic boot from card A and card B when it is the only mounted card.
+With both cards mounted, it selects B through RainBIOS's chooser and requires a
+drive-B prompt.
+
+These files are user-supplied test inputs, not RainBIOS dependencies or release
+artifacts. RainBIOS neither downloads nor bundles a DOS; users may choose any
+compatible system for their media. Nextor is freely available from its upstream
+project and provides the currently validated integration path.
 
 ## External cartridge smoke tests
 

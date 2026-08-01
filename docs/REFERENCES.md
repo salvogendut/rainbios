@@ -173,16 +173,31 @@ implementation inputs. They remain quarantined under
 - RainBIOS use: validation tool and documented hardware-behavior cross-check;
   no emulator implementation code copied
 
+## 2026-08-01 — Nextor source compatibility cross-check
+
+- Upstream repository: `https://github.com/Konamiman/Nextor.git`
+- Revision: tag `v2.1.4`, commit
+  `cd0a69c47bd6e39c194d1bb76877375eb9b346d7`
+- Files consulted: `source/kernel/bank0/init.mac`,
+  `source/kernel/bank0/dosboot.mac`, `source/kernel/bank0/B0.SYM.old`, and
+  `source/kernel/drivers/SunriseIDE/sunride.asm`
+- Purpose: confirm the public cartridge `INIT`/`H.RUNC` sequence, `F380h`
+  allocation boundary, temporary-stack expectation, the expanded `CALSLT`
+  fields patched after mapper allocation, the initialized boot-drive work byte,
+  and Nextor's direct call to the original-BIOS keyboard decoder at `0D89h`
+- RainBIOS use: behavioral cross-check only; no source or binary code copied
+
 ## 2026-08-01 — Opaque Sunrise IDE test input
 
 - Local-only file: `Nextor-2.1.1.SunriseIDE.ROM`, 131,072 bytes, SHA-256
   `205af7f7893aa0328be23f66b3afe3132c7dee59cf4bbc493408475a201c7ad6`
 - Public metadata used: `AB` extension header and INIT pointer `40F6h`
 - Purpose: black-box cartridge presence and slot-routing input for the 1983
-  Sunrise IDE model
+  Sunrise IDE model and Nextor cold-boot validation
 - Distribution: the ROM is not copied into or distributed by RainBIOS
-- RainBIOS use: header metadata and runtime behavior only; the Nextor INIT is
-  deliberately not entered and no implementation code was copied
+- RainBIOS use: header metadata and runtime behavior only; `INIT` and `H.RUNC`
+  are executed as public cartridge interfaces and no implementation code was
+  copied
 
 ## 2026-08-01 — Opaque SD Mapper V2 test input
 
@@ -192,8 +207,21 @@ implementation inputs. They remain quarantined under
 - Purpose: black-box cartridge presence and slot-routing input for the 1983 SD
   Mapper V2 model
 - Distribution: the ROM is not copied into or distributed by RainBIOS
-- RainBIOS use: header metadata and runtime behavior only; the Nextor INIT is
-  deliberately not entered and no implementation code was copied
+- RainBIOS use: header metadata and runtime behavior only; `INIT` is executed
+  as a public cartridge interface and no implementation code was copied
+
+## 2026-08-01 — Opaque Nextor system test inputs
+
+- Local-only files:
+  - `NEXTOR.SYS`, SHA-256
+    `e9d6bfcc1973630373a076a20bbd717378bbe0539c81d5639f4406dd290d60f6`
+  - `COMMAND2.COM`, SHA-256
+    `1bb7860631cd6257fefdbd996640bd345d7eab931758e7dc2725cdb02072067c`
+- Purpose: build a local FAT16 image and validate the public cartridge
+  `INIT`/`H.RUNC` path through the Nextor 2.12 banner and drive-A/drive-B prompts
+- Distribution: neither file nor the generated image is copied into or
+  distributed by RainBIOS
+- RainBIOS use: black-box runtime behavior and rendered output only
 
 ## 2026-07-30 — Opaque cartridge smoke-test inputs
 

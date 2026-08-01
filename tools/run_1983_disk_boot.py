@@ -86,6 +86,7 @@ def main() -> int:
     parser.add_argument("--region", default="pal")
     parser.add_argument("--bios", type=pathlib.Path, required=True)
     parser.add_argument("--disk-rom", type=pathlib.Path, required=True)
+    parser.add_argument("--sd-mapper-rom", type=pathlib.Path)
     parser.add_argument("--disk-a", type=pathlib.Path)
     parser.add_argument("--floppy-mode", default="read-only")
     parser.add_argument("--payload", type=pathlib.Path)
@@ -137,6 +138,8 @@ def main() -> int:
                 arguments.floppy_mode,
             ]
         )
+    if arguments.sd_mapper_rom:
+        command.extend(["--sd-mapper-rom", str(arguments.sd_mapper_rom)])
 
     result = subprocess.run(
         command,

@@ -31,9 +31,9 @@ proc slot_call_returned {} {
 
 proc start_probe {} {
     set ::slot_handle [open $::slot_output w]
-    puts $::slot_handle "HELPER=[format %02X [peek 0xF380]],[format %02X [peek 0xF381]],[format %02X [peek 0xF382]]"
-    puts $::slot_handle "READHELPER=[format %02X [peek 0xF383]],[format %02X [peek 0xF384]],[format %02X [peek 0xF385]],[format %02X [peek 0xF386]],[format %02X [peek 0xF387]],[format %02X [peek 0xF388]],[format %02X [peek 0xF389]],[format %02X [peek 0xF38A]]"
-    puts $::slot_handle "WRITEHELPER=[format %02X [peek 0xF38B]],[format %02X [peek 0xF38C]],[format %02X [peek 0xF38D]],[format %02X [peek 0xF38E]],[format %02X [peek 0xF38F]],[format %02X [peek 0xF390]],[format %02X [peek 0xF391]]"
+    puts $::slot_handle "RDPRIM=[format %02X [peek 0xF380]],[format %02X [peek 0xF381]],[format %02X [peek 0xF382]],[format %02X [peek 0xF383]],[format %02X [peek 0xF384]]"
+    puts $::slot_handle "WRPRIM=[format %02X [peek 0xF385]],[format %02X [peek 0xF386]],[format %02X [peek 0xF387]],[format %02X [peek 0xF388]],[format %02X [peek 0xF389]],[format %02X [peek 0xF38A]],[format %02X [peek 0xF38B]]"
+    puts $::slot_handle "CLPRIM=[format %02X [peek 0xF38C]],[format %02X [peek 0xF38D]],[format %02X [peek 0xF38E]],[format %02X [peek 0xF38F]],[format %02X [peek 0xF390]],[format %02X [peek 0xF391]],[format %02X [peek 0xF392]],[format %02X [peek 0xF393]],[format %02X [peek 0xF394]],[format %02X [peek 0xF395]],[format %02X [peek 0xF396]],[format %02X [peek 0xF397]],[format %02X [peek 0xF398]],[format %02X [peek 0xF399]]"
 
     debug write "ioports" 0xA8 0xE4
     reg A 0x11

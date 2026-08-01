@@ -20,6 +20,8 @@ IDE_LBA1        equ #7e04
 IDE_LBA2        equ #7e05
 IDE_DEVICE      equ #7e06
 IDE_STATUS      equ #7e07
+CHPUT           equ #00a2
+POSIT           equ #00c6
 
 BOOT_BUF        equ #c200
 
@@ -52,10 +54,34 @@ ide_boot_entry:
                 ld a,(hl)
                 cp 'B'
                 jr nz,ide_boot_fail
+                ld hl,ide_boot_pass_message
+                call ide_boot_show_result
 ide_boot_pass:
                 jr ide_boot_pass
 ide_boot_fail:
-                jr ide_boot_fail
+                ld hl,ide_boot_fail_message
+                call ide_boot_show_result
+ide_boot_fail_wait:
+                jr ide_boot_fail_wait
+
+ide_boot_show_result:
+                push hl
+                ld h,2
+                ld l,12
+                call POSIT
+                pop hl
+ide_boot_show_result_char:
+                ld a,(hl)
+                or a
+                ret z
+                call CHPUT
+                inc hl
+                jr ide_boot_show_result_char
+
+ide_boot_pass_message:
+                db "IDE BOOT PASS",0
+ide_boot_fail_message:
+                db "IDE BOOT FAIL",0
 
 ; Read logical sector 1 into BOOT_BUF through the Sunrise ATA window.
 ide_read_lba1:

@@ -7,9 +7,11 @@
 ; labelled address the 1983 harness can observe.
 
 SD_MAPPER_DATA  equ #7b00
-SD_FLAGS        equ #f39c
+SD_FLAGS        equ #f30a
 SD_FLAG_BLOCK   equ #02
 BOOT_BUF        equ #c200
+CHPUT           equ #00a2
+POSIT           equ #00c6
 
                 org #c000
 
@@ -39,10 +41,34 @@ sd_boot_entry:
                 ld a,(hl)
                 cp 'B'
                 jr nz,sd_boot_fail
+                ld hl,sd_boot_pass_message
+                call sd_boot_show_result
 sd_boot_pass:
                 jr sd_boot_pass
 sd_boot_fail:
-                jr sd_boot_fail
+                ld hl,sd_boot_fail_message
+                call sd_boot_show_result
+sd_boot_fail_wait:
+                jr sd_boot_fail_wait
+
+sd_boot_show_result:
+                push hl
+                ld h,2
+                ld l,12
+                call POSIT
+                pop hl
+sd_boot_show_result_char:
+                ld a,(hl)
+                or a
+                ret z
+                call CHPUT
+                inc hl
+                jr sd_boot_show_result_char
+
+sd_boot_pass_message:
+                db "SD BOOT PASS",0
+sd_boot_fail_message:
+                db "SD BOOT FAIL",0
 
 ; Read logical sector 1. SDHC uses block argument 1; SDSC uses byte address
 ; 512. The BIOS publishes the addressing mode in SD_FLAGS before handoff.

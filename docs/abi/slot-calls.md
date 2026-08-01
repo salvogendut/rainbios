@@ -35,9 +35,11 @@ writes E to that address and preserves both HL and E. Both calls restore the
 exact previous primary and secondary selections before returning. They inhibit
 maskable interrupts before changing slot state.
 
-Page-0 reads and writes use dedicated RAM helpers at `F383h` and `F38Bh`.
-Pages 1–3 execute from page 0; a page-3 access restores the old page before
-executing `RET`, so the original stack is visible again.
+Page-0 reads and writes use the standard RAM primitives `RDPRIM` at `F380h`
+and `WRPRIM` at `F385h`. `CLPRIM` at `F38Ch` and `CLPRM1` at `F398h` provide
+the corresponding primary-slot call trampoline. Pages 1–3 execute from page 0;
+a page-3 access restores the old page before executing `RET`, so the original
+stack is visible again.
 
 `CALSLT` at `001Ch` takes the target address in IX and the slot ID in the high
 byte of IY. M1H accepts primary and expanded targets in page 1 or page 2. If
@@ -45,6 +47,10 @@ the target returns, RainBIOS restores the exact previous primary and secondary
 selections and returns the target routine's normal registers and flags. Slot
 selection runs through the alternate banks so AF/BC/DE/HL reach the target
 unchanged. Maskable interrupts are inhibited before the target is selected.
+Expanded calls expose separate saved primary and secondary selector fields at
+the standard stack offsets used by mapper kernels. If the target patches those
+page-2/page-3 fields after reallocating RAM, RainBIOS restores the patched
+values rather than the stale pre-call selectors.
 Targets in page 0 or page 3 remain rejected because they would hide the caller
 or its stack.
 
@@ -68,6 +74,7 @@ three page-0 RAM helpers, the page-3 stack paths, returning page-1/page-2
 `test-openmsx-expanded-slots` independently exercises all four pages through
 multiple secondary slots, checks the physical inverted selector and `SLTTBL`,
 tests stack-safe page-3 restoration, and calls a returning expanded page-1
-target. The separate `test-openmsx-services` probe exercises `CALLF` from
+target which patches all three saved selector bytes before returning. The
+separate `test-openmsx-services` probe exercises `CALLF` from
 `H.TIMI` while interrupts are enabled and requires the exact slot state to be
 restored.
