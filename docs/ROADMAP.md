@@ -32,19 +32,20 @@ a page-3-only decoy), and MSX1/MSX2 checks in 1983 cover this state.
 The M1B slice implements and tests direct primary-slot register access and
 `ENASLT` for non-expanded slot IDs on all four pages. Page 0 completes its
 switch from a RAM helper; page 3 removes the return address from the old stack
-before replacing that stack's slot. Expanded IDs currently fail closed without
-changing the map. See `docs/abi/slot-calls.md`.
+before replacing that stack's slot. At this stage expanded IDs failed closed;
+M1H later added their supported forms. See `docs/abi/slot-calls.md`.
 
 M1C adds primary-slot `RDSLT` and `WRSLT` on every page. The probe seeds the
 physical RAM device with distinct page values, verifies reads and writes
 through the public BIOS entries, requires documented register preservation,
-and checks that every call restores the exact previous map. Expanded-slot
-forms remain pending.
+and checks that every call restores the exact previous map. M1H later extended
+these operations to expanded slots.
 
 M1D adds returning primary-slot `CALSLT` calls for page 1 and page 2. The
 called code can replace all normal result registers and flags; RainBIOS keeps
 the old map in the call's page-3 stack frame and restores it exactly after
-`RET`. Expanded slots and page-0/page-3 targets still fail closed.
+`RET`. Page-0/page-3 targets still fail closed; M1H later added expanded
+page-1/page-2 calls.
 
 M1E scans `4000h` and `8000h` in each non-BIOS primary slot for the public
 `AB` header and invokes a nonzero page-1/page-2 `INIT` address. An original
@@ -106,7 +107,7 @@ so cross-slot `H.TIMI` hooks cannot corrupt the interpreter.
 
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
-- add a freely redistributable character set with documented provenance;
+- complete the remaining character set and keep its provenance documented;
 - finish the remaining text control characters and cursor presentation;
 - add host and emulator tests for port ordering and VRAM boundaries.
 
@@ -153,7 +154,6 @@ entry state. The complete BBC BASIC smoke sequence passes through the menu,
 and a standard `H.TIMI` test hook drives the same path in 1983 before its
 rendered prompt is checked.
 
-- extend primary header discovery to expanded cartridge slots;
 - define and test startup register and work-area state;
 - support common slot and mapper arrangements needed before cartridge code
   installs its own mapper;
@@ -186,9 +186,9 @@ timeout and error-mapping branches. `DSKCHG` reports changed, unchanged, and
 unknown states from the WD2793 drive register and status without ever starting
 the motor, and `GETDPB` publishes the fixed F9 DPB without touching the
 controller; both report error 12 for drives other than A and are validated by
-1983 probes with and without a mounted image. Disk boot, filesystem services,
-formatting, drive B, other controllers, writable media, and real-hardware
-timing validation remain pending.
+1983 probes with and without a mounted image. Filesystem services, formatting,
+drive B, other floppy controllers, writable media, and real-hardware timing
+validation remain pending; M7 owns the implemented boot-sector paths.
 
 - close remaining main BIOS and SUB-ROM ABI gaps;
 - characterize flags, clobbered registers, timing-sensitive I/O, and error
@@ -214,9 +214,9 @@ non-bootable medium falls back to the interactive menu with the RainBIOS stack
 intact.
 
 The Space-key boot menu now offers three options. Option 1 starts BBC BASIC,
-option 2 re-enters the `H.RUNC` bootstrap so MSX DOS can be booted from drive A
-on demand (a valid payload holds back the cold-boot auto-boot so the menu is
-reachable), and option 3 boots Sunrise IDE and SD Mapper V2 cartridges through
+option 2 re-enters the drive-A `H.RUNC` boot-sector path on demand (a valid
+payload holds back the cold-boot auto-boot so the menu is reachable), and
+option 3 boots Sunrise IDE and SD Mapper V2 cartridges through
 RainBIOS's own page-0 ATA/SPI backends. The scan recognizes the shared
 storage-ROM header without calling the Nextor `INIT`, records its slot, and
 option 3 maps the cartridge in page 1, probes its controller type, reads sector

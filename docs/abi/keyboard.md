@@ -24,6 +24,7 @@ Shift-A translation, register preservation, pointer movement, and a blocking
 `CHGET` awakened by Return. The BBC BASIC integration probe additionally
 exercises interactive editing through these calls.
 
-This is intentionally a partial M3 implementation. Auto-repeat, Caps/Code
-locks, dead keys, function-key expansion, key click, and full Stop/Break
-semantics remain future compatibility work.
+This is intentionally a partial M3 implementation. Auto-repeat, Code lock,
+dead keys, function-key expansion, key click, full Stop/Break semantics, and
+CAPS behavior beyond the implemented state/LED remain future compatibility
+work.

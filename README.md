@@ -2,352 +2,128 @@
 
 # RainBIOS
 
-RainBIOS is an independent, open-source firmware project for MSX and MSX2
-computers. Its goal is binary-compatible system behavior without incorporating
-proprietary source code, ROM data, fonts, logos, or other copyrighted assets.
+RainBIOS is an independent, open-source firmware project targeting MSX and
+MSX2 computers. It aims for binary-compatible public behavior without using
+proprietary source code, ROM data, disassembly, fonts, logos, or extracted
+assets.
 
-Milestone M1 is in progress. The project builds a deliberately incomplete
-32 KiB MSX1 main ROM with the standard entry-point layout and a small set of
-low-level hardware routines. Cold boot now finds and tests 32 KiB of RAM in a
-primary or secondary slot, maps it into pages 2 and 3, establishes the stack
-and minimal MAIN-ROM work area, initializes primary/expanded slot control and
-memory read/write
-calls, enables an IM 1 VBlank path with standard hooks and `JIFFY`, and then
-displays the boot UI. It also discovers public `AB` cartridge headers in
-primary and secondary slots and can invoke page-1/page-2 `INIT` routines. The first Screen
-0/1/2 initialization, Screen 0/1 text output, interrupt-driven international
-keyboard scan, buffered character-input services, and descriptor-driven BBC
-BASIC menu launch are present. The standard cassette motor, input/output
-leader, and framed-byte calls are also implemented, and BBC BASIC can save
-and load sequential program files through them. Complete keyboard behavior,
-memory-mapper allocation, broad cartridge compatibility, and most firmware
-services remain pending.
+The repository currently builds a deliberately incomplete 32 KiB MSX1 main
+ROM. It is suitable for compatibility development and controlled tests, not as
+a complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
+[ABI status table](docs/abi/main-bios.csv) for exact implementation status.
+
+## Key features
+
+- deterministic 32 KiB MSX1 ROM with standard fixed entry points;
+- primary and expanded slot discovery, 32 KiB RAM selection, and a fixed
+  64 KiB memory-mapper baseline;
+- initial Screen 0/1/2, console, keyboard, interrupt, and cassette services,
+  plus PSG output;
+- public `AB` cartridge discovery and versioned RainBIOS payload descriptors;
+- a boot menu for BBC BASIC, an MSX-DOS-style floppy boot sector, Sunrise IDE,
+  and SD Mapper V2 media;
+- an optional read-only NMS 8250 WD2793 disk extension;
+- host, openMSX, and 1983 integration tests built from original fixtures.
+
+## Current limitations
+
+- many BIOS entries remain partial or safe stubs;
+- no MSX2 main ROM or SUB-ROM is built yet;
+- mapper allocation, broad cartridge compatibility, and several keyboard,
+  controller, printer, graphics, and filesystem services remain pending;
+- storage support runs deterministic boot-sector loaders but has not yet booted
+  a provenance-cleared real MSX-DOS kernel;
+- real-hardware timing and compatibility validation remain in progress.
 
 ## Build
 
 Requirements:
 
-- GNU Make
-- Python 3.9 or newer
-- Pillow 10 or newer
-- [RASM](https://github.com/EdouardBERGE/rasm) 3.x on `PATH`
+- GNU Make;
+- Python 3.10 or newer;
+- Pillow 10 or newer;
+- [RASM](https://github.com/EdouardBERGE/rasm) 3.x on `PATH`.
 
-Build and validate the ROM:
+Build the main ROM and run host validation:
 
 ```sh
 make
 make test
 ```
 
-The output is `build/rainbios_msx1.rom`. Override the assembler when needed:
+The main output is `build/rainbios_msx1.rom`. Override the assembler when
+needed:
 
 ```sh
 make RASM=/path/to/rasm
 ```
 
-The build converts `src/logo.png` into legal TMS9918 Graphics II data, adds the
-`PRESS SPACE TO SEE OPTIONS` notice, and writes a hardware-palette preview to
-`build/logo/logo_preview.png`. Cold boot also plays a short PSG startup motif;
-Space opens the early boot-menu preview. Asset provenance and release status
-are tracked in
-[docs/ASSETS.md](docs/ASSETS.md).
-
-The Space-key menu offers option 1 to launch the separately built
-[BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
-payload when its versioned descriptor and requirements validate, option 2 to
-boot MSX DOS from drive A through the disk-ROM `H.RUNC` hook, and option 3 to
-boot from a Sunrise IDE or SD Mapper V2 cartridge through RainBIOS's own
-controller backends. The storage ROM is detected without entering its Nextor
-`INIT`; option 3 distinguishes the ATA and SPI windows at runtime, loads sector
-0 at `C000h`, checks the `EBh`/`E9h` signature, and enters `C000h+1Eh`. Invalid
-descriptors are not advertised or entered. The console,
-keyboard, timing, Graphics II, cassette-load, and menu paths pass executable
-BASIC tests. Its open-source core and new BSD-3-Clause MSX port can be
-distributed with RainBIOS while remaining a distinct build artifact. The
-cartridge is pinned by source revision, size, and SHA-256 digest. The
-dependency, license, packaging, and platform boundary are described in
-[docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md).
-
-An optional openMSX machine-definition check is available:
-
-```sh
-make test-openmsx
-```
-
-The M1 state probe places RAM in each non-ROM primary slot in turn, adds a
-page-3-only decoy ahead of a valid 32 KiB candidate, and boots with RAM in
-expanded slot 3-2. It checks the resulting page map, stack, work-area bounds,
-slot tables, and hook initialization:
-
-```sh
-make test-openmsx-m1 OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The M1D call probe verifies `RSLREG`, `WSLREG`, primary-slot `ENASLT`,
-primary-slot `RDSLT`/`WRSLT`, and returning page-1/page-2 `CALSLT` calls,
-including exact slot-map restoration:
-
-```sh
-make test-openmsx-slots OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The expanded-slot probe independently checks `EXPTBL`/`SLTTBL`, the inverted
-`FFFFh` selector, all four address pages, stack-safe restoration, and a
-returning expanded `CALSLT`:
-
-```sh
-make test-openmsx-expanded-slots \
-  OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The interrupt/video service probe checks `CALLF`, `H.TIMI`, `JIFFY`,
-`WRTVDP`, `INITXT`, `POSIT`, `CHPUT`, and `CLS` through their public entries:
-
-```sh
-make test-openmsx-services OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The M3 keyboard probe uses physical openMSX matrix events to verify Shift+A,
-raw `SNSMAT`, `CHSNS`, register-preserving `CHGET`, `KILBUF`, and an empty
-blocking `CHGET` which wakes on Return:
-
-```sh
-make test-openmsx-keyboard OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The cassette probes exercise only the public `TAP*` calls. The first decodes
-a raw data block in both openMSX and 1983. The second loads and runs a
-tokenized BBC BASIC program in 1983. The SAVE probe records a WAV in openMSX
-and independently decodes its binary type and filename header:
-
-```sh
-make test-openmsx-tape OPENMSX='flatpak run org.openmsx.openMSX'
-make test-1983-tape
-make test-1983-bbcbasic-tape
-make test-openmsx-bbcbasic-tape-save \
-  OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-Standard CAS streams are the supported input baseline. Replay of slow sampled
-WAV recordings still needs decoder hardening and is not claimed yet.
-
-The optional source-built NMS 8250 disk extension provides read-only `PHYDIO`
-for drive A on 720 KiB `F9h` media, plus `DSKCHG`, `GETDPB`, and a cold-boot
-`H.RUNC` bootstrap hook that loads and runs an MSX-DOS boot sector. It supports
-arbitrary logical sectors and multi-sector reads across side and track
-boundaries, reports medium change state without starting the motor, publishes
-the fixed F9 DPB, and bounds all controller waits, returning standard error
-codes. Build the 16 KiB component with:
+Build the optional NMS 8250 disk extension with:
 
 ```sh
 make nms8250-disk-rom
 ```
 
-The output is `build/rainbios_nms8250_disk.rom`. Its precise buffer, error, and
-clobber contract is documented in
-[`docs/abi/nms8250-disk-rom.md`](docs/abi/nms8250-disk-rom.md).
+Its output is `build/rainbios_nms8250_disk.rom`.
 
-The disk probes verify safe no-device defaults, extension bootstrap, production
-hook/drive registration, cross-side/track reads, no-media handling, exact
-partial-transfer counts, `DSKCHG` changed/unchanged/unknown states with and
-without media, `GETDPB` DPB publication, write rejection without changing a
-read/write-mounted image, and the full cold-boot disk path — the production ROM
-boots a deterministic 720 KiB `F9h` fixture whose boot sector calls `DSKIO`
-from page-3 RAM and reaches a pass marker, and falls back to the interactive
-menu with an empty or non-bootable drive. A valid payload holds back the
-cold-boot auto-boot so the Space-key menu can select option 2 and reach the
-same fixture; option 3 without a supported IDE device returns to the menu:
+## Quick validation
 
 ```sh
-make test-1983-disk-baseline
-make test-1983-disk-boot
-make test-1983-disk-read
-make test-1983-disk-no-media
-make test-1983-disk-dskchg-getdpb
-make test-1983-disk-dskchg-no-media
-make test-1983-disk-partial-error
-make test-1983-disk-write-guard
-make test-1983-nms8250-disk-rom
-make test-1983-disk-boot-production
-make test-1983-disk-boot-fallback
-make test-1983-disk-boot-menu
-make test-1983-disk-menu-stub
-```
-
-The storage probes use externally supplied Sunrise/Nextor and SD Mapper/Nextor
-ROMs only as black-box cartridge shells. Original raw-image fixtures boot
-through option 3, read a second sector through either the Sunrise ATA window or
-SD Mapper SPI window, verify its marker, and reach a labelled pass loop.
-Separate tests confirm that a detected cartridge with no mounted medium
-restores the BIOS page map and returns to the menu:
-
-```sh
-make test-1983-ide-boot
-make test-1983-ide-menu
-make test-1983-sd-boot
-make test-1983-sd-menu
-```
-
-No proprietary disk firmware or media is distributed or required. Filesystems,
-formatting, drive B, and writable-media support remain out of scope for this
-component; the bootstrap hook runs an MSX-DOS-style boot sector but does not yet
-load a real MSX-DOS kernel.
-
-An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
-`INIT` transfer in openMSX:
-
-```sh
-make test-openmsx-cartridge OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The corresponding secondary-slot test places the same cartridge in expanded
-slot 2-2:
-
-```sh
-make test-openmsx-expanded-cartridge \
-  OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-Both tests require the CPU to be executing from cartridge page 1, the correct
-slot to be mapped, a cartridge-written RAM signature to exist, and the
-rendered screen to remain nonblank. BBC BASIC descriptor discovery and menu
-launch in expanded slot 2-2 are covered by:
-
-```sh
-make test-openmsx-expanded-bbcbasic-menu \
-  OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-When openMSX is installed as a Flatpak, use:
-
-```sh
-make test-openmsx OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-To boot the ROM, capture the rendered logo, and validate that the screen is
-nonblank:
-
-```sh
+make test
 make test-openmsx-boot OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The captured hardware rendering is written to
-`build/openmsx/rainbios_logo.png`.
-
-Repository screenshots from supported emulators are collected in
-[`screenshots/`](screenshots/).
-
-The Space-key route and boot-menu rendering have a separate integration test:
-
-```sh
-make test-openmsx-options OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The startup jingle can be captured and checked for non-silent PCM output:
-
-```sh
-make test-openmsx-audio OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The adjacent `1983` emulator provides a second, fully headless boot check:
-
-```sh
 make test-1983
-make test-1983-expanded
-make test-1983-cartridge
 ```
 
-The first target runs 120 NTSC frames and requires the M1 stack and
-page-2/page-3 slot map. The expanded target repeats that check on the MSX2
-layout and requires secondary selector `A0h`, with RAM in slot 3-2. The
-cartridge target independently requires execution in the diagnostic
-cartridge with slot 1 mapped into page 1. All validate the rendered screen and
-write captures below `build/1983/`. Override
-`EMULATOR_1983` or `MODELS_1983` when those sibling paths differ.
+The complete emulator matrix, optional local inputs, variable overrides, and
+generated report locations are documented in [docs/TESTING.md](docs/TESTING.md).
+Selected emulator images are collected under [screenshots/](screenshots/).
 
-With the pinned BBC BASIC artifact already built, its complete editing,
-language, error, clock, and timed-input sequence runs through Space, the
-descriptor-aware menu, and option 1. The second target performs the same menu
-transfer in 1983 and independently requires a visible banner and prompt:
+## Optional components
 
-```sh
-make test-openmsx-bbcbasic OPENMSX='flatpak run org.openmsx.openMSX'
-make test-1983-bbcbasic
-```
+### BBC BASIC
 
-The graphics integration program selects Graphics II, draws a multicolour
-rectangle and diagonals, plots and reads back the center pixel, and remains in
-graphics mode. openMSX checks VRAM and the `POINT()` result with a ROM-write
-guard; 1983 independently validates the rendered frame:
+The Space-key menu can launch the separately built
+[BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
+payload after validating its versioned descriptor and service requirements.
+The dependency, license boundary, memory layout, and release workflow are in
+[docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md); the exact handoff is in
+[docs/abi/payload-v1.md](docs/abi/payload-v1.md).
 
-```sh
-make test-openmsx-bbcbasic-graphics \
-  OPENMSX='flatpak run org.openmsx.openMSX'
-make test-1983-bbcbasic-graphics
-```
+### Disk and storage boot
 
-The positive openMSX path also checks the payload slot, entry address, enabled
-menu text, page map, stack, and entry registers. A corrupt-descriptor fixture
-proves that claimed-but-invalid payloads fail closed without executing their
-ordinary cartridge `INIT`:
+The optional NMS 8250 extension provides read-only `PHYDIO`, `DSKCHG`,
+`GETDPB`, and a bounded `H.RUNC` boot-sector path. Menu option 3 uses RainBIOS's
+own ATA/SPI backends for Sunrise IDE and SD Mapper V2 cartridges without
+entering their Nextor `INIT`. Exact disk-ROM behavior is documented in
+[docs/abi/nms8250-disk-rom.md](docs/abi/nms8250-disk-rom.md); implementation
+status and remaining work are tracked under M7 in
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
-```sh
-make test-openmsx-payload-invalid \
-    OPENMSX='flatpak run org.openmsx.openMSX'
-```
+## Documentation
 
-Optional black-box tests cover the locally supplied 32 KiB Arkanoid and MSX
-Diagnostics cartridges in both emulators:
-
-```sh
-make test-external-cartridges \
-    OPENMSX='flatpak run org.openmsx.openMSX'
-```
-
-The ROMs are not part of RainBIOS. The defaults point to `Arkano.rom` and
-`diag.rom` under the adjacent `1983/ROMS` directory; override `ARKANO_ROM` or
-`MSX_DIAGNOSTICS_ROM` for another local layout. Exact identities, results,
-and the limits of these smoke tests are recorded in
-[docs/CARTRIDGE_COMPATIBILITY.md](docs/CARTRIDGE_COMPATIBILITY.md).
-
-The optional sibling BBC BASIC checkout can be checked against RainBIOS's
-pinned revision with:
-
-```sh
-make check-bbcbasic
-```
-
-With the legacy assemblers available, `make check-bbcbasic-artifact` also
-builds and byte-verifies the pinned 16 KiB console payload.
+- Design and status: [architecture](docs/ARCHITECTURE.md),
+  [roadmap](docs/ROADMAP.md), and [main BIOS ABI](docs/abi/main-bios.csv).
+- Public contracts: [slot calls](docs/abi/slot-calls.md),
+  [keyboard](docs/abi/keyboard.md), [payload v1](docs/abi/payload-v1.md), and
+  [NMS 8250 disk ROM](docs/abi/nms8250-disk-rom.md).
+- Validation: [testing guide](docs/TESTING.md),
+  [cartridge compatibility](docs/CARTRIDGE_COMPATIBILITY.md), and
+  [hardware checklist](docs/HARDWARE_TEST.md).
+- Provenance: [development policy](docs/DEVELOPMENT_POLICY.md),
+  [references](docs/REFERENCES.md), and [asset record](docs/ASSETS.md).
 
 ## Project boundaries
 
-RainBIOS follows a source-isolated development policy. Do not use proprietary
-BIOS source, ROM disassembly, extracted assets, or a rewrite of such material
-as an implementation reference. See [docs/DEVELOPMENT_POLICY.md](docs/DEVELOPMENT_POLICY.md)
-before contributing.
-
 Public specifications and documented hardware behavior define the contract.
-Open-source prior art may be consulted only when its license and the scope of
-the consultation are recorded in [docs/REFERENCES.md](docs/REFERENCES.md).
-
-## Direction
-
-The compatibility target is split into independently testable artifacts:
-
-- MSX1 32 KiB main BIOS ROM
-- MSX2 32 KiB main BIOS ROM
-- MSX2 16 KiB SUB-ROM
-- optional, separately scoped BASIC and disk firmware components
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the implementation order and exit
-criteria.
+Compatible open-source references may be consulted only when their license and
+scope are recorded. Proprietary BIOS source, ROM disassembly, extracted assets,
+and rewrites of such material are not implementation inputs. Read
+[docs/DEVELOPMENT_POLICY.md](docs/DEVELOPMENT_POLICY.md) before contributing.
 
 ## License
 
 Original RainBIOS code and documentation are licensed under the BSD 3-Clause
-License.
-The boot logo, project artwork, and selected screenshots are CC0-1.0. The
-adapted C-BIOS openMSX machine fixture remains under the C-BIOS two-clause
-license. Full third-party and asset terms are in `LICENSES/` and
-`docs/ASSETS.md`.
+License. The boot logo, project artwork, and selected screenshots are
+CC0-1.0. The adapted C-BIOS openMSX machine fixture retains the C-BIOS
+two-clause license. Full third-party and asset terms are in `LICENSES/` and
+[docs/ASSETS.md](docs/ASSETS.md).
