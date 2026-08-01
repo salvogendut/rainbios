@@ -275,12 +275,12 @@ that raw DSK images cannot reach. Real hardware can now be used to confirm that
 the injected polarity assumptions (LINES bit 6 as inverted IRQ) match the NMS
 8250.
 
-After timing/error behavior is established, the next functional disk milestone
-should be chosen explicitly. The read-only `DSKCHG`/`GETDPB`, floppy bootstrap,
-and Sunrise/SD Mapper bootstraps are complete; the smallest useful progression
-is a provenance-cleared real MSX-DOS loader test. Filesystem services, drive B,
-formatting, and writes should remain separate milestones with their own tests
-and provenance.
+The read-only `DSKCHG`/`GETDPB`, floppy bootstrap, Sunrise/SD Mapper direct
+bootstraps, and Sunrise Nextor path are complete. Nextor is the primary disk
+compatibility target; broaden versions, adapters, and user-supplied media
+without downloading or bundling a DOS. Other user-supplied systems, filesystem
+services, drive B, formatting, and writes remain separate milestones with their
+own tests and provenance.
 
 Broader project work can instead return to the unfinished M1-M4 items in
 `docs/ROADMAP.md`; do not imply that floppy support makes the main BIOS complete.
@@ -301,6 +301,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `docs/TESTING.md` | Host, openMSX, 1983, and external-input test matrix |
 | `tools/make_test_disk.py` | Deterministic raw DSK fixture generator |
 | `tools/make_ide_image.py` | Deterministic raw IDE boot fixture generator |
+| `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
 | `tools/run_1983_disk_baseline.py` | Symbol-based disk integration runner |
 | `tools/run_1983_ide_boot.py` | Symbol-based Sunrise IDE integration runner |
 | `tools/run_openmsx_disk_fault.py` | Symbol-based openMSX fault-injection runner |

@@ -1113,9 +1113,7 @@ test-1983-nextor: $(MSX1_ROM) $(NEXTOR_IMAGE)
 		--ide "$(NEXTOR_IMAGE)" --ide-mode read-only \
 		--headless --unthrottled --exit-after 2500 \
 		--screenshot "$(EMULATOR_1983_NEXTOR_SCREEN)"
-	$(PYTHON) tools/check_boot_screenshot.py \
-		--size 640x480 --min-colors 2 --max-colors 2 \
-		--foreground-box 48,184,128,208 \
+	$(PYTHON) tools/check_nextor_screenshot.py \
 		$(EMULATOR_1983_NEXTOR_SCREEN)
 
 run-1983-ide-boot: \
