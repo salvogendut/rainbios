@@ -24,7 +24,7 @@ changes in a dirty worktree.
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
 | MSX1 main BIOS | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS |
-| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB implemented |
+| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook implemented |
 | BBC BASIC payload | Built in sibling repository | `../bbcbasic-z80-msx/build/msx-console/bbcbasic_msx_console.rom` | Integrated optional payload |
 | MSX2 main BIOS | Not yet available | Planned 32 KiB ROM | M5 pending |
 | MSX2 SUB-ROM | Not yet available | Planned 16 KiB ROM | M5 pending |
@@ -94,11 +94,16 @@ The optional NMS 8250 disk-ROM layer:
 - reports medium change state from the WD2793 drive register and controller
   status without ever starting the motor or issuing a command;
 - publishes the fixed F9 DPB and preserves the kernel-owned drive and FAT
-  pointer bytes.
+  pointer bytes;
+- installs an `H.RUNC` bootstrap hook that reads the boot sector into `C000h`,
+  validates the MSX-DOS `EBh`/`E9h` signature, and enters the loader at
+  `C000h+1Eh` with `A = 0` and carry set, or returns so the interactive menu
+  continues.
 
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
-The disk ROM does not yet provide disk boot, FAT or DOS services, formatting,
+The disk ROM loads and runs an MSX-DOS-style boot sector but does not yet load a
+real MSX-DOS kernel, and does not provide FAT or DOS services, formatting,
 drive B, writes, non-NMS controllers, or real-hardware timing guarantees.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
@@ -112,8 +117,17 @@ behavior is compiled into `build/rainbios_nms8250_disk.rom`.
 `tools/make_test_disk.py` creates deterministic 720 KiB raw images. Every
 sector records its LBA and independent markers. A separate one-sided geometry
 creates a deterministic record-not-found after one successful sector.
+`tests/cartridges/disk_boot_sector.asm` is assembled at `C000h` and packed by
+`tools/make_boot_disk.py` into a bootable fixture whose sector 0 carries the
+`EBh` signature and a loader that reads sector 1 through `DSKIO`, verifies the
+`RB01` marker, and spins at a labelled address.
 
 Coverage includes:
+
+- the production `H.RUNC` bootstrap: a bootable fixture reaches a pass marker in
+  page-3 RAM (`test-1983-disk-boot-production`), and a missing or non-bootable
+  medium returns to the interactive menu with the RainBIOS stack intact
+  (`test-1983-disk-boot-fallback`);
 
 - production `H.PHYD` and `DRVINF` registration;
 - invalid drive, media ID, zero count, logical range, and buffer range;

@@ -201,5 +201,25 @@ timing validation remain pending.
 - publish reproducible releases, symbols, compatibility results, and known
   deviations.
 
+## M7 — Disk boot
+
+The production NMS 8250 disk extension now installs a `H.RUNC` bootstrap hook.
+At cold boot RainBIOS selects the disk device and the hook reads the boot
+sector into `C000h`, validates the MSX-DOS `EBh`/`E9h` signature, and enters the
+loader at `C000h+1Eh` with the cold-boot flag and carry set. A deterministic
+720 KiB F9 boot fixture (a two-sector loader plus marker) is verified end to end
+by 1983: the boot sector runs in page-3 RAM, calls `DSKIO` for a further
+sector, and reaches a labelled spin; a separate probe confirms that a missing or
+non-bootable medium falls back to the interactive menu with the RainBIOS stack
+intact.
+
+- boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
+  contract (requires provenance-cleared DOS files);
+- provide the documented loader inputs `HL`/`DE` (disk error handler and
+  `ENAKRN` entry) once a real kernel consumes them;
+- expose disk boot as a menu action (option 2) alongside run-BASIC;
+- filesystem services, formatting, drive B, other controllers, writable media,
+  and real-hardware timing validation remain pending.
+
 “Complete” means documented compatibility for the public interfaces and boot
 behavior; it does not mean byte identity with any existing ROM.

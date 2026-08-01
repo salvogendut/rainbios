@@ -127,7 +127,8 @@ Standard CAS streams are the supported input baseline. Replay of slow sampled
 WAV recordings still needs decoder hardening and is not claimed yet.
 
 The optional source-built NMS 8250 disk extension provides read-only `PHYDIO`
-for drive A on 720 KiB `F9h` media, plus `DSKCHG` and `GETDPB`. It supports
+for drive A on 720 KiB `F9h` media, plus `DSKCHG`, `GETDPB`, and a cold-boot
+`H.RUNC` bootstrap hook that loads and runs an MSX-DOS boot sector. It supports
 arbitrary logical sectors and multi-sector reads across side and track
 boundaries, reports medium change state without starting the motor, publishes
 the fixed F9 DPB, and bounds all controller waits, returning standard error
@@ -144,8 +145,11 @@ clobber contract is documented in
 The disk probes verify safe no-device defaults, extension bootstrap, production
 hook/drive registration, cross-side/track reads, no-media handling, exact
 partial-transfer counts, `DSKCHG` changed/unchanged/unknown states with and
-without media, `GETDPB` DPB publication, and write rejection without changing a
-read/write-mounted image:
+without media, `GETDPB` DPB publication, write rejection without changing a
+read/write-mounted image, and the full cold-boot disk path — the production ROM
+boots a deterministic 720 KiB `F9h` fixture whose boot sector calls `DSKIO`
+from page-3 RAM and reaches a pass marker, and falls back to the interactive
+menu with an empty or non-bootable drive:
 
 ```sh
 make test-1983-disk-baseline
@@ -157,11 +161,14 @@ make test-1983-disk-dskchg-no-media
 make test-1983-disk-partial-error
 make test-1983-disk-write-guard
 make test-1983-nms8250-disk-rom
+make test-1983-disk-boot-production
+make test-1983-disk-boot-fallback
 ```
 
-No proprietary disk firmware or media is distributed or required. Disk boot,
-filesystems, formatting, drive B, and writable-media support remain out of
-scope for this component.
+No proprietary disk firmware or media is distributed or required. Filesystems,
+formatting, drive B, and writable-media support remain out of scope for this
+component; the bootstrap hook runs an MSX-DOS-style boot sector but does not yet
+load a real MSX-DOS kernel.
 
 An original 16 KiB diagnostic cartridge proves cold-boot header discovery and
 `INIT` transfer in openMSX:

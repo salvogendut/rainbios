@@ -79,6 +79,10 @@ DISK_PRODUCTION_INIT_CART := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.rom
 DISK_PRODUCTION_INIT_CART_SYM := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.sym
+DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
+DISK_BOOT_SECTOR_BIN := $(BUILD_DIR)/disk_boot_sector.bin
+DISK_BOOT_SECTOR_SYM := $(BUILD_DIR)/disk_boot_sector.sym
+DISK_BOOT_IMAGE := $(BUILD_DIR)/disks/disk-boot.dsk
 DISK_FAULT_TEST_ROM := $(BUILD_DIR)/cartridges/disk_fault_rom.rom
 DISK_FAULT_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_fault_rom.sym
 DISK_FAULT_TEST_SOURCES := tests/cartridges/disk_fault_rom.asm \
@@ -176,6 +180,10 @@ EMULATOR_1983_DISK_PARTIAL_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-partial-error.ppm
 EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
 	$(EMULATOR_1983_DIR)/nms8250-disk-rom.ppm
+EMULATOR_1983_DISK_BOOT_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-boot.ppm
+EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-boot-fallback.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -201,8 +209,10 @@ SOURCES := src/main_msx1.asm
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
-	test-1983-disk-baseline test-1983-disk-boot test-1983-disk-read \
-	test-1983-disk-no-media test-1983-disk-write-guard \
+	test-1983-disk-baseline test-1983-disk-boot \
+	test-1983-disk-boot-production test-1983-disk-boot-fallback \
+	test-1983-disk-read test-1983-disk-no-media \
+	test-1983-disk-write-guard \
 	test-1983-disk-dskchg-getdpb test-1983-disk-dskchg-no-media \
 	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
 	test-openmsx-expanded-bbcbasic-menu \
@@ -348,6 +358,19 @@ $(DISK_PHYDIO_IMAGE): tools/make_test_disk.py | $(BUILD_DIR)
 $(DISK_PARTIAL_IMAGE): tools/make_test_disk.py | $(BUILD_DIR)
 	$(PYTHON) $< --one-side $@
 
+$(DISK_BOOT_SECTOR_BIN): $(DISK_BOOT_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_BOOT_SECTOR_SYM)
+
+$(DISK_BOOT_SECTOR_SYM): $(DISK_BOOT_SECTOR_BIN)
+	@if test ! -f "$@"; then \
+		$(RASM) $(DISK_BOOT_SECTOR) -ob $(DISK_BOOT_SECTOR_BIN) \
+			-s -os $@; \
+	fi
+
+$(DISK_BOOT_IMAGE): tools/make_boot_disk.py $(DISK_BOOT_SECTOR_BIN)
+	$(PYTHON) $< --boot-sector $(DISK_BOOT_SECTOR_BIN) $@
+
 $(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(TAPE_INPUT_CART_SYM)
@@ -370,9 +393,10 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
-test: $(MSX1_ROM) $(NMS8250_DISK_ROM)
+test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
+	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
 	$(PYTHON) -m unittest discover -s tests -v
 
 $(OPENMSX_MACHINE): tests/openmsx/RainBIOS_MSX1.xml.in $(MSX1_ROM)
@@ -843,6 +867,33 @@ test-1983-disk-boot: \
 		--screenshot "$(EMULATOR_1983_DISK_ROM_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_ROM_SCREEN)
+
+test-1983-disk-boot-production: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(DISK_BOOT_SECTOR_SYM) $(DISK_BOOT_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--symbols "$(DISK_BOOT_SECTOR_SYM)" \
+		--expected-pass-label disk_boot_pass \
+		--expected-slot FC --exit-after 1200 \
+		--disk-a "$(DISK_BOOT_IMAGE)" --floppy-mode read-only \
+		--screenshot "$(EMULATOR_1983_DISK_BOOT_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DISK_BOOT_SCREEN)
+
+test-1983-disk-boot-fallback: $(MSX1_ROM) $(NMS8250_DISK_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--expect-fallback --expected-slot F0 --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN)
 
 test-1983-disk-read: \
 		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \

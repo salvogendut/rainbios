@@ -1,10 +1,17 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
-; Shared read-only PHYDIO implementation for the Philips NMS 8250 WD2793
-; memory window. The including ROM must place this code in page 1.
+; Shared disk implementation for the Philips NMS 8250 WD2793 memory window:
+; read-only PHYDIO, DSKCHG, GETDPB, and the cold-boot bootstrap hook. The
+; including ROM must place this code in page 1.
 
 H_PHYD          equ #ffa7
 DRVINF          equ #fb21
+
+; A test shell may define H_RUNC before including this driver. Production
+; builds use the public cold-boot bootstrap hook address.
+                ifndef H_RUNC
+H_RUNC          equ #fecb
+                endif
 
 ; The NMS 8250 controller window is fixed at #7ff8. A test shell may define
 ; FDC_BASE before including this driver to redirect the window to a RAM test
@@ -522,3 +529,35 @@ disk_dpb:
                 dw DISK_CLUSTERS+1             ; MAXCLUS
                 db DISK_FAT_SIZE               ; FATSIZ
                 dw DISK_FIRST_DIR              ; FIRDIR
+
+; Cold-boot bootstrap hook. RainBIOS calls this once through H_RUNC after it
+; selects a disk device (DEVICE = 1, DISK_SETUP = 0). The boot sector is read
+; into page-3 RAM and validated with the MSX-DOS signature (first byte 0EBh or
+; 0E9h) before control transfers to the loader at C000h+1Eh with A = 0 for a
+; cold boot and carry set. A missing or non-bootable medium returns normally so
+; the interactive menu continues; the loader may still call DSKIO, which keeps
+; this ROM mapped in page 1 through the active inter-slot call.
+disk_boot:
+                ld hl,#c000
+                ld de,0
+                ld bc,#01f9
+                xor a                          ; drive 0, read (carry clear)
+                call disk_phydio
+                ret c
+                ld a,(#c000)
+                cp #eb
+                jr z,disk_boot_go
+                cp #e9
+                ret nz
+disk_boot_go:
+                ld sp,#e000
+                xor a                          ; A = cold-boot flag
+                scf                            ; carry set
+                jp #c01e
+
+; Install the cold-boot bootstrap hook H_RUNC. Called by the production ROM
+; after disk_driver_init; test shells install their own H_RUNC instead.
+disk_driver_init_boot:
+                ld de,disk_boot
+                ld hl,H_RUNC
+                jp disk_set_hook

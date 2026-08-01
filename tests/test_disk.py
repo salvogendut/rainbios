@@ -17,6 +17,7 @@ from tools.make_test_disk import (
     make_one_side_image,
     make_probe_sector,
 )
+from tools.make_boot_disk import FILL, make_image as make_boot_image
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,12 @@ DISK_ROM_PATH = Path(
     os.environ.get(
         "RAINBIOS_NMS8250_DISK_ROM",
         ROOT / "build" / "rainbios_nms8250_disk.rom",
+    )
+)
+BOOT_SECTOR_PATH = Path(
+    os.environ.get(
+        "RAINBIOS_DISK_BOOT_SECTOR",
+        ROOT / "build" / "disk_boot_sector.bin",
     )
 )
 
@@ -65,6 +72,56 @@ class DiskFixtureTests(unittest.TestCase):
             image[start : start + SECTOR_SIZE],
             make_probe_sector(8),
         )
+
+
+class BootDiskImageTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.boot_sector = BOOT_SECTOR_PATH.read_bytes()
+
+    def test_boot_image_is_a_full_720_kib_f9_image(self) -> None:
+        image = make_boot_image(self.boot_sector)
+
+        self.assertEqual(len(image), DISK_SIZE)
+        self.assertEqual(image[0], 0xEB)
+        self.assertEqual(image[0x15], 0xF9)
+        self.assertEqual(
+            image[SECTOR_SIZE : 2 * SECTOR_SIZE],
+            self.boot_sector[SECTOR_SIZE : 2 * SECTOR_SIZE],
+        )
+
+    def test_boot_image_fills_unused_sectors_with_erased_media(self) -> None:
+        image = make_boot_image(self.boot_sector)
+
+        self.assertEqual(image[2 * SECTOR_SIZE :], bytes((FILL,)) * (DISK_SIZE - 2 * SECTOR_SIZE))
+
+
+class BootSectorLayoutTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.boot_sector = BOOT_SECTOR_PATH.read_bytes()
+
+    def test_boot_sector_is_two_sectors_loaded_to_c000(self) -> None:
+        self.assertGreaterEqual(len(self.boot_sector), 2 * SECTOR_SIZE)
+
+    def test_boot_sector_carries_the_msxdos_signature(self) -> None:
+        self.assertIn(self.boot_sector[0], (0xEB, 0xE9))
+        self.assertEqual(self.boot_sector[2], 0x90)
+
+    def test_boot_sector_advertises_the_f9_geometry(self) -> None:
+        self.assertEqual(int.from_bytes(self.boot_sector[11:13], "little"), 512)
+        self.assertEqual(self.boot_sector[13], 2)
+        self.assertEqual(self.boot_sector[0x15], 0xF9)
+        self.assertEqual(int.from_bytes(self.boot_sector[19:21], "little"), 1440)
+        self.assertEqual(int.from_bytes(self.boot_sector[24:26], "little"), 9)
+        self.assertEqual(int.from_bytes(self.boot_sector[26:28], "little"), 2)
+
+    def test_boot_sector_entry_is_at_the_kernel_c01e_contract(self) -> None:
+        self.assertEqual(self.boot_sector[0x1D], 0)
+        self.assertEqual(self.boot_sector[0x1E], 0x3A)  # LD A,(FFA8h): disk slot
+
+    def test_sector_one_holds_the_verified_marker(self) -> None:
+        self.assertEqual(self.boot_sector[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
 
 
 class DiskRomLayoutTests(unittest.TestCase):

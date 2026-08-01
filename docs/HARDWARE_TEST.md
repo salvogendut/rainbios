@@ -21,7 +21,7 @@ Fill in before starting:
 - Drive: make, model, head step rate, ready/door-switch wiring.
 - Media: 720 KiB double-sided, density (DD), media ID `F9h`.
 - ROM under test: `build/rainbios_nms8250_disk.rom` build hash
-  `ab7f66a6314942af069668966ad9b9e7` (record the tested hash).
+  `f0d1e9883a7d12aa3c97bfa8948dd5f4` (record the tested hash).
 - How the ROM is loaded (cartridge adapter, EPROM board, flash), and how the
   host reads the probe mailbox (debugger, serial logger, scope).
 - Date, ambient conditions, test jig/setup description.
@@ -127,6 +127,24 @@ without issuing a command, so they must never spin or start the motor.
     `docs/abi/nms8250-disk-rom.md`, the drive byte at `HL` is untouched, and the
     FAT pointer at `HL+19..HL+20` is untouched. Confirm the motor never starts.
 24. **Bad drive.** Call `GETDPB` with A not equal to zero; confirm error 12.
+
+## Bootstrap hook
+
+RainBIOS calls `H.RUNC` (`FECBh`) once at cold boot after it has selected a disk
+device. The hook reads the boot sector into `C000h`, validates the MSX-DOS
+signature, and either transfers control to the loader at `C000h+1Eh` (with
+`A = 0` for a cold boot and carry set) or returns so the interactive menu
+continues.
+
+25. **Bootable disk.** Boot with a 720 KiB F9 disk whose sector 0 begins with
+    `EBh`/`E9h`. Confirm the loader runs from `C000h`, can call `DSKIO` (`4010h`)
+    for further sectors, and that the machine never falls through to the BASIC
+    prompt.
+26. **Non-bootable medium.** Boot with a disk whose sector 0 does not begin with
+    `EBh`/`E9h`, and again with an empty drive. Confirm `H.RUNC` returns, the
+    stack is the RainBIOS stack, and the interactive menu appears.
+27. **Second boot attempt.** Confirm the hook is only invoked once per cold boot
+    and never re-entered after a warm return.
 
 ## Data-integrity soak
 

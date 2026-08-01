@@ -9,9 +9,30 @@ Philips NMS 8250 WD2793 memory layout. It is built separately with
 ## Initialization
 
 The standard `AB` header begins at `4000h`. `INIT` derives its full slot ID from
-`IYH`, publishes one drive in `DRVINF`, and installs a five-byte `H.PHYD` hook.
-It does not install a boot hook or retain control. Standard `DSKIO` entry
-`4010h` reaches the same read-only implementation.
+`IYH`, publishes one drive in `DRVINF`, installs a five-byte `H.PHYD` hook, and
+installs a five-byte `H.RUNC` bootstrap hook. It does not retain control.
+Standard `DSKIO` entry `4010h` reaches the same read-only implementation.
+
+## Bootstrap contract
+
+RainBIOS calls `H.RUNC` (`FECBh`) once at cold boot through
+`cold_boot_init_disk`, after setting `DEVICE = 1` and `DISK_SETUP = 0`. The hook
+reads logical sector 0 into `C000h` with the read-only `PHYDIO` path and checks
+the first byte for the MSX-DOS signature `EBh` or `E9h`.
+
+If the signature does not match, or the read fails (for example an empty drive),
+the hook returns normally and the interactive menu continues. If it matches,
+the hook sets `SP` to a page-3 stack and enters the loader at `C000h+1Eh`:
+
+| Input | Value |
+| --- | --- |
+| A | `00h`, cold-boot flag |
+| Carry | Set |
+
+The loader runs in page-3 RAM while this ROM stays mapped in page 1, so it may
+call `DSKIO` (`4010h`) and every other entry below through an inter-slot call
+using the slot ID published in `H.PHYD+1`. The hook never re-enters after a
+warm return.
 
 ## PHYDIO contract
 
@@ -135,9 +156,10 @@ motor, and reports only the completely validated sector prefix.
 
 ## Limitations
 
-The current component does not provide disk boot, FAT or DOS services,
-`DSKCHG` media-change driven DOS calls, formatting, drive B, writes, or
-controllers other than the NMS 8250 memory-mapped WD2793. The change state is
+The current component provides a cold-boot bootstrap hook that loads and runs a
+boot-sector loader, but not FAT or DOS services, `DSKCHG` media-change driven
+DOS calls, formatting, drive B, writes, or controllers other than the NMS 8250
+memory-mapped WD2793. The change state is
 synthesized from the WD2793 drive register and controller status rather than a
 mechanical switch, so it cannot distinguish a swapped medium of identical
 geometry from the originally mounted image. Emulator validation does not

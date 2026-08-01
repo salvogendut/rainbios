@@ -5,7 +5,7 @@
                 org #4000
 
                 db #41,#42                     ; AB signature
-                dw disk_driver_init
+                dw disk_rom_init
                 dw 0                           ; BASIC statement handler
                 dw 0                           ; device handler
                 dw 0                           ; BASIC text pointer
@@ -25,5 +25,11 @@
 disk_no_choice:
                 ld hl,0
                 ret
+
+; Production INIT: publish the read-only driver state, then install the
+; cold-boot bootstrap hook so RainBIOS can offer disk boot from the menu.
+disk_rom_init:
+                call disk_driver_init
+                jp disk_driver_init_boot
 
                 defs #8000-$,#ff
