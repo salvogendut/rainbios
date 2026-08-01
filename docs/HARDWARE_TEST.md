@@ -156,12 +156,18 @@ continues.
     `C000h`, the loader starts at `C000h+1Eh`, page 1 remains mapped to the
     cartridge, and the loader can read a further sector through the Sunrise ATA
     window.
-30. **IDE fallback.** Repeat with no medium and with a sector 0 that does not
-    start with `EBh` or `E9h`. Confirm page 1 is restored to the BIOS and the
-    menu remains responsive. With no supported cartridge, option 3 must also be
-    a no-op.
-31. **Storage-ROM isolation.** Confirm the cartridge's Nextor `INIT` is not
-    entered during discovery; RainBIOS must use only its own ATA bootstrap.
+30. **SD Mapper V2 boot.** Insert an SD Mapper V2 cartridge with a bootable card
+    in socket A, open the menu, and press `3`. Confirm card initialization
+    completes, sector 0 loads at `C000h`, and the loader can read a further
+    sector through the bank-7 SPI window. Repeat with one SDSC card and one SDHC
+    card to exercise byte and block addressing.
+31. **Storage fallback.** Repeat each controller with no medium and with a
+    sector 0 that does not start with `EBh` or `E9h`. Confirm page 1 is restored
+    to the BIOS and the menu remains responsive. With no supported cartridge,
+    option 3 must also be a no-op.
+32. **Storage-ROM isolation.** Confirm the cartridge's Nextor `INIT` is not
+    entered during discovery; RainBIOS must use only its own controller
+    backends.
 
 ## Data-integrity soak
 

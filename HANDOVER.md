@@ -101,10 +101,11 @@ The optional NMS 8250 disk-ROM layer:
   continues.
 
 The Space-key boot menu invokes the same bootstrap on demand: option 2 boots
-MSX DOS from drive A, while option 3 uses RainBIOS's own Sunrise ATA bootstrap
-to load sector 0 at `C000h` and enter `C000h+1Eh`. The storage-ROM scan records
-the cartridge slot without entering its Nextor `INIT`; failures restore the
-BIOS page map and return to the menu. The cold-boot auto-boot yields to a valid
+MSX DOS from drive A, while option 3 uses RainBIOS's own Sunrise ATA or SD
+Mapper SPI backend to load sector 0 at `C000h` and enter `C000h+1Eh`. The
+storage-ROM scan records the cartridge slot without entering its Nextor `INIT`;
+runtime register probing chooses the controller, and failures restore the BIOS
+page map and return to the menu. The cold-boot auto-boot yields to a valid
 payload so the menu can be reached with a bootable disk already inserted.
 
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
@@ -198,6 +199,8 @@ make test-1983-disk-write-guard
 make test-1983-nms8250-disk-rom
 make test-1983-ide-boot
 make test-1983-ide-menu
+make test-1983-sd-boot
+make test-1983-sd-menu
 ```
 
 The default emulator paths expect the adjacent open-source 1983 checkout:
@@ -243,7 +246,7 @@ is:
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Not started | Separate MSX2 ROMs, V9938, SUB-ROM calls, bitmap modes, palette, clock |
 | M6 completeness/optional components | In progress | ABI gaps, behavior characterization, releases, and broader disk functionality |
-| M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, SD Mapper V2 backend, hardware validation |
+| M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
 
@@ -267,10 +270,10 @@ the injected polarity assumptions (LINES bit 6 as inverted IRQ) match the NMS
 
 After timing/error behavior is established, the next functional disk milestone
 should be chosen explicitly. The read-only `DSKCHG`/`GETDPB`, floppy bootstrap,
-and Sunrise IDE bootstrap are complete; the smallest useful progression is a
-provenance-cleared real MSX-DOS loader test or an SD Mapper V2 backend behind
-the same option-3 contract. Filesystem services, drive B, formatting, and writes
-should remain separate milestones with their own tests and provenance.
+and Sunrise/SD Mapper bootstraps are complete; the smallest useful progression
+is a provenance-cleared real MSX-DOS loader test. Filesystem services, drive B,
+formatting, and writes should remain separate milestones with their own tests
+and provenance.
 
 Broader project work can instead return to the unfinished M1-M4 items in
 `docs/ROADMAP.md`; do not imply that floppy support makes the main BIOS complete.
@@ -282,7 +285,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `src/main_msx1.asm` | Main BIOS, reset, slots, hooks, devices, console |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
-| `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA sector-0 bootstrap |
+| `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
 | `docs/abi/main-bios.csv` | Truthful fixed-entry implementation status |
 | `docs/abi/nms8250-disk-rom.md` | Disk component ABI and limitations |
 | `docs/ROADMAP.md` | Authoritative milestone plan |

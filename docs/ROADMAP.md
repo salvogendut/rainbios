@@ -216,19 +216,20 @@ intact.
 The Space-key boot menu now offers three options. Option 1 starts BBC BASIC,
 option 2 re-enters the `H.RUNC` bootstrap so MSX DOS can be booted from drive A
 on demand (a valid payload holds back the cold-boot auto-boot so the menu is
-reachable), and option 3 boots a Sunrise IDE cartridge through RainBIOS's own
-page-0 ATA bootstrap. The scan recognizes the shared storage-ROM header without
-calling the Nextor `INIT`, records its slot, and option 3 temporarily maps the
-cartridge in page 1, reads sector 0 into `C000h`, validates `EBh`/`E9h`, and
-enters `C000h+1Eh`. The 1983 fixture then reads sector 1 directly through the
-Sunrise window and reaches a labelled pass loop; a no-medium case restores the
-BIOS map and returns to the menu.
+reachable), and option 3 boots Sunrise IDE and SD Mapper V2 cartridges through
+RainBIOS's own page-0 ATA/SPI backends. The scan recognizes the shared
+storage-ROM header without calling the Nextor `INIT`, records its slot, and
+option 3 maps the cartridge in page 1, probes its controller type, reads sector
+0 into `C000h`, validates `EBh`/`E9h`, and enters `C000h+1Eh`. The 1983 fixtures
+then read sector 1 directly through the selected controller and reach labelled
+pass loops; no-medium cases restore the BIOS map and return to the menu.
 
 - boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
   contract (requires provenance-cleared DOS files);
 - provide the documented loader inputs `HL`/`DE` (disk error handler and
   `ENAKRN` entry) once a real kernel consumes them;
-- add an SD Mapper V2 backend behind the same option-3 loader contract;
+- validate Sunrise and SD Mapper timing, card initialization, and electrical
+  behavior on real hardware;
 - filesystem services, formatting, drive B, other controllers, writable media,
   and real-hardware timing validation remain pending.
 

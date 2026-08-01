@@ -44,6 +44,12 @@ IDE_BOOT_SECTOR_PATH = Path(
         ROOT / "build" / "ide_boot_sector.bin",
     )
 )
+SD_BOOT_SECTOR_PATH = Path(
+    os.environ.get(
+        "RAINBIOS_SD_BOOT_SECTOR",
+        ROOT / "build" / "sd_boot_sector.bin",
+    )
+)
 
 
 class DiskFixtureTests(unittest.TestCase):
@@ -175,6 +181,25 @@ class IdeBootSectorLayoutTests(unittest.TestCase):
 
     def test_sector_one_holds_the_verified_marker(self) -> None:
         self.assertEqual(self.boot_sector[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
+
+
+class SdBootSectorLayoutTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.boot_sector = SD_BOOT_SECTOR_PATH.read_bytes()
+
+    def test_boot_sector_uses_the_c01e_loader_contract(self) -> None:
+        self.assertEqual(len(self.boot_sector), 2 * SECTOR_SIZE)
+        self.assertEqual(self.boot_sector[0], 0xEB)
+        self.assertEqual(self.boot_sector[2], 0x90)
+        self.assertEqual(self.boot_sector[0x1D], 0)
+        self.assertEqual(self.boot_sector[0x1E], 0xCD)  # CALL sector-1 read
+
+    def test_raw_image_contains_the_verified_marker(self) -> None:
+        image = make_ide_image(self.boot_sector)
+
+        self.assertEqual(len(image), IMAGE_SECTORS * SECTOR_SIZE)
+        self.assertEqual(image[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
 
 
 class DiskRomLayoutTests(unittest.TestCase):

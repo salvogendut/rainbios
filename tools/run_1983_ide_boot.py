@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Run 1983 and require the RainBIOS IDE bootstrap to boot a fixture image or
-fall back to the interactive menu when no bootable IDE medium is present."""
+"""Run 1983 and require the RainBIOS option-3 storage bootstrap to boot a
+fixture image or fall back when no bootable medium is present."""
 
 from __future__ import annotations
 
@@ -35,13 +35,13 @@ def validate_boot_pass(
     try:
         pc = int(fields["pc"], 16)
     except (KeyError, ValueError) as error:
-        raise ValueError("1983 emitted an invalid PC for IDE boot") from error
+        raise ValueError("1983 emitted an invalid PC for storage boot") from error
     expected_pc = symbols.get(expected_pass_label.lower())
     if expected_pc is None:
         raise ValueError(f"missing required symbol {expected_pass_label!r}")
     if pc != expected_pc:
         raise ValueError(
-            f"IDE boot stopped at {pc:04X}, expected "
+            f"storage boot stopped at {pc:04X}, expected "
             f"{expected_pass_label} ({expected_pc:04X})"
         )
     return fields
@@ -63,7 +63,7 @@ def validate_fallback(
         sp = int(fields["sp"], 16)
         pc = int(fields["pc"], 16)
     except (KeyError, ValueError) as error:
-        raise ValueError("1983 emitted an invalid state for IDE boot") from error
+        raise ValueError("1983 emitted an invalid storage-boot state") from error
     if not 0xF300 <= sp <= 0xF380:
         raise ValueError(
             f"SP {sp:04X} is outside RainBIOS main RAM; the bootstrap hook "
@@ -85,8 +85,12 @@ def main() -> int:
     parser.add_argument("--region", default="pal")
     parser.add_argument("--bios", type=pathlib.Path, required=True)
     parser.add_argument("--disk-rom", type=pathlib.Path)
-    parser.add_argument("--sunrise-rom", type=pathlib.Path, required=True)
+    controller = parser.add_mutually_exclusive_group(required=True)
+    controller.add_argument("--sunrise-rom", type=pathlib.Path)
+    controller.add_argument("--sd-mapper-rom", type=pathlib.Path)
     parser.add_argument("--ide", type=pathlib.Path)
+    parser.add_argument("--sd-a", type=pathlib.Path)
+    parser.add_argument("--sd-mode", default="read-only")
     parser.add_argument("--input-cartridge", type=pathlib.Path)
     parser.add_argument("--symbols", type=pathlib.Path)
     parser.add_argument("--expected-pass-label", default="ide_boot_pass")
@@ -95,6 +99,10 @@ def main() -> int:
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
     parser.add_argument("--exit-after", type=int, default=1200)
     arguments = parser.parse_args()
+    if arguments.sunrise_rom and arguments.sd_a:
+        parser.error("--sd-a requires --sd-mapper-rom")
+    if arguments.sd_mapper_rom and arguments.ide:
+        parser.error("--ide requires --sunrise-rom")
 
     command = [
         arguments.emulator,
@@ -115,17 +123,23 @@ def main() -> int:
         "--dump-state",
         "--screenshot",
         str(arguments.screenshot),
-        "--sunrise-rom",
-        str(arguments.sunrise_rom),
     ]
     if arguments.disk_rom:
         command.extend(["--disk-rom", str(arguments.disk_rom)])
+    if arguments.sunrise_rom:
+        command.extend(["--sunrise-rom", str(arguments.sunrise_rom)])
+    if arguments.sd_mapper_rom:
+        command.extend(["--sd-mapper-rom", str(arguments.sd_mapper_rom)])
     if arguments.input_cartridge:
         command.extend(
             ["--cart1", str(arguments.input_cartridge), "--mapper1", "linear"]
         )
     if arguments.ide:
         command.extend(["--ide", str(arguments.ide)])
+    if arguments.sd_a:
+        command.extend(
+            ["--sd-a", str(arguments.sd_a), "--sd-mode", arguments.sd_mode]
+        )
 
     result = subprocess.run(
         command,
@@ -143,7 +157,7 @@ def main() -> int:
                 expected_slot=arguments.expected_slot,
             )
             print(
-                "validated 1983 IDE boot fallback: "
+                "validated 1983 storage boot fallback: "
                 f"PC={fields['pc']}, SP={fields['sp']}, slot={fields['slot']}"
             )
         else:
@@ -157,11 +171,11 @@ def main() -> int:
                 expected_pass_label=arguments.expected_pass_label,
             )
             print(
-                "validated 1983 IDE boot: "
+                "validated 1983 storage boot: "
                 f"PC={fields['pc']}, SP={fields['sp']}, slot={fields['slot']}"
             )
     except ValueError as error:
-        print(f"error: invalid 1983 IDE boot state: {error}", file=sys.stderr)
+        print(f"error: invalid 1983 storage boot state: {error}", file=sys.stderr)
         return 1
     return 0
 

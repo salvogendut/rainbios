@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Create the deterministic bootable raw IDE image for the IDE bootstrap."""
+"""Create a deterministic bootable raw image for the option-3 bootstrap."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def main() -> int:
     image = make_image(boot_sector)
     arguments.output.write_bytes(image)
     print(
-        f"wrote IDE image: {arguments.output} "
+        f"wrote storage image: {arguments.output} "
         f"({len(image)} bytes, {len(image) // SECTOR_SIZE} sectors)"
     )
     return 0

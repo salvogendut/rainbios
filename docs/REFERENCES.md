@@ -148,10 +148,11 @@ implementation inputs. They remain quarantined under
 ## 2026-07-30 — 1983 emulator
 
 - Project: adjacent open-source `1983` MSX/MSX2 emulator
-- Repository revision at latest test:
-  `74c9148c68d421e4cf8c3be06b31bfe530858124`
+- Repository revision consulted:
+  `fc85ab4e3dc23975e22b24c5e69244bd570c6aa5`
 - License: GPL-2.0 in the repository `LICENSE`
-- Tested binary self-identification: `git 74c9148`
+- Tested binary self-identification: `git 74c9148` (the locally built binary
+  predates the latest source-only inspection)
 - Tested binary SHA-256:
   `458e672afa370fdf8fafd6293308d0c72001505fd9f554ec5a6e94551b5c74d1`
 - Material consulted for disk validation: the documented NMS 8250 WD2793
@@ -161,9 +162,14 @@ implementation inputs. They remain quarantined under
 - Material consulted for IDE validation: Sunrise cartridge address decoding
   and 16-bit data-latch behavior in `src/sunrise.c`, plus ATA task-file,
   `READ SECTORS`, DRQ, and transfer behavior in `src/ata.c`
+- Material consulted for SD Mapper validation: page/subslot banking and SPI
+  window behavior in `src/sd_mapper.c`, raw-card command/addressing behavior in
+  `src/sdcard.c`, and public register-level examples in
+  `tests/test_sd_mapper.c` and `tests/test_sdcard.c`
 - Purpose: independent headless execution, CPU/VDP state reporting, final
   framebuffer capture, read-only NMS 8250 floppy-path validation, and
-  black-box Sunrise IDE bootstrap validation for the RainBIOS MSX1 ROM
+  black-box Sunrise IDE / SD Mapper bootstrap validation for the RainBIOS MSX1
+  ROM
 - RainBIOS use: validation tool and documented hardware-behavior cross-check;
   no emulator implementation code copied
 
@@ -174,6 +180,17 @@ implementation inputs. They remain quarantined under
 - Public metadata used: `AB` extension header and INIT pointer `40F6h`
 - Purpose: black-box cartridge presence and slot-routing input for the 1983
   Sunrise IDE model
+- Distribution: the ROM is not copied into or distributed by RainBIOS
+- RainBIOS use: header metadata and runtime behavior only; the Nextor INIT is
+  deliberately not entered and no implementation code was copied
+
+## 2026-08-01 — Opaque SD Mapper V2 test input
+
+- Local-only file: `SDM V2 Nextor2.1.1.rom`, 131,072 bytes, SHA-256
+  `4c5e5a0015d8e4d0b2c837621b2f34a5fd594ee2c449b3af95e40ab6555f8c0d`
+- Public metadata used: `AB` extension header and INIT pointer `40F6h`
+- Purpose: black-box cartridge presence and slot-routing input for the 1983 SD
+  Mapper V2 model
 - Distribution: the ROM is not copied into or distributed by RainBIOS
 - RainBIOS use: header metadata and runtime behavior only; the Nextor INIT is
   deliberately not entered and no implementation code was copied

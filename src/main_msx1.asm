@@ -72,6 +72,8 @@ TAPE_PERIOD     equ #f398
 TAPE_LEVEL      equ #f399
 TAPE_SYNC       equ #f39a
 IDE_SLOT        equ #f39b
+SD_FLAGS        equ #f39c
+SD_INIT_TRIES   equ #f39d
 RAMAD0          equ #f341
 H_PHYD          equ #ffa7
 H_FORM          equ #ffac
@@ -509,6 +511,8 @@ bootstrap_empty_hook:
                 ld a,#ff
                 ld (PAYLOAD_SLOT),a
                 ld (IDE_SLOT),a
+                xor a
+                ld (SD_FLAGS),a
                 ld hl,0
                 ld (PAYLOAD_ENTRY),hl
                 ld (PAYLOAD_RAM_END),hl

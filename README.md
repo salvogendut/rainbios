@@ -56,11 +56,11 @@ The Space-key menu offers option 1 to launch the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
 payload when its versioned descriptor and requirements validate, option 2 to
 boot MSX DOS from drive A through the disk-ROM `H.RUNC` hook, and option 3 to
-boot from a Sunrise IDE cartridge through RainBIOS's own ATA bootstrap. The
-storage ROM is detected without entering its Nextor `INIT`; sector 0 is loaded
-at `C000h`, checked for the `EBh`/`E9h` signature, and entered at `C000h+1Eh`.
-SD Mapper V2 transport support remains pending. Invalid descriptors are not
-advertised or entered. The console,
+boot from a Sunrise IDE or SD Mapper V2 cartridge through RainBIOS's own
+controller backends. The storage ROM is detected without entering its Nextor
+`INIT`; option 3 distinguishes the ATA and SPI windows at runtime, loads sector
+0 at `C000h`, checks the `EBh`/`E9h` signature, and enters `C000h+1Eh`. Invalid
+descriptors are not advertised or entered. The console,
 keyboard, timing, Graphics II, cassette-load, and menu paths pass executable
 BASIC tests. Its open-source core and new BSD-3-Clause MSX port can be
 distributed with RainBIOS while remaining a distinct build artifact. The
@@ -174,16 +174,18 @@ make test-1983-disk-boot-menu
 make test-1983-disk-menu-stub
 ```
 
-The IDE probes use an externally supplied Sunrise/Nextor ROM only as a
-black-box cartridge shell. An original raw-image fixture boots through option
-3, reads a second sector through the Sunrise ATA window, verifies its marker,
-and reaches a labelled pass loop. A separate test confirms that a detected
-cartridge with no mounted medium restores the BIOS page map and returns to the
-menu:
+The storage probes use externally supplied Sunrise/Nextor and SD Mapper/Nextor
+ROMs only as black-box cartridge shells. Original raw-image fixtures boot
+through option 3, read a second sector through either the Sunrise ATA window or
+SD Mapper SPI window, verify its marker, and reach a labelled pass loop.
+Separate tests confirm that a detected cartridge with no mounted medium
+restores the BIOS page map and returns to the menu:
 
 ```sh
 make test-1983-ide-boot
 make test-1983-ide-menu
+make test-1983-sd-boot
+make test-1983-sd-menu
 ```
 
 No proprietary disk firmware or media is distributed or required. Filesystems,

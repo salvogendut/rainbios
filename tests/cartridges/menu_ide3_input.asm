@@ -3,7 +3,7 @@
 ; Test-only primary-slot cartridge. Its INIT installs a standard five-byte
 ; H.TIMI hook in slot 1. The hook injects Space and "3" through the published
 ; key buffer at separated VBlanks so 1983 can reach the boot menu and trigger
-; the IDE-cartridge boot. The Sunrise IDE occupies slot 2, so this input
+; the storage-cartridge boot. The controller occupies slot 2, so this input
 ; cartridge lives in primary slot 1.
 
 PUTPNT          equ #f3f8
