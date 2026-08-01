@@ -30,7 +30,7 @@ text is in `LICENSES/CC0-1.0.txt`.
 - Purpose: project artwork displayed at the top of `README.md`
 - Dimensions: 1448×1086 RGB PNG
 - SHA-256:
-  `5c90b60168ebdfa50ee2a90fb5fec3c3847b504a64cdef253da56052d0d126bb`
+  `781810b02af6d79b2de26347bb73ba9c7249f7c3286ec1bde644b868e4587d5e`
 - Added by: repository owner
 - License: CC0-1.0
 

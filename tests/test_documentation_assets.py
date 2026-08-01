@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = {
     "rainbios.png": (
         (1448, 1086),
-        "5c90b60168ebdfa50ee2a90fb5fec3c3847b504a64cdef253da56052d0d126bb",
+        "781810b02af6d79b2de26347bb73ba9c7249f7c3286ec1bde644b868e4587d5e",
     ),
     "screenshots/Screenshot From 2026-07-30 11-38-10.png": (
         (1280, 1000),
