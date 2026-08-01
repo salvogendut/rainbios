@@ -57,9 +57,10 @@ the alternate AF/BC/DE/HL banks so the target receives the caller's exact
 normal inputs. If it returns, a page-0 continuation uses those alternate banks
 to restore the exact map while preserving the target's normal register and
 flag results. Separate stack frames also allow returning calls to nest. M1H
-adds secondary-selector metadata to the frame for expanded page-1/page-2
-targets; `CLPRIM`/`CLPRM1` occupy their standard RAM addresses for primary-slot
-dispatch.
+adds the standard expanded-call selector fields for page-1/page-2 targets;
+mapper kernels may patch the saved page-2/page-3 values, and RainBIOS consumes
+those patched values during restoration. `CLPRIM`/`CLPRM1` occupy their
+standard RAM addresses for primary-slot dispatch.
 
 M1E scans the public cartridge header locations at `4000h` and `8000h` in
 each non-BIOS slot. A header beginning `41h,42h` with a nonzero
@@ -91,11 +92,13 @@ full RAM slot is published in `RAMAD0` through `RAMAD3` for extension ROMs.
 Sizing and allocating segments beyond that baseline remain pending.
 
 The disk bring-up path invokes `H.STKE` after all extension `INIT` routines,
-then prepares `DEVICE`/disk setup state and calls `H.RUNC` when a disk ROM has
-installed `H.PHYD`. The optional 16 KiB NMS 8250 disk extension separates a
-small production ROM shell from a shared WD2793 driver. Test shells include the
-same driver and add only `H.RUNC` probes. The production component installs
-`H.PHYD`, publishes one drive, and returns from startup without test behavior.
+preserves a nonzero `DEVICE` kernel count, clears disk setup state, and normally
+calls a non-empty `H.RUNC`. A standalone empty SD Mapper first leaves any
+previously installed `H.PHYD` path a chance to boot drive A. The optional 16 KiB
+NMS 8250 disk extension separates a small production ROM shell from a shared
+WD2793 driver. Test shells include the same driver and add only `H.RUNC` probes.
+The production component installs `H.PHYD`, publishes one drive, and returns
+from startup without test behavior.
 
 The read-only driver accepts drive A and 720 KiB `F9h` media. It validates the
 complete logical-sector and RAM-buffer ranges before I/O, converts LBAs to
@@ -138,9 +141,12 @@ task.
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 checks primary cartridges before waiting through the buffered keyboard path.
-Cartridge initialization uses a temporary `F300h` stack so disk kernels can
-allocate below the standard `F380h` `HIMEM` boundary without overwriting the
-BIOS return chain. RainBIOS then runs `H.STKE` and any non-empty `H.RUNC` hook.
+Cartridge initialization uses a temporary stack ending below `F100h`, while
+publishing the standard `F380h` `HIMEM` boundary and pre-BASIC `MEMSIZ`/`STKTOP`
+values expected by disk allocators. RainBIOS then runs `H.STKE` and any
+non-empty `H.RUNC` hook. For the validated Nextor SD Mapper path, one mounted
+card boots automatically, two mounted cards receive an A/B chooser, and no
+mounted card returns to the RainBIOS boot-wait/menu path.
 The original-BIOS keyboard decoder entry at `0D89h`, used directly by Nextor
 2.1, reports the international layout without exposing that implementation as
 a public BIOS contract.

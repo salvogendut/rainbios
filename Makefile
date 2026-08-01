@@ -215,8 +215,18 @@ EMULATOR_1983_SD_BOOT_SCREEN := \
 	$(EMULATOR_1983_DIR)/sd-boot.ppm
 EMULATOR_1983_SD_MENU_SCREEN := \
 	$(EMULATOR_1983_DIR)/sd-menu.ppm
+EMULATOR_1983_SD_EMPTY_FLOPPY_SCREEN := \
+	$(EMULATOR_1983_DIR)/sd-empty-floppy-boot.ppm
+EMULATOR_1983_SD_EMPTY_SUNRISE_SCREEN := \
+	$(EMULATOR_1983_DIR)/sd-empty-sunrise-nextor.ppm
 EMULATOR_1983_NEXTOR_SCREEN := \
 	$(EMULATOR_1983_DIR)/nextor-prompt.ppm
+EMULATOR_1983_NEXTOR_SD_A_SCREEN := \
+	$(EMULATOR_1983_DIR)/nextor-sd-a-prompt.ppm
+EMULATOR_1983_NEXTOR_SD_B_SCREEN := \
+	$(EMULATOR_1983_DIR)/nextor-sd-b-prompt.ppm
+EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN := \
+	$(EMULATOR_1983_DIR)/nextor-sd-dual-prompt.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -250,8 +260,9 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-1983-disk-dskchg-getdpb test-1983-disk-dskchg-no-media \
 	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
 	test-1983-ide-boot test-1983-ide-menu \
-	test-1983-sd-boot test-1983-sd-menu \
-	test-1983-nextor \
+	test-1983-sd-boot test-1983-sd-menu test-1983-sd-empty-floppy \
+	test-1983-sd-empty-sunrise \
+	test-1983-nextor test-1983-nextor-sd \
 	run-1983-ide-boot run-1983-sd-boot run-1983-nextor \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
@@ -1104,6 +1115,39 @@ test-1983-sd-menu: \
 		--size 640x480 --min-colors 2 --foreground-box 64,224,576,240 \
 		$(EMULATOR_1983_SD_MENU_SCREEN)
 
+test-1983-sd-empty-floppy: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(DISK_BOOT_SECTOR_SYM) $(DISK_BOOT_IMAGE)
+	test -f "$(SD_MAPPER_ROM)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--sd-mapper-rom "$(SD_MAPPER_ROM)" \
+		--symbols "$(DISK_BOOT_SECTOR_SYM)" \
+		--expected-pass-label disk_boot_pass \
+		--expected-slot AC --exit-after 1200 \
+		--disk-a "$(DISK_BOOT_IMAGE)" --floppy-mode read-only \
+		--screenshot "$(EMULATOR_1983_SD_EMPTY_FLOPPY_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 --min-colors 2 \
+		$(EMULATOR_1983_SD_EMPTY_FLOPPY_SCREEN)
+
+test-1983-sd-empty-sunrise: $(MSX1_ROM) $(NEXTOR_IMAGE)
+	test -f "$(SUNRISE_ROM)"
+	test -f "$(SD_MAPPER_ROM)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	"$(EMULATOR_1983)" --config /dev/null --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "" --sunrise-rom "$(SUNRISE_ROM)" \
+		--ide "$(NEXTOR_IMAGE)" --ide-mode read-only \
+		--sd-mapper-rom "$(SD_MAPPER_ROM)" --sd-mode read-only \
+		--headless --unthrottled --exit-after 2500 \
+		--screenshot "$(EMULATOR_1983_SD_EMPTY_SUNRISE_SCREEN)"
+	$(PYTHON) tools/check_nextor_screenshot.py --mixed-storage \
+		$(EMULATOR_1983_SD_EMPTY_SUNRISE_SCREEN)
+
 test-1983-nextor: $(MSX1_ROM) $(NEXTOR_IMAGE)
 	test -f "$(SUNRISE_ROM)"
 	mkdir -p $(EMULATOR_1983_DIR)
@@ -1115,6 +1159,35 @@ test-1983-nextor: $(MSX1_ROM) $(NEXTOR_IMAGE)
 		--screenshot "$(EMULATOR_1983_NEXTOR_SCREEN)"
 	$(PYTHON) tools/check_nextor_screenshot.py \
 		$(EMULATOR_1983_NEXTOR_SCREEN)
+
+test-1983-nextor-sd: $(MSX1_ROM) $(NEXTOR_IMAGE)
+	test -f "$(SD_MAPPER_ROM)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	"$(EMULATOR_1983)" --config /dev/null --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "" --sd-mapper-rom "$(SD_MAPPER_ROM)" \
+		--sd-a "$(NEXTOR_IMAGE)" --sd-mode read-only \
+		--headless --unthrottled --exit-after 2500 \
+		--screenshot "$(EMULATOR_1983_NEXTOR_SD_A_SCREEN)"
+	$(PYTHON) tools/check_nextor_screenshot.py --sd-card A \
+		$(EMULATOR_1983_NEXTOR_SD_A_SCREEN)
+	"$(EMULATOR_1983)" --config /dev/null --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "" --sd-mapper-rom "$(SD_MAPPER_ROM)" \
+		--sd-b "$(NEXTOR_IMAGE)" --sd-mode read-only \
+		--headless --unthrottled --exit-after 2500 \
+		--screenshot "$(EMULATOR_1983_NEXTOR_SD_B_SCREEN)"
+	$(PYTHON) tools/check_nextor_screenshot.py --sd-card B \
+		$(EMULATOR_1983_NEXTOR_SD_B_SCREEN)
+	"$(EMULATOR_1983)" --config /dev/null --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "" --sd-mapper-rom "$(SD_MAPPER_ROM)" \
+		--sd-a "$(NEXTOR_IMAGE)" --sd-b "$(NEXTOR_IMAGE)" \
+		--sd-mode read-only --paste-at 180 --paste-text "B" \
+		--headless --unthrottled --exit-after 2500 \
+		--screenshot "$(EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN)"
+	$(PYTHON) tools/check_nextor_screenshot.py --sd-card B --sd-dual \
+		$(EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN)
 
 run-1983-ide-boot: \
 		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(IDE_BOOT_IMAGE)

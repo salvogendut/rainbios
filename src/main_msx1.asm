@@ -84,12 +84,17 @@ H_RUNC          equ #fecb
 H_STKE          equ #feda
 DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
+NEXTOR_BOOT_DRIVE equ #f2fd
+NEXTOR_DOS_VERSION equ #f313
+NEXTOR_VERSION  equ #f318
 PTRFIL          equ #f864
 VOICEN          equ #fb38
 VCBA            equ #fb41
 MEMSIZ          equ #f672
 STKTOP          equ #f674
-EXTENSION_STACK equ #f300
+INITIAL_MEMSIZ  equ #f168
+INITIAL_STKTOP  equ #f0a0
+EXTENSION_STACK equ #f092
 STACK_TOP       equ #f380
 
                 org #0000
@@ -450,7 +455,9 @@ bootstrap_ram_slot_ready:
                 ld (BOTTOM),hl
                 ld hl,STACK_TOP
                 ld (HIMEM),hl
+                ld hl,INITIAL_MEMSIZ
                 ld (MEMSIZ),hl
+                ld hl,INITIAL_STKTOP
                 ld (STKTOP),hl
 
 ; Empty hooks begin with RET.
@@ -685,17 +692,7 @@ cold_boot_jingle_gap:
 ; disk-ROM bootstrap hook so the selected disk device can install itself before
 ; the interactive menu is presented.
 cold_boot_init_disk:
-                call cold_boot_valid_payload
-                ret c                           ; validated payload keeps the menu
-                ld a,(H_RUNC)
-                cp #c9
-                ret z
-                ld a,1
-                ld (DEVICE),a
-                xor a
-                ld (DISK_SETUP),a
-                call H_RUNC
-                ret
+                jp cold_boot_init_disk_impl
 
 ; Wait for the translated Space character through the standard input path.
 cold_boot_wait:
@@ -965,7 +962,6 @@ cold_boot_call_cartridge:
                 ld c,0
                 push bc
                 pop iy
-                ei
                 call calslt
                 di
                 ret
@@ -2162,6 +2158,143 @@ filvrm_done:
                 pop af
                 ret
 
+cold_boot_init_disk_impl:
+                call cold_boot_valid_payload
+                ret c                           ; validated payload keeps the menu
+                ld a,(H_RUNC)
+                cp #c9
+                ret z
+                call cold_boot_select_sd_card
+                jr nc,cold_boot_init_disk_kernel
+                call cold_boot_phyd_boot
+                ret
+cold_boot_init_disk_kernel:
+                ld a,(DEVICE)
+                or a
+                jr nz,cold_boot_init_disk_device_ready
+                inc a
+                ld (DEVICE),a
+cold_boot_init_disk_device_ready:
+                xor a
+                ld (DISK_SETUP),a
+                call H_RUNC
+                ret
+
+; The SD Mapper driver exposes both physical cards as Nextor drives. Let the
+; user choose when both are mounted, then seed Nextor's initialized boot-drive
+; byte before H.RUNC performs its non-returning cleanup and boot pass. Other
+; disk kernels and one-card setups retain their normal automatic selection.
+cold_boot_select_sd_card:
+                ld a,(NEXTOR_DOS_VERSION)
+                cp #99
+                jp nz,cold_boot_select_sd_not_mapper
+                ld a,(NEXTOR_VERSION)
+                or a
+                jp z,cold_boot_select_sd_not_mapper
+                ld a,(IDE_SLOT)
+                bit 7,a
+                jp z,cold_boot_select_sd_not_mapper
+                ld h,#40
+                call enaslt
+                call sd_mapper_probe
+                jr c,cold_boot_select_sd_restore_none
+                ld b,0
+                ld a,1
+                ld (SD_MAPPER_SELECT),a
+                ld a,(SD_MAPPER_SELECT)
+                bit 1,a
+                jr nz,cold_boot_select_sd_check_b
+                set 0,b
+cold_boot_select_sd_check_b:
+                ld a,2
+                ld (SD_MAPPER_SELECT),a
+                ld a,(SD_MAPPER_SELECT)
+                bit 1,a
+                jr nz,cold_boot_select_sd_restore
+                set 1,b
+cold_boot_select_sd_restore:
+                ld a,b
+                push af
+                xor a
+                ld (SD_MAPPER_SELECT),a
+                ld (SD_MAPPER_BANK),a
+                ld a,(BIOSSLT)
+                ld h,#40
+                call enaslt
+                pop af
+                cp 4
+                jr z,cold_boot_select_sd_not_mapper
+                or a
+                jr z,cold_boot_select_sd_no_media
+                cp 3
+                jr nz,cold_boot_select_sd_not_mapper
+                ld a,(DEVICE)
+                cp 1
+                jr nz,cold_boot_select_sd_not_mapper
+                ld a,(H_PHYD)
+                cp #37
+                jr nz,cold_boot_select_sd_not_mapper
+                ld hl,sd_boot_choice_message
+cold_boot_select_sd_message:
+                ld a,(hl)
+                or a
+                jr z,cold_boot_select_sd_input
+                call chput
+                inc hl
+                jr cold_boot_select_sd_message
+cold_boot_select_sd_input:
+                call chget
+                and #df
+                cp 'A'
+                jr z,cold_boot_select_sd_a
+                cp 'B'
+                jr nz,cold_boot_select_sd_input
+                ld a,2
+                jr cold_boot_select_sd_selected
+cold_boot_select_sd_a:
+                ld a,1
+cold_boot_select_sd_selected:
+                ld (NEXTOR_BOOT_DRIVE),a
+                ld a,#0d
+                call chput
+                ld a,#0a
+                call chput
+                or a
+                ret
+cold_boot_select_sd_restore_none:
+                ld b,4
+                jr cold_boot_select_sd_restore
+cold_boot_select_sd_not_mapper:
+                or a
+                ret
+cold_boot_select_sd_no_media:
+                ld a,(DEVICE)
+                cp 1
+                jr nz,cold_boot_select_sd_not_mapper
+                scf
+                ret
+
+; If an empty SD Mapper displaced another disk kernel's H.RUNC hook, retain its
+; standard H.PHYD path. This is the same cold-boot sector contract used by the
+; production NMS 8250 disk ROM and returns when drive A is not bootable.
+cold_boot_phyd_boot:
+                ld hl,#c000
+                ld de,0
+                ld bc,#01f9
+                xor a
+                call H_PHYD
+                ret c
+                ld a,(#c000)
+                cp #eb
+                jr z,cold_boot_phyd_go
+                cp #e9
+                ret nz
+cold_boot_phyd_go:
+                ld sp,#e000
+                xor a
+                scf
+                jp #c01e
+
 ; PAYLOAD_SLOT shares the pre-DOS scratch area and can be overwritten by a disk
 ; kernel allocation. Recheck the immutable descriptor before allowing a payload
 ; to suppress H.RUNC. Carry is set only for the RBP1 magic validated earlier.
@@ -3134,11 +3267,22 @@ calslt_expanded_page_supported:
                 call expanded_slot_check
                 jr z,calslt_unsupported
                 call expanded_temporary_select
-                push bc                        ; old selector, primary slot
+                ld e,b                         ; old secondary selector
                 call primary_slot_map
-                push de                        ; exact old primary map in D
                 out (PPI_SLOT),a
+                ld l,e
+                push hl                        ; selector restored after return
+                ld b,d
+                push bc                        ; old primary map, primary slot
+                ld hl,SLTTBL
+                ld a,l
+                add a,c
+                ld l,a
+                push hl                        ; selector mirror address
                 ld hl,calslt_expanded_return
+                push hl
+                push de                        ; inner old primary map in D
+                ld hl,calslt_return
                 push hl
                 exx
                 ex af,af'
@@ -3149,15 +3293,17 @@ calslt_unsupported:
                 ex af,af'
                 jp unsupported_call
 
-; Recover restoration state through the alternate register set so the target
-; routine's normal AF/BC/DE/HL results survive unchanged.
+; Expanded-slot software may patch the saved primary and secondary selectors
+; in the standard CALSLT frame after changing the RAM slot configuration.
+; Recover those live values through the alternate register set so the target's
+; normal AF/BC/DE/HL results survive unchanged.
 calslt_expanded_return:
                 ex af,af'
                 exx
-                pop bc                         ; B = old primary map
-                pop de                         ; D = old selector, E = primary
-                ld c,e
-                ld a,d
+                pop hl                         ; selector mirror address
+                pop bc                         ; B = primary map, C = primary
+                pop de                         ; E = secondary selector
+                ld a,e
                 call expanded_store_selector
                 call expanded_write_selector
                 ld a,b
@@ -3413,6 +3559,9 @@ jingle_notes:
                 db #aa,#00                     ; E5
                 db #8f,#00                     ; G5
                 db #6b,#00                     ; C6
+
+sd_boot_choice_message:
+                db #0d,#0a,"SELECT SD BOOT CARD: A OR B? ",0
 
 storage_boot_failed_message:
                 db "STORAGE BOOT FAILED",0

@@ -225,11 +225,13 @@ validates `EBh`/`E9h`, and enters `C000h+1Eh`. The 1983 fixtures then read secto
 1 directly through the selected controller and reach labelled pass loops;
 no-medium cases restore the extension-owned pre-call map and return to the menu.
 
-A local Sunrise IDE cartridge and FAT16 image now complete the standard path:
-cartridge `INIT`, disk-work-area allocation, `H.RUNC`, `NEXTOR.SYS` 2.12, and an
-`A:\>` prompt are verified end to end by `test-1983-nextor`. This also covers
-the temporary pre-DOS stack and Nextor's direct use of the original-BIOS
-keyboard decoder at `0D89h`.
+Local Sunrise IDE and SD Mapper cartridges plus a FAT16 image now complete the
+standard path: cartridge `INIT`, disk-work-area allocation, `H.RUNC`,
+`NEXTOR.SYS` 2.12, and the final prompt are verified end to end. SD coverage
+includes card-A/card-B automatic boot, dual-card selection, and no-card menu
+fallback. These paths also cover the pre-DOS stack, the mapper-compatible
+expanded `CALSLT` frame, and Nextor's direct use of the original-BIOS keyboard
+decoder at `0D89h`.
 
 RainBIOS provides the firmware interfaces needed by disk systems; it will not
 bundle or prescribe a DOS. Users supply the system of their choice, while the
@@ -242,8 +244,8 @@ target.
   `ENAKRN` entry) once a real kernel consumes them;
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
-- filesystem services, formatting, drive B, other controllers, writable media,
-  and real-hardware timing validation remain pending.
+- filesystem services, formatting, floppy drive B, other controllers, writable
+  media, and real-hardware timing validation remain pending.
 
 “Complete” means documented compatibility for the public interfaces and boot
 behavior; it does not mean byte identity with any existing ROM.

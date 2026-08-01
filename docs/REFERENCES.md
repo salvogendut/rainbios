@@ -178,11 +178,13 @@ implementation inputs. They remain quarantined under
 - Upstream repository: `https://github.com/Konamiman/Nextor.git`
 - Revision: tag `v2.1.4`, commit
   `cd0a69c47bd6e39c194d1bb76877375eb9b346d7`
-- Files consulted: `source/kernel/bank0/init.mac` and
+- Files consulted: `source/kernel/bank0/init.mac`,
+  `source/kernel/bank0/dosboot.mac`, `source/kernel/bank0/B0.SYM.old`, and
   `source/kernel/drivers/SunriseIDE/sunride.asm`
 - Purpose: confirm the public cartridge `INIT`/`H.RUNC` sequence, `F380h`
-  allocation boundary, temporary-stack expectation, and Nextor's direct call
-  to the original-BIOS keyboard decoder at `0D89h`
+  allocation boundary, temporary-stack expectation, the expanded `CALSLT`
+  fields patched after mapper allocation, the initialized boot-drive work byte,
+  and Nextor's direct call to the original-BIOS keyboard decoder at `0D89h`
 - RainBIOS use: behavioral cross-check only; no source or binary code copied
 
 ## 2026-08-01 — Opaque Sunrise IDE test input
@@ -216,7 +218,7 @@ implementation inputs. They remain quarantined under
   - `COMMAND2.COM`, SHA-256
     `1bb7860631cd6257fefdbd996640bd345d7eab931758e7dc2725cdb02072067c`
 - Purpose: build a local FAT16 image and validate the public cartridge
-  `INIT`/`H.RUNC` path through the Nextor 2.12 banner and drive-A prompt
+  `INIT`/`H.RUNC` path through the Nextor 2.12 banner and drive-A/drive-B prompts
 - Distribution: neither file nor the generated image is copied into or
   distributed by RainBIOS
 - RainBIOS use: black-box runtime behavior and rendered output only

@@ -15,13 +15,15 @@ Standard `DSKIO` entry `4010h` reaches the same read-only implementation.
 
 ## Bootstrap contract
 
-RainBIOS calls `H.RUNC` (`FECBh`) at cold boot through `cold_boot_init_disk`,
-after setting `DEVICE = 1` and `DISK_SETUP = 0`. A valid payload holds back that
-cold-boot call so the Space-key menu can be reached; menu option 2 re-enters the
-same hook with the same `DEVICE`/`DISK_SETUP` context whenever the user asks to
-run the drive-A boot-sector path. The hook reads logical sector 0 into `C000h`
-with the read-only `PHYDIO` path and checks the first byte for the MSX-DOS
-signature `EBh` or `E9h`.
+RainBIOS normally calls `H.RUNC` (`FECBh`) at cold boot through
+`cold_boot_init_disk`, preserving a nonzero `DEVICE` kernel count (or setting it
+to 1 when it is zero) and setting `DISK_SETUP = 0`. If an empty standalone SD
+Mapper has replaced this hook, RainBIOS instead attempts the same sector-0
+contract through the still-installed `H.PHYD` hook. A valid payload holds back
+the cold-boot call so the Space-key menu can be reached; menu option 2 re-enters
+the NMS hook with `DEVICE = 1` and `DISK_SETUP = 0` whenever the user asks to
+run the drive-A boot-sector path. Both paths read logical sector 0 into `C000h`
+and check the first byte for the MSX-DOS signature `EBh` or `E9h`.
 
 If the signature does not match, or the read fails (for example an empty drive),
 the hook returns normally and the interactive menu continues. If it matches,
@@ -32,11 +34,13 @@ the hook sets `SP` to a page-3 stack and enters the loader at `C000h+1Eh`:
 | A | `00h`, cold-boot flag |
 | Carry | Set |
 
-The loader runs in page-3 RAM while this ROM stays mapped in page 1, so it may
-call `DSKIO` (`4010h`) and every other entry below through an inter-slot call
-using the slot ID published in `H.PHYD+1`. The cold-boot path invokes the hook
-once; the menu re-enters it on request. A return always means no bootable medium
-was found and the caller (cold boot or menu) continues.
+The normal `H.RUNC` path keeps this ROM mapped in page 1. The mixed-controller
+`H.PHYD` fallback restores the pre-call map before entering the loader instead.
+In both cases the page-3 loader may call `DSKIO` (`4010h`) and every other entry
+below through an inter-slot call using the slot ID published in `H.PHYD+1`.
+The cold-boot path invokes the hook once; the menu re-enters it on request. A
+return always means no bootable medium was found and the caller (cold boot or
+menu) continues.
 
 ## PHYDIO contract
 

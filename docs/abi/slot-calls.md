@@ -47,6 +47,10 @@ the target returns, RainBIOS restores the exact previous primary and secondary
 selections and returns the target routine's normal registers and flags. Slot
 selection runs through the alternate banks so AF/BC/DE/HL reach the target
 unchanged. Maskable interrupts are inhibited before the target is selected.
+Expanded calls expose separate saved primary and secondary selector fields at
+the standard stack offsets used by mapper kernels. If the target patches those
+page-2/page-3 fields after reallocating RAM, RainBIOS restores the patched
+values rather than the stale pre-call selectors.
 Targets in page 0 or page 3 remain rejected because they would hide the caller
 or its stack.
 
@@ -70,6 +74,7 @@ three page-0 RAM helpers, the page-3 stack paths, returning page-1/page-2
 `test-openmsx-expanded-slots` independently exercises all four pages through
 multiple secondary slots, checks the physical inverted selector and `SLTTBL`,
 tests stack-safe page-3 restoration, and calls a returning expanded page-1
-target. The separate `test-openmsx-services` probe exercises `CALLF` from
+target which patches all three saved selector bytes before returning. The
+separate `test-openmsx-services` probe exercises `CALLF` from
 `H.TIMI` while interrupts are enabled and requires the exact slot state to be
 restored.

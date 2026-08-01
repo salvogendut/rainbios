@@ -15,9 +15,9 @@ code from proprietary ROMs or the quarantined adjacent source trees. Read
 `docs/DEVELOPMENT_POLICY.md` and update `docs/REFERENCES.md` whenever a new
 implementation reference is consulted.
 
-The active development branch is `main`. Before
-starting new work, run `git status --short --branch`; do not discard unrelated
-changes in a dirty worktree.
+The default development branch is `main`; use a focused feature branch for
+changes. Before starting new work, run `git status --short --branch`; do not
+discard unrelated changes in a dirty worktree.
 
 ## Artifacts
 
@@ -42,6 +42,8 @@ The main BIOS currently provides:
   `ENASLT`, page-1/page-2 `CALSLT`, and inline `CALLF`;
 - exact normal-register inputs into cross-slot calls and exact restoration of
   primary/secondary mappings after returning calls;
+- a mapper-compatible expanded `CALSLT` frame whose saved page-2/page-3
+  selectors may be patched by a disk kernel before restoration;
 - a fixed 64 KiB memory-mapper baseline of segments `3,2,1,0` and publication
   of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
@@ -70,8 +72,10 @@ The main BIOS layer:
 - preserves PHYDIO AF/BC/DE/HL inputs across `CALLF`/`CALSLT` dispatch;
 - publishes mapper and RAM-slot state required by disk extensions;
 - invokes `H.STKE` after extension initialization;
-- sets `DEVICE=1`, clears disk setup state, and invokes `H.RUNC` only when a
-  disk ROM installed a standard `H.PHYD` hook.
+- normally gives a non-empty `H.RUNC` hook the standard cold-boot handoff while
+  preserving a nonzero multi-kernel `DEVICE` count;
+- retains a previously installed public `H.PHYD` boot path when an empty SD
+  Mapper would otherwise displace a bootable floppy controller.
 
 The optional NMS 8250 disk-ROM layer:
 
@@ -104,22 +108,33 @@ The Space-key boot menu invokes the same bootstrap on demand: option 2 runs the
 drive-A boot-sector path, while option 3 uses RainBIOS's own Sunrise ATA or SD
 Mapper SPI backend to load sector 0 at `C000h` and enter `C000h+1Eh`. The
 storage-ROM scan records the cartridge slot and enters its standard `INIT` from
-a temporary `F300h` stack. A non-empty `H.RUNC` gets the first cold-boot handoff;
-otherwise runtime register probing chooses the direct controller backend, and
-failures restore the extension-owned pre-call map and return to the menu.
+a temporary stack below `F100h`. A non-empty `H.RUNC` normally gets the first
+cold-boot handoff; the standalone empty-SD case first tries a preserved
+`H.PHYD` drive-A path. Otherwise runtime register probing chooses the direct
+controller backend, and failures restore the extension-owned pre-call map and
+return to the menu.
 
-The local `test-1983-nextor` path builds a 32 MiB FAT16 image from external
-`NEXTOR.SYS` and `COMMAND2.COM`, runs the Sunrise cartridge `INIT` and `H.RUNC`,
-and reaches the Nextor 2.12 `A:\>` prompt. The compatibility entry at `0D89h`
-supplies the international-keyboard result expected by Nextor's undocumented
-original-BIOS probe; the public `FILVRM` vector jumps to its relocated body.
+The local Nextor targets build a 32 MiB FAT16 image from external `NEXTOR.SYS`
+and `COMMAND2.COM`. `test-1983-nextor` runs Sunrise cartridge `INIT`/`H.RUNC`
+and reaches `A:\>`. `test-1983-nextor-sd` independently covers SD card A-only,
+card B-only, and a dual-card chooser selecting B, with exact Nextor 2.12 prompt
+screenshots. `test-1983-sd-menu` verifies the no-card return to RainBIOS's
+Space-key menu path, while `test-1983-sd-empty-floppy` proves that an empty SD
+Mapper does not suppress a bootable production floppy.
+`test-1983-sd-empty-sunrise` also preserves the two-kernel `DEVICE` count and
+boots Sunrise as drive C when the empty mapper owns drives A/B. The expanded
+`CALSLT` frame accepts Nextor's post-allocation selector patches. The
+compatibility entry at `0D89h` supplies the international-keyboard result
+expected by Nextor's undocumented original-BIOS probe; the public `FILVRM`
+vector jumps to its relocated body.
 
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
 The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector but does not
-itself provide FAT or DOS services. Nextor now boots through the Sunrise
-cartridge, while a provenance-cleared MSX-DOS 1 system, formatting, drive B,
-writes, non-NMS controllers, and real-hardware timing remain pending.
+itself provide FAT or DOS services. Nextor now boots through Sunrise and SD
+Mapper cartridges, while a provenance-cleared MSX-DOS 1 system, formatting,
+floppy drive B, writes, non-NMS controllers, and real-hardware timing remain
+pending.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 
@@ -143,6 +158,9 @@ Coverage includes:
   page-3 RAM (`test-1983-disk-boot-production`), and a missing or non-bootable
   medium returns to the interactive menu with the RainBIOS stack intact
   (`test-1983-disk-boot-fallback`);
+- an empty SD Mapper alongside the production disk ROM leaves `H.PHYD`
+  available, allowing a bootable floppy to reach the same pass marker
+  (`test-1983-sd-empty-floppy`);
 
 - the menu disk-boot path: a valid payload holds back the cold-boot auto-boot,
   the Space-key menu selects option 2, and the same fixture boots
@@ -208,6 +226,10 @@ make test-1983-ide-boot
 make test-1983-ide-menu
 make test-1983-sd-boot
 make test-1983-sd-menu
+make test-1983-sd-empty-floppy
+make test-1983-sd-empty-sunrise
+make test-1983-nextor
+make test-1983-nextor-sd
 ```
 
 The default emulator paths expect the adjacent open-source 1983 checkout:
@@ -276,11 +298,13 @@ the injected polarity assumptions (LINES bit 6 as inverted IRQ) match the NMS
 8250.
 
 The read-only `DSKCHG`/`GETDPB`, floppy bootstrap, Sunrise/SD Mapper direct
-bootstraps, and Sunrise Nextor path are complete. Nextor is the primary disk
-compatibility target; broaden versions, adapters, and user-supplied media
-without downloading or bundling a DOS. Other user-supplied systems, filesystem
-services, drive B, formatting, and writes remain separate milestones with their
-own tests and provenance.
+bootstraps, and Sunrise/SD Mapper Nextor paths are complete. The SD path covers
+single-card automatic selection, a dual-card A/B chooser, no-card menu fallback,
+and coexistence with a bootable floppy. Nextor is the primary disk compatibility
+target; broaden versions, adapters, and user-supplied media without downloading
+or bundling a DOS. Other user-supplied systems, filesystem services, floppy
+drive B, formatting, and writes remain separate milestones with their own tests
+and provenance.
 
 Broader project work can instead return to the unfinished M1-M4 items in
 `docs/ROADMAP.md`; do not imply that floppy support makes the main BIOS complete.
@@ -303,6 +327,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/make_ide_image.py` | Deterministic raw IDE boot fixture generator |
 | `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
 | `tools/run_1983_disk_baseline.py` | Symbol-based disk integration runner |
+| `tools/run_1983_disk_boot.py` | Production/fallback disk runner, including mixed SD Mapper configurations |
 | `tools/run_1983_ide_boot.py` | Symbol-based Sunrise IDE integration runner |
 | `tools/run_openmsx_disk_fault.py` | Symbol-based openMSX fault-injection runner |
 | `tests/cartridges/disk_phydio_rom.asm` | General read and validation probe |
@@ -321,6 +346,8 @@ Broader project work can instead return to the unfinished M1-M4 items in
 - Use `apply_patch` for manual edits and preserve unrelated worktree changes.
 - Keep generated artifacts under `build/`; do not commit ROMs, DSK images,
   screenshots, or symbol files.
+- `rainbios-old.png` is an untracked local backup and must not be committed or
+  modified.
 - Update ABI and roadmap claims whenever behavior changes.
 - Treat emulator implementation details as validation inputs, not code to copy.
 - Do not add backward-compatibility behavior without a concrete shipped or

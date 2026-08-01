@@ -31,8 +31,8 @@ a complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 - no MSX2 main ROM or SUB-ROM is built yet;
 - mapper allocation, broad cartridge compatibility, and several keyboard,
   controller, printer, graphics, and filesystem services remain pending;
-- Sunrise IDE compatibility boots a local Nextor 2.12 system image in 1983;
-  a provenance-cleared MSX-DOS 1 system remains pending;
+- Sunrise IDE and SD Mapper V2 compatibility boot a local Nextor 2.12 system
+  image in 1983; a provenance-cleared MSX-DOS 1 system remains pending;
 - real-hardware timing and compatibility validation remain in progress.
 
 ## Build
