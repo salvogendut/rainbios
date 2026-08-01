@@ -71,6 +71,7 @@ PAYLOAD_RAM_END equ #f396
 TAPE_PERIOD     equ #f398
 TAPE_LEVEL      equ #f399
 TAPE_SYNC       equ #f39a
+IDE_SLOT        equ #f39b
 RAMAD0          equ #f341
 H_PHYD          equ #ffa7
 H_FORM          equ #ffac
@@ -507,6 +508,7 @@ bootstrap_empty_hook:
                 ldir
                 ld a,#ff
                 ld (PAYLOAD_SLOT),a
+                ld (IDE_SLOT),a
                 ld hl,0
                 ld (PAYLOAD_ENTRY),hl
                 ld (PAYLOAD_RAM_END),hl
@@ -795,10 +797,13 @@ cold_boot_options_boot_disk:
                 call H_RUNC
                 jr cold_boot_options_wait
 
-; Reserved for a future IDE-cartridge boot (Sunrise IDE / SD Mapper V2). The
-; menu advertises option 3, but presence detection and the IDE bootstrap have
-; not landed yet, so the key currently falls back to the menu.
+; Boot an IDE cartridge through the Sunrise ATA window. The boot scan records
+; IDE_SLOT for Sunrise IDE / SD Mapper cartridges without running their INIT.
+; ide_boot reads sector 0 into C000h and transfers control to the loader at
+; C000h+1Eh when a bootable medium is present, so a return always means the
+; menu should continue.
 cold_boot_options_ide:
+                call ide_boot
                 jr cold_boot_options_wait
 
 ; Enter a validated page-1 payload without a return address. Page 0 remains
@@ -907,9 +912,24 @@ cold_boot_read_cartridge_init:
                 ld a,d
                 and #c0
                 cp #40
-                jr z,cold_boot_call_cartridge
+                jr z,cold_boot_check_ide
                 cp #80
                 ret nz
+                jr cold_boot_call_cartridge
+; Sunrise IDE / SD Mapper cartridges publish the shared "AB" header with the
+; INIT pointer at 40F6h. They are pure storage devices whose INIT must not run
+; during a RainBIOS scan, so record the slot and keep the ordinary cartridge
+; contract intact by returning without calling it.
+cold_boot_check_ide:
+                ld a,d
+                cp #40
+                jr nz,cold_boot_call_cartridge
+                ld a,e
+                cp #f6
+                jr nz,cold_boot_call_cartridge
+                ld a,(CART_SCAN_SLOT)
+                ld (IDE_SLOT),a
+                ret
 cold_boot_call_cartridge:
                 push de
                 pop ix
@@ -3230,6 +3250,8 @@ slot_helpers_image:
                 db #d3,PPI_SLOT,#73,#7a         ; write byte, restore old map
                 db #d3,PPI_SLOT,#c9
 slot_helpers_image_end:
+
+                include "ide_nms8250_driver.asm"
 
 cold_boot_vdp_registers:
                 db #02,#e0,#06,#ff,#03,#36,#07,#01

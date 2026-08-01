@@ -158,11 +158,25 @@ implementation inputs. They remain quarantined under
   memory window in `TECHNICAL.md`, controller register behavior in
   `src/wd2793.c`, raw-image geometry behavior in `src/floppy.c`, and public
   register-level examples in `tests/test_wd2793.c`
+- Material consulted for IDE validation: Sunrise cartridge address decoding
+  and 16-bit data-latch behavior in `src/sunrise.c`, plus ATA task-file,
+  `READ SECTORS`, DRQ, and transfer behavior in `src/ata.c`
 - Purpose: independent headless execution, CPU/VDP state reporting, final
-  framebuffer capture, and read-only NMS 8250 floppy-path validation for the
-  RainBIOS MSX1 ROM
+  framebuffer capture, read-only NMS 8250 floppy-path validation, and
+  black-box Sunrise IDE bootstrap validation for the RainBIOS MSX1 ROM
 - RainBIOS use: validation tool and documented hardware-behavior cross-check;
   no emulator implementation code copied
+
+## 2026-08-01 — Opaque Sunrise IDE test input
+
+- Local-only file: `Nextor-2.1.1.SunriseIDE.ROM`, 131,072 bytes, SHA-256
+  `205af7f7893aa0328be23f66b3afe3132c7dee59cf4bbc493408475a201c7ad6`
+- Public metadata used: `AB` extension header and INIT pointer `40F6h`
+- Purpose: black-box cartridge presence and slot-routing input for the 1983
+  Sunrise IDE model
+- Distribution: the ROM is not copied into or distributed by RainBIOS
+- RainBIOS use: header metadata and runtime behavior only; the Nextor INIT is
+  deliberately not entered and no implementation code was copied
 
 ## 2026-07-30 — Opaque cartridge smoke-test inputs
 

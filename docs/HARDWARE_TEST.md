@@ -151,9 +151,17 @@ continues.
     (`4010h`) for further sectors, and never falls through to the BASIC prompt.
     Confirm option 2 is a no-op (menu stays up) with an empty or non-bootable
     drive or when no disk ROM is installed.
-29. **Reserved IDE option.** With the boot menu open, press `3`. Confirm the
-    reserved IDE-cartridge option currently returns to the menu without entering
-    a payload or booting anything.
+29. **Sunrise IDE boot.** Insert a Sunrise IDE cartridge with a bootable raw
+    image, open the boot menu, and press `3`. Confirm sector 0 is loaded at
+    `C000h`, the loader starts at `C000h+1Eh`, page 1 remains mapped to the
+    cartridge, and the loader can read a further sector through the Sunrise ATA
+    window.
+30. **IDE fallback.** Repeat with no medium and with a sector 0 that does not
+    start with `EBh` or `E9h`. Confirm page 1 is restored to the BIOS and the
+    menu remains responsive. With no supported cartridge, option 3 must also be
+    a no-op.
+31. **Storage-ROM isolation.** Confirm the cartridge's Nextor `INIT` is not
+    entered during discovery; RainBIOS must use only its own ATA bootstrap.
 
 ## Data-integrity soak
 

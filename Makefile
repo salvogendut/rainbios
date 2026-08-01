@@ -9,6 +9,7 @@ BBC_LD80 ?= ld80
 BBC_BASIC_ROM ?= $(BBC_BASIC_DIR)/build/msx-console/bbcbasic_msx_console.rom
 ARKANO_ROM ?= ../1983/ROMS/Arkano.rom
 MSX_DIAGNOSTICS_ROM ?= ../1983/ROMS/diag.rom
+SUNRISE_ROM ?= ../1983/ROMS/Nextor-2.1.1.SunriseIDE.ROM
 
 BUILD_DIR := build
 MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
@@ -83,6 +84,12 @@ DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
 DISK_BOOT_SECTOR_BIN := $(BUILD_DIR)/disk_boot_sector.bin
 DISK_BOOT_SECTOR_SYM := $(BUILD_DIR)/disk_boot_sector.sym
 DISK_BOOT_IMAGE := $(BUILD_DIR)/disks/disk-boot.dsk
+IDE_BOOT_SECTOR := tests/cartridges/ide_boot_sector.asm
+IDE_BOOT_SECTOR_BIN := $(BUILD_DIR)/ide_boot_sector.bin
+IDE_BOOT_SECTOR_SYM := $(BUILD_DIR)/ide_boot_sector.sym
+IDE_BOOT_IMAGE := $(BUILD_DIR)/disks/ide-boot.img
+MENU_IDE3_INPUT_CART := $(BUILD_DIR)/cartridges/menu_ide3_input.rom
+MENU_IDE3_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_ide3_input.sym
 DISK_FAULT_TEST_ROM := $(BUILD_DIR)/cartridges/disk_fault_rom.rom
 DISK_FAULT_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_fault_rom.sym
 DISK_FAULT_TEST_SOURCES := tests/cartridges/disk_fault_rom.asm \
@@ -194,6 +201,10 @@ EMULATOR_1983_DISK_BOOT_MENU_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot-menu.ppm
 EMULATOR_1983_DISK_MENU_STUB_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-menu-stub.ppm
+EMULATOR_1983_IDE_BOOT_SCREEN := \
+	$(EMULATOR_1983_DIR)/ide-boot.ppm
+EMULATOR_1983_IDE_MENU_SCREEN := \
+	$(EMULATOR_1983_DIR)/ide-menu.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -202,7 +213,7 @@ EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN3_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-diagnostics-screen3.ppm
 LOGO_DIR := $(BUILD_DIR)/logo
 LOGO_STAMP := $(LOGO_DIR)/.converted
-SOURCES := src/main_msx1.asm
+SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
@@ -226,6 +237,7 @@ SOURCES := src/main_msx1.asm
 	test-1983-disk-write-guard \
 	test-1983-disk-dskchg-getdpb test-1983-disk-dskchg-no-media \
 	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
+	test-1983-ide-boot test-1983-ide-menu \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
@@ -412,6 +424,29 @@ $(DISK_BOOT_SECTOR_SYM): $(DISK_BOOT_SECTOR_BIN)
 $(DISK_BOOT_IMAGE): tools/make_boot_disk.py $(DISK_BOOT_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_BOOT_SECTOR_BIN) $@
 
+$(MENU_IDE3_INPUT_CART): tests/cartridges/menu_ide3_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(MENU_IDE3_INPUT_CART_SYM)
+
+$(MENU_IDE3_INPUT_CART_SYM): $(MENU_IDE3_INPUT_CART)
+	@if test ! -f "$@"; then \
+		$(RASM) tests/cartridges/menu_ide3_input.asm \
+			-ob $(MENU_IDE3_INPUT_CART) -s -os $@; \
+	fi
+
+$(IDE_BOOT_SECTOR_BIN): $(IDE_BOOT_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(IDE_BOOT_SECTOR_SYM)
+
+$(IDE_BOOT_SECTOR_SYM): $(IDE_BOOT_SECTOR_BIN)
+	@if test ! -f "$@"; then \
+		$(RASM) $(IDE_BOOT_SECTOR) -ob $(IDE_BOOT_SECTOR_BIN) \
+			-s -os $@; \
+	fi
+
+$(IDE_BOOT_IMAGE): tools/make_ide_image.py $(IDE_BOOT_SECTOR_BIN)
+	$(PYTHON) $< --boot-sector $(IDE_BOOT_SECTOR_BIN) $@
+
 $(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(TAPE_INPUT_CART_SYM)
@@ -435,10 +470,11 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
 test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
-	$(VALID_PAYLOAD_CART)
+	$(IDE_BOOT_SECTOR_BIN) $(VALID_PAYLOAD_CART)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
+	RAINBIOS_IDE_BOOT_SECTOR=$(IDE_BOOT_SECTOR_BIN) \
 	$(PYTHON) -m unittest discover -s tests -v
 
 $(OPENMSX_MACHINE): tests/openmsx/RainBIOS_MSX1.xml.in $(MSX1_ROM)
@@ -968,6 +1004,40 @@ test-1983-disk-menu-stub: \
 		--screenshot "$(EMULATOR_1983_DISK_MENU_STUB_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 --min-colors 2 $(EMULATOR_1983_DISK_MENU_STUB_SCREEN)
+
+test-1983-ide-boot: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(SUNRISE_ROM) \
+		$(MENU_IDE3_INPUT_CART) \
+		$(IDE_BOOT_SECTOR_SYM) $(IDE_BOOT_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_ide_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--sunrise-rom "$(SUNRISE_ROM)" \
+		--input-cartridge "$(MENU_IDE3_INPUT_CART)" \
+		--symbols "$(IDE_BOOT_SECTOR_SYM)" \
+		--expected-pass-label ide_boot_pass \
+		--expected-slot F8 --exit-after 1200 \
+		--ide "$(IDE_BOOT_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_IDE_BOOT_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 --min-colors 2 $(EMULATOR_1983_IDE_BOOT_SCREEN)
+
+test-1983-ide-menu: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(SUNRISE_ROM) \
+		$(MENU_IDE3_INPUT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_ide_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--sunrise-rom "$(SUNRISE_ROM)" \
+		--input-cartridge "$(MENU_IDE3_INPUT_CART)" \
+		--expect-fallback --expected-slot F0 --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_IDE_MENU_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 --min-colors 2 $(EMULATOR_1983_IDE_MENU_SCREEN)
 
 test-1983-disk-read: \
 		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \

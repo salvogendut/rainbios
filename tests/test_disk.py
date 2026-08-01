@@ -18,6 +18,11 @@ from tools.make_test_disk import (
     make_probe_sector,
 )
 from tools.make_boot_disk import FILL, make_image as make_boot_image
+from tools.make_ide_image import (
+    FILL as IDE_FILL,
+    IMAGE_SECTORS,
+    make_image as make_ide_image,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +36,12 @@ BOOT_SECTOR_PATH = Path(
     os.environ.get(
         "RAINBIOS_DISK_BOOT_SECTOR",
         ROOT / "build" / "disk_boot_sector.bin",
+    )
+)
+IDE_BOOT_SECTOR_PATH = Path(
+    os.environ.get(
+        "RAINBIOS_IDE_BOOT_SECTOR",
+        ROOT / "build" / "ide_boot_sector.bin",
     )
 )
 
@@ -119,6 +130,48 @@ class BootSectorLayoutTests(unittest.TestCase):
     def test_boot_sector_entry_is_at_the_kernel_c01e_contract(self) -> None:
         self.assertEqual(self.boot_sector[0x1D], 0)
         self.assertEqual(self.boot_sector[0x1E], 0x3A)  # LD A,(FFA8h): disk slot
+
+    def test_sector_one_holds_the_verified_marker(self) -> None:
+        self.assertEqual(self.boot_sector[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
+
+
+class IdeBootImageTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.boot_sector = IDE_BOOT_SECTOR_PATH.read_bytes()
+
+    def test_image_contains_the_boot_loader_and_marker(self) -> None:
+        image = make_ide_image(self.boot_sector)
+
+        self.assertEqual(len(image), IMAGE_SECTORS * SECTOR_SIZE)
+        self.assertEqual(image[: 2 * SECTOR_SIZE], self.boot_sector)
+        self.assertEqual(image[0], 0xEB)
+        self.assertEqual(image[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
+
+    def test_image_fills_unused_sectors(self) -> None:
+        image = make_ide_image(self.boot_sector)
+
+        self.assertEqual(
+            image[2 * SECTOR_SIZE :],
+            bytes((IDE_FILL,)) * ((IMAGE_SECTORS - 2) * SECTOR_SIZE),
+        )
+
+    def test_short_loader_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "need at least 1024"):
+            make_ide_image(bytes(2 * SECTOR_SIZE - 1))
+
+
+class IdeBootSectorLayoutTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.boot_sector = IDE_BOOT_SECTOR_PATH.read_bytes()
+
+    def test_boot_sector_uses_the_c01e_loader_contract(self) -> None:
+        self.assertEqual(len(self.boot_sector), 2 * SECTOR_SIZE)
+        self.assertEqual(self.boot_sector[0], 0xEB)
+        self.assertEqual(self.boot_sector[2], 0x90)
+        self.assertEqual(self.boot_sector[0x1D], 0)
+        self.assertEqual(self.boot_sector[0x1E], 0xCD)  # CALL sector-1 read
 
     def test_sector_one_holds_the_verified_marker(self) -> None:
         self.assertEqual(self.boot_sector[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")

@@ -56,8 +56,11 @@ The Space-key menu offers option 1 to launch the separately built
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
 payload when its versioned descriptor and requirements validate, option 2 to
 boot MSX DOS from drive A through the disk-ROM `H.RUNC` hook, and option 3 to
-boot from an IDE cartridge (Sunrise IDE / SD Mapper V2), currently a reserved
-stub. Invalid descriptors are not advertised or entered. The console,
+boot from a Sunrise IDE cartridge through RainBIOS's own ATA bootstrap. The
+storage ROM is detected without entering its Nextor `INIT`; sector 0 is loaded
+at `C000h`, checked for the `EBh`/`E9h` signature, and entered at `C000h+1Eh`.
+SD Mapper V2 transport support remains pending. Invalid descriptors are not
+advertised or entered. The console,
 keyboard, timing, Graphics II, cassette-load, and menu paths pass executable
 BASIC tests. Its open-source core and new BSD-3-Clause MSX port can be
 distributed with RainBIOS while remaining a distinct build artifact. The
@@ -153,7 +156,7 @@ boots a deterministic 720 KiB `F9h` fixture whose boot sector calls `DSKIO`
 from page-3 RAM and reaches a pass marker, and falls back to the interactive
 menu with an empty or non-bootable drive. A valid payload holds back the
 cold-boot auto-boot so the Space-key menu can select option 2 and reach the
-same fixture, and option 3 stays in the menu as a reserved stub:
+same fixture; option 3 without a supported IDE device returns to the menu:
 
 ```sh
 make test-1983-disk-baseline
@@ -169,6 +172,18 @@ make test-1983-disk-boot-production
 make test-1983-disk-boot-fallback
 make test-1983-disk-boot-menu
 make test-1983-disk-menu-stub
+```
+
+The IDE probes use an externally supplied Sunrise/Nextor ROM only as a
+black-box cartridge shell. An original raw-image fixture boots through option
+3, reads a second sector through the Sunrise ATA window, verifies its marker,
+and reaches a labelled pass loop. A separate test confirms that a detected
+cartridge with no mounted medium restores the BIOS page map and returns to the
+menu:
+
+```sh
+make test-1983-ide-boot
+make test-1983-ide-menu
 ```
 
 No proprietary disk firmware or media is distributed or required. Filesystems,
