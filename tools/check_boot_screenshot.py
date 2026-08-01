@@ -29,6 +29,10 @@ def main() -> None:
         type=int,
         help="optional maximum distinct RGB colors",
     )
+    parser.add_argument(
+        "--foreground-box",
+        help="require at least two colors in X0,Y0,X1,Y1",
+    )
     args = parser.parse_args()
     try:
         expected_size = tuple(int(value) for value in args.size.lower().split("x"))
@@ -57,6 +61,32 @@ def main() -> None:
                 "screenshot contains more rendered colors than expected "
                 f"({len(colors)}, expected at most {args.max_colors})"
             )
+        if args.foreground_box:
+            try:
+                box = tuple(int(value) for value in args.foreground_box.split(","))
+            except ValueError as error:
+                raise SystemExit(
+                    f"invalid --foreground-box value: {args.foreground_box}"
+                ) from error
+            if (
+                len(box) != 4
+                or box[0] < 0
+                or box[1] < 0
+                or box[2] > rgb.width
+                or box[3] > rgb.height
+                or box[0] >= box[2]
+                or box[1] >= box[3]
+            ):
+                raise SystemExit(
+                    f"invalid --foreground-box value: {args.foreground_box}"
+                )
+            region_colors = rgb.crop(box).getcolors(
+                maxcolors=(box[2] - box[0]) * (box[3] - box[1])
+            )
+            if region_colors is None or len(region_colors) < 2:
+                raise SystemExit(
+                    "screenshot foreground box does not contain rendered text"
+                )
 
     print(
         f"validated rendered screenshot ({len(colors)} colors): "

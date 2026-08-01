@@ -160,6 +160,22 @@ The storage tests default to local ROMs under `../1983/ROMS`. Override
 `SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs are used
 only as black-box cartridge shells; RainBIOS does not enter their Nextor INIT.
 
+For an interactive check with the deterministic test media, launch either:
+
+```sh
+make run-1983-ide-boot
+make run-1983-sd-boot
+```
+
+Press Space and then `3`. A successful second-sector read displays `IDE BOOT
+PASS` or `SD BOOT PASS`; F12 exits 1983. Connecting an extension from 1983's
+overlay resets the emulated machine, so these targets attach the controller and
+media before startup. These fixtures validate RainBIOS's boot-sector contract;
+they are not Nextor or MSX-DOS system images. Real system media are not expected
+to boot yet: after a valid signature transfers control, an unsupported loader
+can restart the machine or corrupt the display while calling missing firmware
+services.
+
 ## External cartridge smoke tests
 
 | Target | Coverage |

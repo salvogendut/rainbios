@@ -91,7 +91,9 @@ def main() -> int:
     parser.add_argument("--ide", type=pathlib.Path)
     parser.add_argument("--sd-a", type=pathlib.Path)
     parser.add_argument("--sd-mode", default="read-only")
-    parser.add_argument("--input-cartridge", type=pathlib.Path)
+    parser.add_argument("--paste-text")
+    parser.add_argument("--paste-at", type=int)
+    parser.add_argument("--paste-repeat", type=int)
     parser.add_argument("--symbols", type=pathlib.Path)
     parser.add_argument("--expected-pass-label", default="ide_boot_pass")
     parser.add_argument("--expected-slot", default="F8")
@@ -130,10 +132,13 @@ def main() -> int:
         command.extend(["--sunrise-rom", str(arguments.sunrise_rom)])
     if arguments.sd_mapper_rom:
         command.extend(["--sd-mapper-rom", str(arguments.sd_mapper_rom)])
-    if arguments.input_cartridge:
-        command.extend(
-            ["--cart1", str(arguments.input_cartridge), "--mapper1", "linear"]
-        )
+    for option, value in (
+        ("--paste-text", arguments.paste_text),
+        ("--paste-at", arguments.paste_at),
+        ("--paste-repeat", arguments.paste_repeat),
+    ):
+        if value is not None:
+            command.extend([option, str(value)])
     if arguments.ide:
         command.extend(["--ide", str(arguments.ide)])
     if arguments.sd_a:

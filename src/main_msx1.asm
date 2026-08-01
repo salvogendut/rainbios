@@ -808,7 +808,17 @@ cold_boot_options_boot_disk:
 ; menu should continue.
 cold_boot_options_ide:
                 call ide_boot
-                jr cold_boot_options_wait
+                ld h,2
+                ld l,12
+                call posit
+                ld hl,storage_boot_failed_message
+cold_boot_options_ide_status:
+                ld a,(hl)
+                or a
+                jr z,cold_boot_options_wait
+                call chput
+                inc hl
+                jr cold_boot_options_ide_status
 
 ; Enter a validated page-1 payload without a return address. Page 0 remains
 ; the BIOS, pages 2/3 remain the selected contiguous RAM, SP is restored to
@@ -3293,6 +3303,9 @@ jingle_notes:
                 db #aa,#00                     ; E5
                 db #8f,#00                     ; G5
                 db #6b,#00                     ; C6
+
+storage_boot_failed_message:
+                db "STORAGE BOOT FAILED",0
 
 boot_font:
                 incbin "boot_font.bin"
