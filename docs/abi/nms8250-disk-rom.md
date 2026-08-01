@@ -19,9 +19,9 @@ RainBIOS calls `H.RUNC` (`FECBh`) at cold boot through `cold_boot_init_disk`,
 after setting `DEVICE = 1` and `DISK_SETUP = 0`. A valid payload holds back that
 cold-boot call so the Space-key menu can be reached; menu option 2 re-enters the
 same hook with the same `DEVICE`/`DISK_SETUP` context whenever the user asks to
-boot MSX DOS. The hook reads logical sector 0 into `C000h` with the read-only
-`PHYDIO` path and checks the first byte for the MSX-DOS signature `EBh` or
-`E9h`.
+run the drive-A boot-sector path. The hook reads logical sector 0 into `C000h`
+with the read-only `PHYDIO` path and checks the first byte for the MSX-DOS
+signature `EBh` or `E9h`.
 
 If the signature does not match, or the read fails (for example an empty drive),
 the hook returns normally and the interactive menu continues. If it matches,

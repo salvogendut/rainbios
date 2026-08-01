@@ -13,7 +13,7 @@ address,name,kind,status,milestone,notes
 0024,ENASLT,jump,partial,M1,Supports primary and validated expanded slot IDs on all four pages and updates SLTTBL
 0028,GETYPR,jump,stub,M6,
 002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
-002C,IDBYT2,data,partial,M0,US keyboard and BASIC identifiers
+002C,IDBYT2,data,partial,M0,International keyboard and BASIC identifiers
 002D,VERSION,data,partial,M0,MSX1 generation identifier
 0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs
 0038,KEYINT,jump,partial,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY
@@ -50,8 +50,8 @@ address,name,kind,status,milestone,notes
 0096,RDPSG,jump,partial,M3,Needs register-clobber tests
 0099,STRTMS,jump,stub,M3,
 009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register
-009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and lock-state behavior remain pending
-00A2,CHPUT,jump,partial,M2,Screen 0/1 printable output plus BS/CR/LF/wrap; scrolling and other control handling remain pending
+009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending
+00A2,CHPUT,jump,partial,M2,Screen 0/1 text and Screen 2 glyph output plus BS/CR/LF/wrap/scroll; remaining control handling is pending
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,
 00AB,CNVCHR,jump,stub,M3,

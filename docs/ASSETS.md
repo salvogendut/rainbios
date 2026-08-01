@@ -17,6 +17,10 @@ The conversion is necessarily lossy because the source contains thousands of
 RGB colors while each 8-pixel Graphics II scanline cell can use only two of 15
 opaque palette colors.
 
+Generated pattern, color, and name tables remain under `build/logo/`; the
+hardware-palette preview is `build/logo/logo_preview.png`. The boot notice is
+rendered from the project-owned font during the same asset build.
+
 The source logo and the converted pattern, color, and name data embedded in
 RainBIOS are dedicated to the public domain under CC0-1.0. The full legal
 text is in `LICENSES/CC0-1.0.txt`.

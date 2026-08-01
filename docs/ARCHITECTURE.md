@@ -114,8 +114,9 @@ work variables. VDP register and address command pairs are protected from
 interrupt interleaving. Screen 0, Screen 1, and Screen 2 initialization use
 original RainBIOS tables and the project-owned font. The first console slice
 supports one-based cursor positioning, text name-table output, carriage
-return, line feed, wrapping, and clearing; scrolling and the complete control
-character set remain pending.
+return, line feed, wrapping, clearing, and scrolling in text and Graphics II
+modes; the complete control-character and cursor-presentation behavior remains
+pending.
 
 M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated
@@ -138,7 +139,10 @@ Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 checks primary cartridges before waiting through the buffered keyboard path.
 Space switches to a Screen 1 menu which reports whether BBC BASIC is ready.
 When it is, option 1 maps the payload in page 1 and transfers to its descriptor
-entry under the contract in `docs/abi/payload-v1.md`.
+entry under the contract in `docs/abi/payload-v1.md`. Option 2 invokes the
+optional disk ROM's `H.RUNC` boot-sector hook. Option 3 maps a detected storage
+cartridge without entering its Nextor INIT, distinguishes Sunrise ATA from SD
+Mapper SPI registers, and applies the same `C000h`/`C01Eh` loader contract.
 
 The 13,056-byte logo payload is temporarily embedded in the main ROM. It will
 move to a compressed or separate, independently discoverable ROM before
@@ -173,6 +177,9 @@ hardware.
 
 ## Testing strategy
 
+The runnable target matrix and emulator setup are maintained in
+`docs/TESTING.md`.
+
 - Host-side structural tests validate ROM sizes, entry-point opcodes, metadata,
   and address bounds.
 - Z80 unit tests will execute one BIOS call in a controlled memory/port model.
@@ -181,8 +188,8 @@ hardware.
   frame in both openMSX and 1983.
 - An openMSX service probe calls interrupt, VDP, mode, and console entries only
   through their fixed public addresses. Optional opaque-cartridge probes
-  require cartridge execution, the expected slot/video state, and a rendered
-  frame in both openMSX and 1983.
+  record the sampled PC and require the expected slot/video state plus a
+  rendered frame in both openMSX and 1983.
 - A physical-matrix keyboard probe checks translation and blocking input. The
   pinned BBC BASIC payload supplies the end-to-end console/keyboard/timing
   workload, guarded against writes to its ROM; 1983 separately requires its

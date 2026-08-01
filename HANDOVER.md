@@ -100,8 +100,8 @@ The optional NMS 8250 disk-ROM layer:
   `C000h+1Eh` with `A = 0` and carry set, or returns so the interactive menu
   continues.
 
-The Space-key boot menu invokes the same bootstrap on demand: option 2 boots
-MSX DOS from drive A, while option 3 uses RainBIOS's own Sunrise ATA or SD
+The Space-key boot menu invokes the same bootstrap on demand: option 2 runs the
+drive-A boot-sector path, while option 3 uses RainBIOS's own Sunrise ATA or SD
 Mapper SPI backend to load sector 0 at `C000h` and enter `C000h+1Eh`. The
 storage-ROM scan records the cartridge slot without entering its Nextor `INIT`;
 runtime register probing chooses the controller, and failures restore the BIOS
@@ -291,6 +291,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `docs/ROADMAP.md` | Authoritative milestone plan |
 | `docs/DEVELOPMENT_POLICY.md` | Source-isolation and provenance rules |
 | `docs/REFERENCES.md` | Exact implementation/test references |
+| `docs/TESTING.md` | Host, openMSX, 1983, and external-input test matrix |
 | `tools/make_test_disk.py` | Deterministic raw DSK fixture generator |
 | `tools/make_ide_image.py` | Deterministic raw IDE boot fixture generator |
 | `tools/run_1983_disk_baseline.py` | Symbol-based disk integration runner |

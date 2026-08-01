@@ -34,21 +34,20 @@ work; a polarity error here manifests as a hang, not a clean error code.
 1. **Window mapping.** Write a known pattern to `7FF9h` (`FDC_TRACK`) and read
    it back; confirm `7FF8h` aliases status/command, `7FFBh` aliases data, and
    `7FFFh` is the LINES register.
-2. **LINES bit 6 = inverted IRQ** (`src/disk_nms8250_driver.asm:356`,
-   `:420`). Idle (no transfer): read `7FFFh`, bit 6 must be `1`. Issue a force
+2. **LINES bit 6 = inverted IRQ.** Idle (no transfer): read `7FFFh`, bit 6 must
+   be `1`. Issue a force
    interrupt (`D0h` to `7FF8h`): bit 6 must read `0` until the next command.
-3. **LINES bit 7 = inverted DRQ** (`:335-338`). After a read command with a
+3. **LINES bit 7 = inverted DRQ.** After a read command with a
    byte in `7FFBh`, bit 7 must read `0`; after the byte is consumed it returns
    to `1`.
 4. **Drive/motor register** (`7FFDh`). Write `80h` then `00h`; verify the
-   drive motor audibly starts/stops and drive A is selected (`:78-79`,
-   `:144-147`).
+   drive motor audibly starts/stops and drive A is selected.
 5. **Side register** (`7FFCh`). Write `01h` then `00h` and confirm the head
-   load/side effect matches (side 1 vs side 0) (`:321-327`).
+   load/side effect matches (side 1 vs side 0).
 6. **Status register bits** (`7FF8h`). After a no-media attempt, bit 7
    (not ready) must be set; the mapping in `disk_map_read_status`
-   (`:390-418`) assumes bits 7, 4, 3, 2, and 1:0 mean not-ready,
-   record-not-found, data-error, lost-data, and busy/DRQ.
+   assumes bits 7, 4, 3, 2, and 1:0 mean not-ready, record-not-found,
+   data-error, lost-data, and busy/DRQ.
 
 ## Functional read path
 
@@ -60,7 +59,7 @@ work; a polarity error here manifests as a hang, not a clean error code.
 9. **Multi-sector B.** Request several sectors and confirm B equals the number
    of fully completed sectors on success and on an injected failure.
 10. **Cold start.** First call on a cold machine must not return not-ready; the
-    driver waits before seeking (`disk_motor_spinup`, `:152-167`).
+    driver waits in `disk_motor_spinup` before seeking.
 
 ## Timing
 
@@ -69,32 +68,33 @@ path runs with interrupts inhibited. All loops are `#ffff` iterations.
 
 11. **Motor spin-up.** Measure the time between writing `80h` to `7FFDh` and
     the drive reaching operating speed. Compare with the driver's approximately
-    one-second budget (two `#ffff` epochs, `:154-164`) at the measured Z80
-    clock. A cold drive must be ready before the seek command starts.
+    one-second budget (two `#ffff` epochs) at the measured Z80 clock. A cold
+    drive must be ready before the seek command starts.
 12. **Not-ready timeout.** With an empty drive, a read must return error 2
     (not ready), not error 16 (timeout), and must do so within the bounded IRQ
-    wait (`disk_wait_irq`, `:420-434`).
+    wait in `disk_wait_irq`.
 13. **DRQ service rate (primary risk).** Measure the worst-case
-    poll-to-read latency of `disk_read_sector_wait_data` (`:334-353`) against
-    the DD byte-cell window for the FDC crystal:
-    - Poll interval when DRQ is not yet set: about 33 cycles
-      (`ld a,(7FFFh)`, `bit 7`, `jr z` not taken).
-    - Read completes about 41 cycles after the poll that catches DRQ, giving a
-      worst-case ~74 cycles (~21 us at 3.58 MHz) from DRQ assertion to data
-      read.
-    - A 250 kbit/s byte cell (~32 us) leaves margin; a 500 kbit/s cell
-      (~16 us) does not and can lose data.
+    poll-to-read latency of `disk_read_sector_wait_data` against the DD
+    byte-cell window for the FDC crystal:
+    - A complete no-DRQ iteration is about 69 T-states, including the IRQ and
+      timeout checks.
+    - The iteration that observes DRQ reaches the data read in about 46
+      T-states. A just-missed assertion therefore has a worst-case software
+      latency of roughly 102 T-states (about 28.5 us at 3.58 MHz), before any
+      memory or I/O wait states.
+    - A 250 kbit/s byte cell (~32 us) leaves only narrow theoretical margin; a
+      500 kbit/s cell (~16 us) does not and can lose data.
     Do not trust this cycle estimate on hardware. Run the soak test below; any
     lost-data/CRC error on a known-good disk is evidence the loop does not
     service the real byte stream.
 14. **Head settling.** Repeatedly seek to a track and read it immediately;
-    the WD2793 read-command settling delay (`:329`) must absorb seek settle on
-    the real drive without CRC errors.
-15. **Verified seek.** Confirm the seek+verify command (`1Ch`, `:279`) leaves
+    the WD2793 read-command settling delay must absorb seek settle on the real
+    drive without CRC errors.
+15. **Verified seek.** Confirm the seek+verify command (`1Ch`) leaves
     `7FF9h` (`FDC_TRACK`) equal to the requested track on both sides, including
     after a failed seek.
 16. **Force interrupt.** With a stuck transfer, `D0h` must retire it and the
-    next status read must be valid (`:378-382`, `:116-124`).
+    next status read must be valid.
 
 ## Error-path reproduction
 
@@ -171,10 +171,10 @@ continues.
 
 ## Data-integrity soak
 
-17. Read the entire disk (1440 logical sectors) and verify every recorded
+33. Read the entire disk (1440 logical sectors) and verify every recorded
     marker. Repeat at least three times. A single lost byte anywhere fails the
     checklist. Run at least one cold-start soak and one warm soak.
-18. If a second drive is available, swap drive A and repeat the soak to rule
+34. If a second drive is available, swap drive A and repeat the soak to rule
     out a drive-specific timing outlier.
 
 ## Instrumentation suggestions
