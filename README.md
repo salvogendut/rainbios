@@ -100,6 +100,10 @@ documented in [docs/abi/nms8250-disk-rom.md](docs/abi/nms8250-disk-rom.md);
 implementation status and remaining work are tracked under M7 in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
+RainBIOS does not bundle an operating system. Users can supply the DOS of their
+choice on their own media; [Nextor](https://github.com/Konamiman/Nextor) is a
+freely available option and is the currently validated system path.
+
 ## Documentation
 
 - Design and status: [architecture](docs/ARCHITECTURE.md),

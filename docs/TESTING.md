@@ -188,6 +188,11 @@ make test-1983-nextor
 Success requires the Nextor 2.12 banner and rendered drive-A prompt area, not
 merely transfer into an unknown boot sector.
 
+These files are user-supplied test inputs, not RainBIOS dependencies or release
+artifacts. RainBIOS neither downloads nor bundles a DOS; users may choose any
+compatible system for their media. Nextor is freely available from its upstream
+project and provides the currently validated integration path.
+
 ## External cartridge smoke tests
 
 | Target | Coverage |

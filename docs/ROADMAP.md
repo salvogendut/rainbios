@@ -231,6 +231,11 @@ cartridge `INIT`, disk-work-area allocation, `H.RUNC`, `NEXTOR.SYS` 2.12, and an
 the temporary pre-DOS stack and Nextor's direct use of the original-BIOS
 keyboard decoder at `0D89h`.
 
+RainBIOS provides the firmware interfaces needed by disk systems; it will not
+bundle or prescribe a DOS. Users supply the system of their choice, while the
+test matrix uses the freely available Nextor as its primary compatibility
+target.
+
 - boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
   contract (requires provenance-cleared DOS files);
 - provide the documented loader inputs `HL`/`DE` (disk error handler and
