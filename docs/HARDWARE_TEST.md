@@ -162,12 +162,14 @@ continues.
     sector through the bank-7 SPI window. Repeat with one SDSC card and one SDHC
     card to exercise byte and block addressing.
 31. **Storage fallback.** Repeat each controller with no medium and with a
-    sector 0 that does not start with `EBh` or `E9h`. Confirm page 1 is restored
-    to the BIOS and the menu remains responsive. With no supported cartridge,
-    option 3 must also be a no-op.
-32. **Storage-ROM isolation.** Confirm the cartridge's Nextor `INIT` is not
-    entered during discovery; RainBIOS must use only its own controller
-    backends.
+    sector 0 that does not start with `EBh` or `E9h`. Confirm the pre-call page
+    map is restored and the menu remains responsive. With no supported
+    cartridge, option 3 must also be a no-op.
+32. **Nextor cold boot.** Insert a Sunrise IDE cartridge and a FAT16 disk with
+    `NEXTOR.SYS` and `COMMAND2.COM`. Confirm cartridge `INIT` completes, its
+    `H.RUNC` hook takes control, and drive A reaches a command prompt. Repeat
+    without system files and confirm the machine fails safely rather than
+    jumping through an empty hook.
 
 ## Data-integrity soak
 

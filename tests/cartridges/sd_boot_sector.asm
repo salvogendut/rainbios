@@ -7,7 +7,7 @@
 ; labelled address the 1983 harness can observe.
 
 SD_MAPPER_DATA  equ #7b00
-SD_FLAGS        equ #f39c
+SD_FLAGS        equ #f30a
 SD_FLAG_BLOCK   equ #02
 BOOT_BUF        equ #c200
 CHPUT           equ #00a2

@@ -35,9 +35,11 @@ writes E to that address and preserves both HL and E. Both calls restore the
 exact previous primary and secondary selections before returning. They inhibit
 maskable interrupts before changing slot state.
 
-Page-0 reads and writes use dedicated RAM helpers at `F383h` and `F38Bh`.
-Pages 1–3 execute from page 0; a page-3 access restores the old page before
-executing `RET`, so the original stack is visible again.
+Page-0 reads and writes use the standard RAM primitives `RDPRIM` at `F380h`
+and `WRPRIM` at `F385h`. `CLPRIM` at `F38Ch` and `CLPRM1` at `F398h` provide
+the corresponding primary-slot call trampoline. Pages 1–3 execute from page 0;
+a page-3 access restores the old page before executing `RET`, so the original
+stack is visible again.
 
 `CALSLT` at `001Ch` takes the target address in IX and the slot ID in the high
 byte of IY. M1H accepts primary and expanded targets in page 1 or page 2. If

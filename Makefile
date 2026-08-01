@@ -11,6 +11,8 @@ ARKANO_ROM ?= ../1983/ROMS/Arkano.rom
 MSX_DIAGNOSTICS_ROM ?= ../1983/ROMS/diag.rom
 SUNRISE_ROM ?= ../1983/ROMS/Nextor-2.1.1.SunriseIDE.ROM
 SD_MAPPER_ROM ?= ../1983/ROMS/SDM V2 Nextor2.1.1.rom
+NEXTOR_SYS ?= ../1983/DOS/NEXTOR.SYS
+NEXTOR_COMMAND ?= ../1983/DOS/COMMAND2.COM
 
 BUILD_DIR := build
 MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
@@ -93,6 +95,7 @@ SD_BOOT_SECTOR := tests/cartridges/sd_boot_sector.asm
 SD_BOOT_SECTOR_BIN := $(BUILD_DIR)/sd_boot_sector.bin
 SD_BOOT_SECTOR_SYM := $(BUILD_DIR)/sd_boot_sector.sym
 SD_BOOT_IMAGE := $(BUILD_DIR)/disks/sd-boot.img
+NEXTOR_IMAGE := $(BUILD_DIR)/disks/nextor.img
 DISK_FAULT_TEST_ROM := $(BUILD_DIR)/cartridges/disk_fault_rom.rom
 DISK_FAULT_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_fault_rom.sym
 DISK_FAULT_TEST_SOURCES := tests/cartridges/disk_fault_rom.asm \
@@ -212,6 +215,8 @@ EMULATOR_1983_SD_BOOT_SCREEN := \
 	$(EMULATOR_1983_DIR)/sd-boot.ppm
 EMULATOR_1983_SD_MENU_SCREEN := \
 	$(EMULATOR_1983_DIR)/sd-menu.ppm
+EMULATOR_1983_NEXTOR_SCREEN := \
+	$(EMULATOR_1983_DIR)/nextor-prompt.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -246,7 +251,8 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
 	test-1983-ide-boot test-1983-ide-menu \
 	test-1983-sd-boot test-1983-sd-menu \
-	run-1983-ide-boot run-1983-sd-boot \
+	test-1983-nextor \
+	run-1983-ide-boot run-1983-sd-boot run-1983-nextor \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-cartridge test-external-cartridges \
@@ -458,6 +464,15 @@ $(SD_BOOT_SECTOR_SYM): $(SD_BOOT_SECTOR_BIN)
 
 $(SD_BOOT_IMAGE): tools/make_ide_image.py $(SD_BOOT_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(SD_BOOT_SECTOR_BIN) $@
+
+$(NEXTOR_IMAGE): $(NEXTOR_SYS) $(NEXTOR_COMMAND) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	truncate -s 32M $@
+	printf '32,,6,*\n' | sfdisk $@
+	sfdisk --disk-id $@ 0x5241494e
+	mkfs.fat -F 16 -i 5241494e --offset 32 -n NEXTOR $@
+	mcopy -i "$@@@16384" "$(NEXTOR_SYS)" ::NEXTOR.SYS
+	mcopy -i "$@@@16384" "$(NEXTOR_COMMAND)" ::COMMAND2.COM
 
 $(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1047,7 +1062,7 @@ test-1983-ide-menu: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 		--disk-rom "$(NMS8250_DISK_ROM)" \
 		--sunrise-rom "$(SUNRISE_ROM)" \
 		--paste-at 180 --paste-text " 3" \
-		--expect-fallback --expected-slot F0 --exit-after 1200 \
+		--expect-fallback --expected-slot FC --exit-after 1200 \
 		--screenshot "$(EMULATOR_1983_IDE_MENU_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 --min-colors 2 --foreground-box 64,224,576,240 \
@@ -1083,11 +1098,25 @@ test-1983-sd-menu: \
 		--disk-rom "$(NMS8250_DISK_ROM)" \
 		--sd-mapper-rom "$(SD_MAPPER_ROM)" \
 		--paste-at 180 --paste-text " 3" \
-		--expect-fallback --expected-slot A0 --exit-after 1200 \
+		--expect-fallback --expected-slot AC --exit-after 1200 \
 		--screenshot "$(EMULATOR_1983_SD_MENU_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 --min-colors 2 --foreground-box 64,224,576,240 \
 		$(EMULATOR_1983_SD_MENU_SCREEN)
+
+test-1983-nextor: $(MSX1_ROM) $(NEXTOR_IMAGE)
+	test -f "$(SUNRISE_ROM)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	"$(EMULATOR_1983)" --config /dev/null --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "" --sunrise-rom "$(SUNRISE_ROM)" \
+		--ide "$(NEXTOR_IMAGE)" --ide-mode read-only \
+		--headless --unthrottled --exit-after 2500 \
+		--screenshot "$(EMULATOR_1983_NEXTOR_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 --min-colors 2 --max-colors 2 \
+		--foreground-box 48,184,128,208 \
+		$(EMULATOR_1983_NEXTOR_SCREEN)
 
 run-1983-ide-boot: \
 		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(IDE_BOOT_IMAGE)
@@ -1106,6 +1135,13 @@ run-1983-sd-boot: \
 		--disk-rom "$(NMS8250_DISK_ROM)" \
 		--sd-mapper-rom "$(SD_MAPPER_ROM)" \
 		--sd-a "$(SD_BOOT_IMAGE)" --sd-mode read-only --scale 2
+
+run-1983-nextor: $(MSX1_ROM) $(NEXTOR_IMAGE)
+	test -f "$(SUNRISE_ROM)"
+	"$(EMULATOR_1983)" --config /dev/null --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--disk-rom "" --sunrise-rom "$(SUNRISE_ROM)" \
+		--ide "$(NEXTOR_IMAGE)" --ide-mode read-only --scale 2
 
 test-1983-disk-read: \
 		$(MSX1_ROM) $(DISK_PHYDIO_TEST_ROM) \

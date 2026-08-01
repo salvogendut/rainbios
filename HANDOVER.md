@@ -103,16 +103,23 @@ The optional NMS 8250 disk-ROM layer:
 The Space-key boot menu invokes the same bootstrap on demand: option 2 runs the
 drive-A boot-sector path, while option 3 uses RainBIOS's own Sunrise ATA or SD
 Mapper SPI backend to load sector 0 at `C000h` and enter `C000h+1Eh`. The
-storage-ROM scan records the cartridge slot without entering its Nextor `INIT`;
-runtime register probing chooses the controller, and failures restore the BIOS
-page map and return to the menu. The cold-boot auto-boot yields to a valid
-payload so the menu can be reached with a bootable disk already inserted.
+storage-ROM scan records the cartridge slot and enters its standard `INIT` from
+a temporary `F300h` stack. A non-empty `H.RUNC` gets the first cold-boot handoff;
+otherwise runtime register probing chooses the direct controller backend, and
+failures restore the extension-owned pre-call map and return to the menu.
+
+The local `test-1983-nextor` path builds a 32 MiB FAT16 image from external
+`NEXTOR.SYS` and `COMMAND2.COM`, runs the Sunrise cartridge `INIT` and `H.RUNC`,
+and reaches the Nextor 2.12 `A:\>` prompt. The compatibility entry at `0D89h`
+supplies the international-keyboard result expected by Nextor's undocumented
+original-BIOS probe; the public `FILVRM` vector jumps to its relocated body.
 
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
-The disk ROM loads and runs an MSX-DOS-style boot sector but does not yet load a
-real MSX-DOS kernel, and does not provide FAT or DOS services, formatting,
-drive B, writes, non-NMS controllers, or real-hardware timing guarantees.
+The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector but does not
+itself provide FAT or DOS services. Nextor now boots through the Sunrise
+cartridge, while a provenance-cleared MSX-DOS 1 system, formatting, drive B,
+writes, non-NMS controllers, and real-hardware timing remain pending.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 

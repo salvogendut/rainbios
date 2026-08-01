@@ -39,15 +39,15 @@ and empty hooks. M1H extends the stackless probe to secondary-slot RAM.
 
 M1B adds direct `RSLREG`/`WSLREG` access and primary-slot `ENASLT`. Because
 switching page 0 removes the routine performing the switch, cold boot installs
-a three-byte `OUT (A8h),A`/`RET` helper at `F380h`. Switching page 3 instead
-pops the return address before replacing the page that contains the stack.
-M1H extends the same paths to expanded IDs and mirrors permanent selections
-in `SLTTBL`.
+a standard RAM primitive block at `F380h-F399h`; permanent page-0 `ENASLT`
+uses a register-preserving stack trampoline. Switching page 3 instead pops the
+return address before replacing the page that contains the stack. M1H extends
+the same paths to expanded IDs and mirrors permanent selections in `SLTTBL`.
 
-M1C extends the RAM-resident helper block with page-0 read/restore and
-write/restore operations. `RDSLT` and `WRSLT` handle pages 1–3 from visible
-page-0 code and restore page 3 before touching its stack. M1H restores both
-the primary map and expanded selector around these calls.
+M1C uses standard `RDPRIM`/`WRPRIM` page-0 read/restore and write/restore
+operations. `RDSLT` and `WRSLT` handle pages 1–3 from visible page-0 code and
+restore page 3 before touching its stack. M1H restores both the primary map and
+expanded selector around these calls.
 
 M1D implements the primary-slot page-1/page-2 subset of `CALSLT`. IX supplies
 the target and the high byte of IY supplies the slot ID. The old PPI map lives
@@ -58,7 +58,8 @@ normal inputs. If it returns, a page-0 continuation uses those alternate banks
 to restore the exact map while preserving the target's normal register and
 flag results. Separate stack frames also allow returning calls to nest. M1H
 adds secondary-selector metadata to the frame for expanded page-1/page-2
-targets.
+targets; `CLPRIM`/`CLPRM1` occupy their standard RAM addresses for primary-slot
+dispatch.
 
 M1E scans the public cartridge header locations at `4000h` and `8000h` in
 each non-BIOS slot. A header beginning `41h,42h` with a nonzero
@@ -137,12 +138,19 @@ task.
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 checks primary cartridges before waiting through the buffered keyboard path.
+Cartridge initialization uses a temporary `F300h` stack so disk kernels can
+allocate below the standard `F380h` `HIMEM` boundary without overwriting the
+BIOS return chain. RainBIOS then runs `H.STKE` and any non-empty `H.RUNC` hook.
+The original-BIOS keyboard decoder entry at `0D89h`, used directly by Nextor
+2.1, reports the international layout without exposing that implementation as
+a public BIOS contract.
 Space switches to a Screen 1 menu which reports whether BBC BASIC is ready.
 When it is, option 1 maps the payload in page 1 and transfers to its descriptor
 entry under the contract in `docs/abi/payload-v1.md`. Option 2 invokes the
 optional disk ROM's `H.RUNC` boot-sector hook. Option 3 maps a detected storage
-cartridge without entering its Nextor INIT, distinguishes Sunrise ATA from SD
-Mapper SPI registers, and applies the same `C000h`/`C01Eh` loader contract.
+cartridge, distinguishes Sunrise ATA from SD Mapper SPI registers, and applies
+the same `C000h`/`C01Eh` loader contract when no standard cartridge boot path
+has taken control.
 
 The 13,056-byte logo payload is temporarily embedded in the main ROM. It will
 move to a compressed or separate, independently discoverable ROM before

@@ -31,8 +31,8 @@ a complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 - no MSX2 main ROM or SUB-ROM is built yet;
 - mapper allocation, broad cartridge compatibility, and several keyboard,
   controller, printer, graphics, and filesystem services remain pending;
-- storage support runs deterministic boot-sector loaders but has not yet booted
-  a provenance-cleared real MSX-DOS kernel;
+- Sunrise IDE compatibility boots a local Nextor 2.12 system image in 1983;
+  a provenance-cleared MSX-DOS 1 system remains pending;
 - real-hardware timing and compatibility validation remain in progress.
 
 ## Build
@@ -92,11 +92,12 @@ The dependency, license boundary, memory layout, and release workflow are in
 ### Disk and storage boot
 
 The optional NMS 8250 extension provides read-only `PHYDIO`, `DSKCHG`,
-`GETDPB`, and a bounded `H.RUNC` boot-sector path. Menu option 3 uses RainBIOS's
-own ATA/SPI backends for Sunrise IDE and SD Mapper V2 cartridges without
-entering their Nextor `INIT`. Exact disk-ROM behavior is documented in
-[docs/abi/nms8250-disk-rom.md](docs/abi/nms8250-disk-rom.md); implementation
-status and remaining work are tracked under M7 in
+`GETDPB`, and a bounded `H.RUNC` boot-sector path. Storage cartridges now enter
+their standard `INIT`; an installed `H.RUNC` takes the normal cold-boot path,
+including a validated Nextor 2.12 prompt through Sunrise IDE. Menu option 3
+retains RainBIOS's direct ATA/SPI fallback loader. Exact disk-ROM behavior is
+documented in [docs/abi/nms8250-disk-rom.md](docs/abi/nms8250-disk-rom.md);
+implementation status and remaining work are tracked under M7 in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Documentation

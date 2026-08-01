@@ -152,13 +152,16 @@ make test-1983 \
 | Target | Coverage |
 | --- | --- |
 | `test-1983-ide-boot` | Sunrise ATA sector 0 boot plus a second-sector loader read |
-| `test-1983-ide-menu` | Sunrise cartridge with no medium restores the BIOS map |
+| `test-1983-ide-menu` | Sunrise cartridge with no medium restores the pre-call map |
 | `test-1983-sd-boot` | SD Mapper SPI initialization, sector 0 boot, and second CMD17 read |
-| `test-1983-sd-menu` | SD Mapper with no card restores the BIOS map |
+| `test-1983-sd-menu` | SD Mapper with no card restores the pre-call map |
+| `test-1983-nextor` | Sunrise `INIT`, `H.RUNC`, `NEXTOR.SYS`, and rendered `A:\>` prompt |
 
 The storage tests default to local ROMs under `../1983/ROMS`. Override
-`SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs are used
-only as black-box cartridge shells; RainBIOS does not enter their Nextor INIT.
+`SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs remain
+black-box inputs, but RainBIOS now follows their standard `AB` header `INIT`
+and invokes a non-empty `H.RUNC` hook before falling back to its direct
+controller loaders.
 
 For an interactive check with the deterministic test media, launch either:
 
@@ -171,10 +174,19 @@ Press Space and then `3`. A successful second-sector read displays `IDE BOOT
 PASS` or `SD BOOT PASS`; F12 exits 1983. Connecting an extension from 1983's
 overlay resets the emulated machine, so these targets attach the controller and
 media before startup. These fixtures validate RainBIOS's boot-sector contract;
-they are not Nextor or MSX-DOS system images. Real system media are not expected
-to boot yet: after a valid signature transfers control, an unsupported loader
-can restart the machine or corrupt the display while calling missing firmware
-services.
+they are not Nextor or MSX-DOS system images.
+
+The explicit Nextor test uses local, non-redistributed system files and requires
+`sfdisk`, `mkfs.fat`, and mtools `mcopy`. Its defaults are
+`../1983/DOS/NEXTOR.SYS` and `../1983/DOS/COMMAND2.COM`; override `NEXTOR_SYS`
+or `NEXTOR_COMMAND` as needed. The generated FAT16 image is mounted read-only:
+
+```sh
+make test-1983-nextor
+```
+
+Success requires the Nextor 2.12 banner and rendered drive-A prompt area, not
+merely transfer into an unknown boot sector.
 
 ## External cartridge smoke tests
 
