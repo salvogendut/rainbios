@@ -11,6 +11,9 @@ VDP_CONTROL     equ #99
 PSG_ADDRESS     equ #a0
 PSG_WRITE       equ #a1
 PSG_READ        equ #a2
+PSG_MIXER       equ #07
+PSG_PORT_A      equ #0e
+PSG_PORT_B      equ #0f
 MAPPER_PAGE0    equ #fc
 MAPPER_PAGE1    equ #fd
 MAPPER_PAGE2    equ #fe
@@ -51,6 +54,8 @@ OLDKEY          equ #fbda
 NEWKEY          equ #fbe5
 KEYBUF          equ #fbf0
 KEYBUF_END      equ #fc18
+PADY            equ #fc9c
+PADX            equ #fc9d
 JIFFY           equ #fc9e
 CAPST           equ #fcab
 SCRMOD          equ #fcaf
@@ -166,7 +171,7 @@ STACK_TOP       equ #f380
                 jp unsupported_call             ; 0087 CALATR
                 jp unsupported_call             ; 008A GSPSIZ
                 jp unsupported_call             ; 008D GRPPRT
-                jp unsupported_call             ; 0090 GICINI
+                jp gicini                       ; 0090 GICINI
                 jp wrtpsg                       ; 0093 WRTPSG
                 jp rdpsg                        ; 0096 RDPSG
                 jp unsupported_call             ; 0099 STRTMS
@@ -625,25 +630,9 @@ cold_boot_color_block:
                 ld a,#81
                 out (VDP_CONTROL),a
 
-; Play a four-note startup motif on PSG channel A. The standard MSX mixer
-; value keeps PSG port A as input and port B as output. Channel B/C volumes
-; remain zero. The routine is deliberately inline and stackless.
-                ld a,#08
-                out (PSG_ADDRESS),a
-                xor a
-                out (PSG_WRITE),a
-                ld a,#09
-                out (PSG_ADDRESS),a
-                xor a
-                out (PSG_WRITE),a
-                ld a,#0a
-                out (PSG_ADDRESS),a
-                xor a
-                out (PSG_WRITE),a
-                ld a,#07
-                out (PSG_ADDRESS),a
-                ld a,#b8
-                out (PSG_WRITE),a
+; Initialize sound and both controller connectors, then play a four-note
+; startup motif on PSG channel A. Channel B/C volumes remain zero.
+                call gicini_impl
                 ld hl,jingle_notes
                 ld d,4
 cold_boot_jingle_note:
@@ -2493,6 +2482,31 @@ ldirvm_loop:
                 jr nz,ldirvm_loop
                 ret
 
+; Initialize the PSG hardware registers atomically. The public entry enables
+; interrupts on return; cold boot calls the private body while it still owns a
+; DI section. R7 keeps port A as input and port B as output; R15 makes both
+; trigger lines inputs, holds both mouse strobes low, selects connector 1, and
+; leaves the active-low Kana LED off. PLAY statement work areas remain pending.
+gicini:
+                call gicini_impl
+                ei
+                ret
+gicini_impl:
+                di
+                ld hl,psg_initial_registers
+                ld c,0
+gicini_register:
+                ld a,c
+                out (PSG_ADDRESS),a
+                ld a,(hl)
+                out (PSG_WRITE),a
+                inc hl
+                inc c
+                ld a,c
+                cp 16
+                jr nz,gicini_register
+                ret
+
 ; Partial PSG primitives.
 wrtpsg:
                 out (PSG_ADDRESS),a
@@ -3632,24 +3646,249 @@ snsmat:
                 in a,(PPI_KEYBOARD)
                 ret
 
-; GTSTCK / GTTRIG / GTPAD / GTPDL: no pointing/input device attached, so every
-; read reports "nothing connected / nothing pressed". Carry stays clear so callers
-; interpret the result as valid.
+; Cursor keys and both joystick connectors use the standard 0=center,
+; 1..8=clockwise-from-up direction values. GTSTCK may change all registers.
 gtstck:
-                ei
+                di
+                or a
+                jr z,gtstck_keyboard
+                dec a
+                jr z,gtstck_port1
+                dec a
+                jr z,gtstck_port2
                 xor a
+                jr gtstck_done
+gtstck_keyboard:
+                ld a,8
+                call snsmat
+                cpl
+                and #f0
+                rrca
+                rrca
+                rrca
+                rrca
+                ld e,a
+                ld d,0
+                ld hl,keyboard_direction_table
+                add hl,de
+                ld a,(hl)
+                jr gtstck_done
+gtstck_port1:
+                xor a
+                jr gtstck_joystick
+gtstck_port2:
+                ld a,1
+gtstck_joystick:
+                call controller_read_port
+                cpl
+                and #0f
+                ld e,a
+                ld d,0
+                ld hl,joystick_direction_table
+                add hl,de
+                ld a,(hl)
+gtstck_done:
+                ei
                 ret
+
+; Space and connector buttons return FFh while pressed and 00h when released.
+; Only AF changes, matching the published GTTRIG contract.
 gttrig:
-                ei
+                push bc
+                push de
+                push hl
+                ld c,a
+                di
+                or a
+                jr z,gttrig_space
+                cp 5
+                jr nc,gttrig_released
+                ld e,#10                       ; connector button A
+                cp 3
+                jr c,gttrig_port
+                ld e,#20                       ; connector button B
+                sub 2
+gttrig_port:
+                dec a                          ; selectors 1/2 become ports 0/1
+                call controller_read_port
+                and e
+                jr z,gttrig_pressed
+                jr gttrig_released
+gttrig_space:
+                ld a,8
+                call snsmat
+                and #01
+                jr z,gttrig_pressed
+gttrig_released:
                 xor a
+                jr gttrig_done
+gttrig_pressed:
+                ld a,#ff
+                or a
+gttrig_done:
+                ei
+                pop hl
+                pop de
+                pop bc
                 ret
+
+; GTPAD 12/16 latch signed relative mouse movement from connector 1/2 into
+; the standard PADX/PADY work areas. Selectors 13/14 and 17/18 return the
+; cached axes; 15/19 and unsupported touch-panel/light-pen selectors return 0.
 gtpad:
-                ei
+                di
+                cp 12
+                jr z,gtpad_request_port1
+                cp 16
+                jr z,gtpad_request_port2
+                cp 13
+                jr z,gtpad_x
+                cp 17
+                jr z,gtpad_x
+                cp 14
+                jr z,gtpad_y
+                cp 18
+                jr z,gtpad_y
                 xor a
+                jr gtpad_done
+gtpad_request_port1:
+                xor a
+                jr gtpad_request
+gtpad_request_port2:
+                ld a,1
+gtpad_request:
+                call mouse_read_port
+                ld a,#ff
+                jr gtpad_done
+gtpad_x:
+                ld a,(PADX)
+                jr gtpad_done
+gtpad_y:
+                ld a,(PADY)
+gtpad_done:
+                ei
                 ret
+
+; Paddle timing is not part of the current controller slice.
 gtpdl:
                 ei
                 xor a
+                ret
+
+; Read the active-low six input lines from connector A=0/1. R15 is modified
+; only for that connector: trigger lines become inputs, pin 8 is low, and the
+; requested connector is selected. Kana LED and the other connector are kept.
+controller_read_port:
+                ld c,a
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                ld b,a
+                ld a,c
+                or a
+                ld a,b
+                jr nz,controller_select_port2
+                and #af                         ; select port 1, pin 8 low
+                or #03                          ; port 1 buttons are inputs
+                jr controller_port_selected
+controller_select_port2:
+                and #df                         ; port 2 pin 8 low
+                or #4c                          ; select port 2, buttons inputs
+controller_port_selected:
+                out (PSG_WRITE),a               ; R15 is still selected
+                ld a,PSG_PORT_A
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                ret
+
+; Perform the standard X-high, X-low, Y-high, Y-low mouse transaction. Wire
+; deltas are negated to the BIOS convention of positive right/down movement.
+mouse_read_port:
+                ld c,a
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                ld d,a
+                ld a,c
+                or a
+                ld a,d
+                jr nz,mouse_select_port2
+                and #af
+                or #03
+                ld c,#10
+                jr mouse_port_selected
+mouse_select_port2:
+                and #df
+                or #4c
+                ld c,#20
+mouse_port_selected:
+                ld d,a                          ; selected port, pin 8 low
+                out (PSG_WRITE),a               ; R15 is still selected
+
+                or c                            ; latch and expose X high
+                out (PSG_WRITE),a
+                call mouse_delay_long
+                call mouse_read_nibble
+                rlca
+                rlca
+                rlca
+                rlca
+                ld e,a
+
+                ld a,d                          ; expose X low
+                call mouse_write_port_b
+                call mouse_delay_short
+                call mouse_read_nibble
+                or e
+                neg
+                ld (PADX),a
+
+                ld a,d                          ; expose Y high
+                or c
+                call mouse_write_port_b
+                call mouse_delay_short
+                call mouse_read_nibble
+                rlca
+                rlca
+                rlca
+                rlca
+                ld e,a
+
+                ld a,d                          ; expose Y low and leave strobe low
+                call mouse_write_port_b
+                call mouse_delay_short
+                call mouse_read_nibble
+                or e
+                neg
+                ld (PADY),a
+                ret
+
+mouse_write_port_b:
+                push af
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                pop af
+                out (PSG_WRITE),a
+                ret
+
+mouse_read_nibble:
+                ld a,PSG_PORT_A
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                and #0f
+                ret
+
+; Working open-source drivers use roughly 100 us before the first sample and
+; 40 us after later strobe edges on a 3.58 MHz Z80.
+mouse_delay_long:
+                ld b,30
+mouse_delay_long_loop:
+                djnz mouse_delay_long_loop
+                ret
+mouse_delay_short:
+                ld b,10
+mouse_delay_short_loop:
+                djnz mouse_delay_short_loop
                 ret
 
 ; Standardized F380h-F399h primary-slot primitives. Callers prepare complete
@@ -3698,6 +3937,17 @@ text32_vdp_registers:
                 db #00,#a0,#06,#80,#00,#36,#07,#f1
 graphics2_vdp_registers:
                 db #02,#a0,#06,#ff,#03,#36,#07,#01
+
+psg_initial_registers:
+                db #55,#00,#00,#00,#00,#00,#00,#b8
+                db #00,#00,#00,#0b,#00,#00,#00,#8f
+
+; Pressed-bit indices are L/U/D/R for the keyboard table and U/D/L/R for the
+; joystick table. Electrically contradictory direction pairs report center.
+keyboard_direction_table:
+                db 0,7,1,8,5,6,0,0,3,0,2,0,4,0,0,0
+joystick_direction_table:
+                db 0,1,5,0,7,8,6,0,3,2,4,0,0,0,0,0
 
 ; International keyboard matrix rows 0-5, bit 0 first. A zero entry is not
 ; translated in this first keyboard slice.

@@ -17,8 +17,8 @@ a complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 - deterministic 32 KiB MSX1 ROM with standard fixed entry points;
 - primary and expanded slot discovery, 32 KiB RAM selection, and a fixed
   64 KiB memory-mapper baseline;
-- initial Screen 0/1/2, console, keyboard, interrupt, and cassette services,
-  plus PSG output;
+- initial Screen 0/1/2, console, keyboard, interrupt, cassette, joystick, and
+  standard two-port MSX mouse services, plus PSG output;
 - public `AB` cartridge discovery and versioned RainBIOS payload descriptors;
 - a boot menu for BBC BASIC, an MSX-DOS-style floppy boot sector, Sunrise IDE,
   and SD Mapper V2 media;
@@ -30,7 +30,8 @@ a complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 - many BIOS entries remain partial or safe stubs;
 - no MSX2 main ROM or SUB-ROM is built yet;
 - mapper allocation, broad cartridge compatibility, and several keyboard,
-  controller, printer, graphics, and filesystem services remain pending;
+  touch-panel, paddle, printer, graphics, and filesystem services remain
+  pending;
 - Sunrise IDE and SD Mapper V2 compatibility boot a local Nextor 2.12 system
   image in 1983; a provenance-cleared MSX-DOS 1 system remains pending;
 - real-hardware timing and compatibility validation remain in progress.
@@ -71,6 +72,7 @@ Its output is `build/rainbios_nms8250_disk.rom`.
 ```sh
 make test
 make test-openmsx-boot OPENMSX='flatpak run org.openmsx.openMSX'
+make test-openmsx-controller OPENMSX='flatpak run org.openmsx.openMSX'
 make test-1983
 ```
 
@@ -109,8 +111,9 @@ freely available option and is the currently validated system path.
 - Design and status: [architecture](docs/ARCHITECTURE.md),
   [roadmap](docs/ROADMAP.md), and [main BIOS ABI](docs/abi/main-bios.csv).
 - Public contracts: [slot calls](docs/abi/slot-calls.md),
-  [keyboard](docs/abi/keyboard.md), [payload v1](docs/abi/payload-v1.md), and
-  [NMS 8250 disk ROM](docs/abi/nms8250-disk-rom.md).
+  [keyboard](docs/abi/keyboard.md), [controllers](docs/abi/controllers.md),
+  [payload v1](docs/abi/payload-v1.md), and [NMS 8250 disk
+  ROM](docs/abi/nms8250-disk-rom.md).
 - Validation: [testing guide](docs/TESTING.md),
   [cartridge compatibility](docs/CARTRIDGE_COMPATIBILITY.md), and
   [hardware checklist](docs/HARDWARE_TEST.md).

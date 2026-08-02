@@ -83,6 +83,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-expanded-slots` | Expanded selectors, slot tables, all pages, restoration, and returning `CALSLT` |
 | `test-openmsx-services` | Interrupt, hook, VDP, mode, console, scrolling, and `CLS` services |
 | `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, and blocking `CHGET` |
+| `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, and PSG R15 preservation |
 | `test-openmsx-font` | Printable project-owned font coverage |
 | `test-openmsx-cls` | Screen 0/1/2/3 clearing and cursor state |
 
