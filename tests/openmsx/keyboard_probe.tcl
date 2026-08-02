@@ -295,6 +295,32 @@ proc pinlin_break_done {} {
 
 proc beep_done {} {
     record_keyboard "BEEP=OK"
+    # M3 dead keys: grave ` + 'a' -> 0x85, acute ' + 'e' -> 0x82,
+    # grave ` + 'b' -> 0x62 (not combinable), acute ' + 'y' -> 0x79
+    # Hold each accent key long enough for a scan, then release before the
+    # next key so DEADST latches before the letter edge arrives.
+    after time 0.10 {keymatrixdown 2 0x02}
+    after time 0.16 {keymatrixup 2 0x02}
+    after time 0.24 {keymatrixdown 2 0x40}
+    after time 0.30 {keymatrixup 2 0x40}
+    after time 0.38 {keymatrixdown 2 0x01}
+    after time 0.44 {keymatrixup 2 0x01}
+    after time 0.52 {keymatrixdown 3 0x04}
+    after time 0.58 {keymatrixup 3 0x04}
+    after time 0.66 {keymatrixdown 2 0x02}
+    after time 0.72 {keymatrixup 2 0x02}
+    after time 0.80 {keymatrixdown 2 0x80}
+    after time 0.86 {keymatrixup 2 0x80}
+    after time 0.94 {keymatrixdown 2 0x01}
+    after time 1.00 {keymatrixup 2 0x01}
+    after time 1.08 {keymatrixdown 5 0x40}
+    after time 1.14 {keymatrixup 5 0x40}
+    after time 1.22 deadkey_done
+}
+
+proc deadkey_done {} {
+    record_keyboard [format "DEADKEY=%02X,%02X,%02X,%02X" \
+        [peek 0xFBF0] [peek 0xFBF1] [peek 0xFBF2] [peek 0xFBF3]]
     exit
 }
 

@@ -51,7 +51,9 @@ CNSDFG          equ #f3de
 BUFFER          equ #f55e
 INLIN_START_COL equ #f55c
 INLIN_TMP       equ #f55b
+DEADKEY_TMP     equ #f55a
 AUTFLG          equ #f6aa
+DEADST          equ #fcac
 FNKSTR          equ #f87f
 FNKFLG          equ #fbce
 INTFLG          equ #fc9b
@@ -2270,10 +2272,11 @@ keyboard_translate:
                 cp 6
                 jr c,keyboard_translate_printable
                 cp 7
-                jr z,keyboard_translate_row7
+                jp z,keyboard_translate_row7
                 cp 8
-                jr z,keyboard_translate_row8
+                jp z,keyboard_translate_row8
                 xor a
+                ld (DEADST),a                   ; unsupported rows clear the accent
                 ret
 keyboard_translate_printable:
                 add a,a
@@ -2307,15 +2310,99 @@ keyboard_translate_table:
                 ld c,a
 keyboard_translate_keep:
                 ld a,c
+                ; The accent glyphs are dead keys: latch DEADST instead of
+                ; emitting, so the next combinable letter produces the accented
+                ; character. DEADST: 1 = grave, 2 = acute, 3 = circumflex,
+                ; 4 = umlaut.
+                cp #27                          ; ' acute
+                jr z,keyboard_deadkey_acute
+                cp #60                          ; ` grave
+                jr z,keyboard_deadkey_grave
+                cp #5e                          ; ^ circumflex
+                jr z,keyboard_deadkey_circumflex
+                cp #22                          ; " umlaut
+                jr z,keyboard_deadkey_umlaut
+                ; Apply any pending accent to this printable character.
+                ld (DEADKEY_TMP),a
+                ld a,(DEADST)
+                or a
+                jr z,keyboard_deadkey_clear
+                ld a,(DEADKEY_TMP)
+                call keyboard_deadkey_combine
+                or a
+                jr nz,keyboard_deadkey_combined
+keyboard_deadkey_clear:
+                xor a
+                ld (DEADST),a
+                ld a,(DEADKEY_TMP)
                 ret
+keyboard_deadkey_combined:
+                push af
+                xor a
+                ld (DEADST),a
+                pop af
+                ret
+keyboard_deadkey_grave:
+                ld a,1
+                jr keyboard_deadkey_latch
+keyboard_deadkey_acute:
+                ld a,2
+                jr keyboard_deadkey_latch
+keyboard_deadkey_circumflex:
+                ld a,3
+                jr keyboard_deadkey_latch
+keyboard_deadkey_umlaut:
+                ld a,4
+keyboard_deadkey_latch:
+                ld (DEADST),a
+                xor a
+                ret
+
+; A = a letter. Return the accented code for the pending DEADST accent, or 0
+; if the letter cannot be combined. Uses the 4x26 accent table.
+keyboard_deadkey_combine:
+                and #df                         ; fold to uppercase
+                sub 'A'
+                cp 26
+                jr nc,keyboard_deadkey_not_letter
+                ld e,a                          ; E = letter index
+                ld d,0
+                ld a,(DEADST)
+                or a
+                jr z,keyboard_deadkey_not_letter
+                dec a                           ; 0-3
+                ld hl,deadkey_table
+                add hl,de
+                or a
+                jr z,keyboard_deadkey_table_done
+keyboard_deadkey_add26:
+                ld de,26
+                add hl,de
+                dec a
+                jr nz,keyboard_deadkey_add26
+keyboard_deadkey_table_done:
+                ld a,(hl)
+                ret
+keyboard_deadkey_not_letter:
+                xor a
+                ret
+
 keyboard_translate_ctrl:
                 ld c,a
                 and #df                         ; letters fold to uppercase
                 cp 'A'
-                jr c,keyboard_translate_keep
+                jr c,keyboard_deadkey_clear_ctrl
                 cp 'Z'+1
-                jr nc,keyboard_translate_keep
+                jr nc,keyboard_deadkey_clear_ctrl
+                xor a
+                ld (DEADST),a                   ; Ctrl clears a pending accent
+                ld a,c
                 and #1f                         ; Ctrl+A through Ctrl+Z
+                ret
+keyboard_deadkey_clear_ctrl:
+                xor a
+                ld (DEADST),a
+                ld a,c
                 ret
 keyboard_translate_row7:
                 ; bit 3 is STOP: latch a break instead of enqueuing. Ctrl-STOP
@@ -2329,6 +2416,8 @@ keyboard_translate_row7:
                 ld a,4
 keyboard_translate_stop:
                 ld (INTFLG),a
+                xor a
+                ld (DEADST),a                   ; a break clears pending accent
                 ld hl,KEYBUF                    ; a break discards pending input
                 ld (PUTPNT),hl
                 ld (GETPNT),hl
@@ -2343,6 +2432,10 @@ keyboard_translate_special:
                 ld d,0
                 add hl,de
                 ld a,(hl)
+                push af
+                xor a
+                ld (DEADST),a                   ; editing keys clear the accent
+                pop af
                 ret
 
 ; Add A to the circular buffer unless advancing PUTPNT would collide with
@@ -4671,6 +4764,16 @@ keymap_row7:
                 db 0,0,#1b,#09,#03,#08,0,#0d
 keymap_row8:
                 db #20,#0b,#12,#7f,#1d,#1e,#1f,#1c
+
+; Accented characters produced by a dead key followed by a letter. Four rows of
+; 26 entries indexed by (letter - 'a'); a zero entry means no accented form, so
+; the plain letter is emitted instead. Codes follow the MSX international
+; character set.
+deadkey_table:
+                db #85,0, 0,0, #8a,0, 0,0, #8d,0, 0,0, 0,0, #95,0, 0,0, 0,0, #97,0, 0,0, 0,0   ; grave
+                db #a0,0, 0,0, #82,0, 0,0, #a1,0, 0,0, 0,0, #a2,0, 0,0, 0,0, #a3,0, 0,0, 0,0   ; acute
+                db #83,0, 0,0, #88,0, 0,0, #8c,0, 0,0, 0,0, #93,0, 0,0, 0,0, #96,0, 0,0, 0,0   ; circumflex
+                db #84,0, 0,0, #89,0, 0,0, #8b,0, 0,0, 0,0, #94,0, 0,0, 0,0, #81,0, 0,0, #98,0 ; umlaut
 
 jingle_notes:
                 db #d6,#00                     ; C5

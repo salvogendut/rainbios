@@ -176,7 +176,13 @@ suppression and `QINLIN` prints the `? ` prompt. Backspace and Delete remove
 the last character. `BEEP` emits a short PSG tone. The keyboard probe covers
 plain, backspace-edited, prompted, and break-terminated lines plus the beep.
 
-- complete dead-key state, key click, and the remaining editing-key behavior;
+M3F implements international dead-key input. The accent glyphs latch
+`DEADST` (grave, acute, circumflex, umlaut) and the next a/e/i/o/u/y combines
+into the standard MSX accented characters, while non-combinable keys fall back
+to the plain character and clear the latch. The keyboard probe covers
+combining and fallback cases; the accented font glyphs remain M2 charset work.
+
+- complete key click and the remaining editing-key behavior;
 - complete `GICINI` PLAY statement work-area initialization;
 - implement touch-panel, light-pen, trackball-detection, and paddle calls;
 - implement or explicitly classify printer and remaining basic-device calls;

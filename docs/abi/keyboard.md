@@ -65,5 +65,21 @@ the last character; other editing keys are not yet handled.
 
 `BEEP` emits a short tone on PSG channel A.
 
-Dead keys, key click, Code lock, cursor editing inside a line, and CAPS
-behavior beyond the implemented state/LED remain future compatibility work.
+## Dead keys (M3F)
+
+The international accent glyphs are dead keys: pressing `` ` `` (grave), `'`
+(acute), `^` (circumflex), or `"` (umlaut) latches `DEADST` (`FCACh`) and
+emits nothing. The next key combines with the accent when it is a, e, i, o, u,
+or y, producing the standard MSX international accented character (for example
+`` ` `` + a gives à, `'` + e gives é, `^` + e gives ê, `"` + u gives ü, `"` + y
+gives ÿ). A letter with no accented form, any other key, or Ctrl emits the
+plain character and clears `DEADST`. The accented byte codes follow the MSX
+international character set (0x80-0xA3); the project font glyphs for those
+codes are part of the M2 character-set work.
+
+The keyboard probe covers grave+`a`, acute+`e`, a non-combinable letter, and
+a letter with no accented form.
+
+Dead-key+Shift is not yet distinguished (each accent glyph maps to one accent
+type), key click, Code lock, cursor editing inside a line, and CAPS behavior
+beyond the implemented state/LED remain future compatibility work.
