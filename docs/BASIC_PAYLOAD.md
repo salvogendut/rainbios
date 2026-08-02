@@ -55,6 +55,13 @@ currently lets raw logo tables extend slightly into the upper 16 KiB, so that
 variant first requires compacting or relocating the boot assets. It will be
 an additional output, not a replacement for the separate artifacts.
 
+The detailed technical design, boot-fallback semantics, test matrix, and
+multi-license release requirements are in
+[`EMBEDDED_BASIC.md`](EMBEDDED_BASIC.md). That assessment also records a
+separate release blocker: upstream's permission to use the `BBC BASIC` name is
+not transferable to a derived or forked work. The code is permissively
+licensed, but the public name must be authorized or changed before release.
+
 ## Why BBC BASIC
 
 The available Z80 source already separates most of the language core from a
