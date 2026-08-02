@@ -163,6 +163,84 @@ proc caps_off_a_press {} {
 
 proc caps_off_read {} {
     record_keyboard [format "CAPSOFF=%02X" [reg A]]
+    # ---- M3 break / function-key / auto-repeat slice ----
+    # FNKSTR holds the default "LIST" prefix after boot + INIFNK
+    record_keyboard [format "FNK=%02X,%02X,%02X" \
+        [peek 0xF87F] [peek 0xF880] [peek 0xF881]]
+    record_keyboard [format "CNSDFG=%02X" [peek 0xF3DE]]
+    reg F 0
+    invoke_bios 0x00B7 breakx_clear_done
+}
+
+proc breakx_clear_done {} {
+    record_keyboard [format "BREAKX0=%d" [expr {[reg F] & 1}]]
+    reg F 0
+    invoke_bios 0x00BA iscntc_clear_done
+}
+
+proc iscntc_clear_done {} {
+    record_keyboard [format "ISCNTC0=%d" [expr {[reg F] & 1}]]
+    # hold CTRL+STOP so KEYINT latches a break
+    keymatrixdown 6 0x80
+    keymatrixdown 7 0x08
+    after time 0.05 breakx_pressed
+}
+
+proc breakx_pressed {} {
+    reg F 0
+    invoke_bios 0x00B7 breakx_pressed_done
+}
+
+proc breakx_pressed_done {} {
+    record_keyboard [format "BREAKX1=%d" [expr {[reg F] & 1}]]
+    keymatrixup 6 0x80
+    keymatrixup 7 0x08
+    reg F 0
+    invoke_bios 0x00BA iscntc_break_done
+}
+
+proc iscntc_break_done {} {
+    record_keyboard [format "ISCNTC1=%d,%02X" \
+        [expr {[reg F] & 1}] [peek 0xFC9B]]
+    reg F 0
+    invoke_bios 0x00BA iscntc_drained_done
+}
+
+proc iscntc_drained_done {} {
+    record_keyboard [format "ISCNTC2=%d" [expr {[reg F] & 1}]]
+    invoke_bios 0x00CC erafnk_done
+}
+
+proc erafnk_done {} {
+    record_keyboard [format "ERAFNK=%02X" [peek 0xF3DE]]
+    invoke_bios 0x00CF dspfnk_done
+}
+
+proc dspfnk_done {} {
+    record_keyboard [format "DSPFNK=%02X" [peek 0xF3DE]]
+    invoke_bios 0x00C9 fnksb_done
+}
+
+proc fnksb_done {} {
+    record_keyboard [format "FNKSB=%02X" [peek 0xF3DE]]
+    invoke_bios 0x00D2 totext_done
+}
+
+proc totext_done {} {
+    record_keyboard [format "TOTEXT=%02X,%02X" [peek 0xFCAF] [peek 0xF3DE]]
+    # hold 'a' (row 2 bit 6) well past the repeat delay
+    keymatrixdown 2 0x40
+    after time 2.0 repeat_release
+}
+
+proc repeat_release {} {
+    keymatrixup 2 0x40
+    after time 0.05 repeat_count
+}
+
+proc repeat_count {} {
+    record_keyboard [format "REPEAT=%02X,%02X,%02X" \
+        [peek 0xFBF0] [peek 0xFBF1] [peek 0xFBF2]]
     exit
 }
 
