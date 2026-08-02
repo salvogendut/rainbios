@@ -48,8 +48,9 @@ The main BIOS currently provides:
   of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`;
-- partial Screen 0/1/2 setup, text and Graphics II console output, scrolling,
-  VRAM primitives, and project-owned printable glyphs;
+- partial Screen 0/1/2 setup, a guarded register-only V9938 Screen 7 handoff,
+  text and Graphics II console output, scrolling, VRAM primitives, and
+  project-owned printable glyphs;
 - international keyboard scanning and partial character-input services;
 - cassette motor, leader, framed-byte input/output, and BBC BASIC sequential
   cassette storage;
@@ -138,11 +139,10 @@ pending.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 
-## Nextor SD Mapper Boot Investigation (Active)
+## Nextor SD Mapper GeoBench Boot (Resolved)
 
-GeoBench (`GBMSX.IMG`) does not boot under RainBIOS + SD Mapper V2 in the 1983
-emulator; Nextor hangs in an input-polling loop before the screen is enabled.
-This is the current focus on branch `feature/nextor-boot`.
+GeoBench (`GBMSX.IMG`) now reaches its Screen 7 desktop under RainBIOS + SD
+Mapper V2 in the 1983 emulator on branch `feature/nextor-boot`.
 
 ### Fixed and verified
 
@@ -154,34 +154,30 @@ This is the current focus on branch `feature/nextor-boot`.
 - The four joystick/paddle entries (`GTSTCK` `00D5h`, `GTTRIG` `00D8h`, `GTPAD`
   `00DBh`, `GTPDL` `00DEh`) were `unsupported_call`; they are now real stubs
   (`ei; xor a; ret`) so Nextor's boot input scan gets valid empty reads.
+- **Root cause correction**: `FFE8h` is the documented V9938 `RG9SAV` mirror,
+  not a disk flag, and the `80h`/`82h` NT-bit difference was not causal. The
+  recurring `81F0h` path is GeoBench's open-source `msx_wait_tick` frame-pacing
+  routine, proving that the application had already started; it was not an SD
+  Mapper loader loop.
+- **Screen 7 `CHGMOD` handoff**: GeoBench calls public `CHGMOD 7`, but the MSX1
+  ROM previously rejected every mode above 3 and left V9938 R0=`00h` while the
+  application populated bitmap VRAM. `CHGMOD 7` now scans for a live standard
+  `CD` SUB-ROM signature as a V9938 guard without publishing `EXBRSA`, and a
+  partial register setup produces R0=`0Ah` and maintains R8-R23 at the standard
+  `FFE7h-FFF6h` shadow addresses without changing the MSX1 `WRTVDP` contract.
+- **Rejected experiment removed**: forcing R1=`60h` before every disk handoff
+  made the GeoBench bitmap visible but broke the ordinary Nextor text prompt by
+  clearing M1. The guarded `CHGMOD 7` path now establishes R1 only when Screen 7
+  is actually requested.
+- **Verification**: an uninstrumented 2,501-frame run with the adjacent 1983
+  binary (`git 58e3590`) and local GeoBench image reports `vdp_r0=0A`,
+  `vdp_r1=62`, mapper `03,02,01,00`, and renders the GeoBench
+  desktop. The final PC may be `81F2h` because the desktop intentionally waits
+  there for the next V9938 retrace edge.
 
-### Current hypothesis
-
-- The hang is a Nextor boot path that repeatedly calls the BIOS **CHGMOD**
-  (jump-table `005Fh` -> `091Ch`) through Nextor's dispatch at `EE3Ch`. The
-  dispatch sequence also scans SNSMAT heavily (6818 calls vs 221 on the MSX2
-  BIOS baseline).
-- CHGMOD is invoked with a mode value that is neither 0, 1, 2, nor 3, so it falls
-  through to `unsupported_call` (`075Eh`, `scf; ret`) and returns with carry set.
-  Nextor keeps re-issuing the call and never escapes the loop.
-- The MSX2 BIOS baseline boots the same image to GeoBench without entering this
-  loop during boot; it reaches the input poll only late, during GeoBench's own
-  post-run wait. The MSX2 exit state is `pc=0358 vdp_r0=0A` (screen on); RainBIOS
-  ends at `pc=EE74/81F0` with `vdp_r0=00` (screen never enabled).
-
-### Debug instrumentation (1983, committed as temporary)
-
-- `src/msx.c`: logs `BIOSSLT` (`FCC0h`) writes and early slot reads of port `A8h`.
-- `src/z80.c`: traces the Nextor dispatch loop (pc/slot/op/ix/iy/af/sp + key
-  memory cells) and dumps `EE00h-EE7Fh`, page 0, and the `F1E0h` I/O table once.
-- Note: the trace prints the post-increment pc, so an executed byte at `091Ch`
-  appears as `pc=091D op=B7`.
-
-### Next step
-
-Find the caller that issues the CHGMOD dispatch with the bad mode value and
-determine what value A carries; compare with the MSX2 BIOS run to see which BIOS
-entry returns differently and drives Nextor into the wait.
+The temporary emulator traces under `/tmp/opencode/1983-test` are no longer an
+implementation input. Do not disassemble the opaque SD Mapper or system ROMs;
+future investigation must remain at public interfaces and observable state.
 
 ## Floppy Test Design
 

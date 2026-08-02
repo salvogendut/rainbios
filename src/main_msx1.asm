@@ -22,6 +22,8 @@ PPI_CONTROL     equ #ab
 
 R0SAV           equ #f3df
 RG1SAV          equ #f3e0
+RG8SAV          equ #ffe7
+RG9SAV          equ #ffe8
 STATFL          equ #f3e7
 FORCLR          equ #f3e9
 BAKCLR          equ #f3ea
@@ -1283,24 +1285,7 @@ enascr:
                 jp wrtvdp
 
 wrtvdp:
-                push af
-                push hl
-                ld a,c
-                and #07
-                add a,#df
-                ld l,a
-                ld h,#f3
-                ld (hl),b
-                di
-                ld a,b
-                out (VDP_CONTROL),a
-                ld a,c
-                or #80
-                out (VDP_CONTROL),a
-                ei
-                pop hl
-                pop af
-                ret
+                jp wrtvdp_impl
 
 ; $0062 CHGCLR: apply FORCLR/BAKCLR/BDRCLR to the current screen. The text
 ; color and border come from the VDP R7 register; Screen 1 additionally
@@ -1438,7 +1423,7 @@ inimlt_col:
                 ld (LINLEN),a
                 jp enascr
 
-; Minimal MSX1 mode dispatcher for Screens 0-3.
+; Partial mode dispatcher for MSX1 Screens 0-3 and guarded V9938 Screen 7.
 chgmod:
                 or a
                 jp z,initxt
@@ -1448,6 +1433,8 @@ chgmod:
                 jp z,initgrp
                 cp 3
                 jp z,inimlt
+                cp 7
+                jp z,initv9938_screen7
                 jp unsupported_call
 
 ; Program all eight TMS9918 registers from HL. The public WRTVDP path updates
@@ -1455,6 +1442,7 @@ chgmod:
 write_vdp_register_block:
                 ld c,0
                 ld d,8
+write_vdp_registers:
 write_vdp_register_block_loop:
                 ld b,(hl)
                 call wrtvdp
@@ -2144,6 +2132,152 @@ nextor_keyboard_layout_probe:
                 pop bc
                 pop af
                 ret
+
+; Test for a standard "CD" SUB-ROM without publishing EXBRSA: doing so would
+; advertise the still-unimplemented EXTROM entry. E holds the current slot ID
+; because RDSLT and the expansion test preserve it.
+v9938_subrom_present:
+                ld e,0
+v9938_subrom_scan_slot:
+                ld a,e
+                bit 7,a
+                jr nz,v9938_subrom_scan_ready
+                cp 4
+                jr nc,v9938_subrom_not_found
+                or #80
+                call expanded_slot_check
+                jr nz,v9938_subrom_scan_expanded
+                and #03
+v9938_subrom_scan_expanded:
+                ld e,a
+v9938_subrom_scan_ready:
+                ld hl,0
+                ld a,e
+                call rdslt
+                cp 'C'
+                jr nz,v9938_subrom_scan_next
+                inc hl
+                ld a,e
+                call rdslt
+                cp 'D'
+                jr z,v9938_subrom_found
+v9938_subrom_scan_next:
+                ld a,e
+                bit 7,a
+                jr z,v9938_subrom_next_primary
+                and #0c
+                cp #0c
+                jr z,v9938_subrom_expanded_done
+                ld a,e
+                add a,4
+                ld e,a
+                jr v9938_subrom_scan_slot
+v9938_subrom_expanded_done:
+                ld a,e
+                and #03
+v9938_subrom_next_primary:
+                inc a
+                ld e,a
+                jr v9938_subrom_scan_slot
+v9938_subrom_found:
+                xor a                           ; Z: V9938-capable system found
+                ret
+v9938_subrom_not_found:
+                ld a,1                          ; NZ: retain the MSX1 failure path
+                or a
+                ret
+
+; The public ROM identifies as MSX1, so WRTVDP retains its R0-R7 shadow
+; behavior. The guarded Screen 7 path uses a separate helper for R8-R23.
+wrtvdp_impl:
+                push af
+                push hl
+                ld a,c
+                and #07
+                add a,#df
+                ld l,a
+                ld h,#f3
+                ld (hl),b
+                di
+                ld a,b
+                out (VDP_CONTROL),a
+                ld a,c
+                or #80
+                out (VDP_CONTROL),a
+                ei
+                pop hl
+                pop af
+                ret
+
+wrtvdp_v9938:
+                push af
+                push hl
+                ld a,c
+                sub 8
+                add a,RG8SAV&255
+                ld l,a
+                ld h,#ff
+                ld (hl),b
+                di
+                ld a,b
+                out (VDP_CONTROL),a
+                ld a,c
+                or #80
+                out (VDP_CONTROL),a
+                ei
+                pop hl
+                pop af
+                ret
+
+; Partial Screen 7 handoff for software that runs this MSX1 ROM on MSX2
+; hardware. A discovered SUB-ROM is used only as the V9938 capability guard;
+; RainBIOS programs the documented register interface directly and leaves the
+; broader MSX2 MAIN/SUB-ROM ABI to M5.
+initv9938_screen7:
+                call v9938_subrom_present
+                jp nz,unsupported_call
+                call disscr
+                ld hl,screen7_vdp_registers_0_6
+                ld c,0
+                ld d,7
+                call write_vdp_registers
+
+                ld a,(FORCLR)
+                rlca
+                rlca
+                rlca
+                rlca
+                and #f0
+                ld b,a
+                ld a,(BDRCLR)
+                and #0f
+                or b
+                ld b,a
+                ld c,7
+                call wrtvdp
+
+                ld b,#08
+                ld c,8
+                call wrtvdp_v9938
+                ld a,(RG9SAV)
+                or #80                         ; 212 display lines
+                ld b,a
+                ld c,9
+                call wrtvdp_v9938
+
+                ld hl,screen7_vdp_registers_10_23
+                ld c,10
+                ld d,14
+initv9938_screen7_register_loop:
+                ld b,(hl)
+                call wrtvdp_v9938
+                inc hl
+                inc c
+                dec d
+                jr nz,initv9938_screen7_register_loop
+                ld a,7
+                ld (SCRMOD),a
+                jp enascr
 
 filvrm_impl:
                 push af
@@ -3549,6 +3683,14 @@ slot_helpers_image_end:
 
 cold_boot_vdp_registers:
                 db #02,#e0,#06,#ff,#03,#36,#07,#01
+
+; V9938 Screen 7 register baseline. R7 follows the public color variables and
+; R9 preserves the existing 50/60 Hz selection, so both are written in code.
+screen7_vdp_registers_0_6:
+                db #0a,#20,#1f,#80,#01,#f7,#1e
+screen7_vdp_registers_10_23:
+                db #00,#01,#00,#00,#00,#00,#0f,#00
+                db #00,#00,#00,#3b,#05,#00
 
 text40_vdp_registers:
                 db #00,#b0,#00,#00,#01,#36,#07,#f1
