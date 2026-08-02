@@ -113,10 +113,14 @@ no media, partial record-not-found, write rejection on writable host media,
 and `DSKCHG`/`GETDPB` behavior with and without a mounted image.
 See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
-M2A publishes the eight TMS9918 register shadows and current screen/table
-work variables. VDP register and address command pairs are protected from
-interrupt interleaving. Screen 0, Screen 1, and Screen 2 initialization use
-original RainBIOS tables and the project-owned font. The first console slice
+M2A publishes the eight TMS9918 register shadows and current screen/table work
+variables. VDP register and address command pairs are protected from interrupt
+interleaving. Screen 0, Screen 1, and Screen 2 initialization use original
+RainBIOS tables and the project-owned font. A live standard `CD` SUB-ROM
+signature scan gates a narrow Screen 7 register handoff for compatibility
+testing on MSX2 hardware without publishing `EXBRSA`; that path alone also
+maintains the standardized V9938 R8-R23 shadows. This is not general SUB-ROM
+dispatch or a substitute for the M5 ROMs. The first console slice
 supports one-based cursor positioning, text name-table output, carriage
 return, line feed, wrapping, clearing, and scrolling in text and Graphics II
 modes; the complete control-character and cursor-presentation behavior remains

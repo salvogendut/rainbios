@@ -29,7 +29,7 @@ address,name,kind,status,milestone,notes
 0056,FILVRM,jump,partial,M2,Needs count and timing conformance tests
 0059,LDIRMV,jump,partial,M2,Needs count and timing conformance tests
 005C,LDIRVM,jump,partial,M2,Needs count and timing conformance tests
-005F,CHGMOD,jump,partial,M2,Dispatches modes 0/1/2; mode 3 and MSX2 modes remain unsupported
+005F,CHGMOD,jump,partial,M2,Dispatches modes 0-3 and provides a guarded partial Screen 7 register handoff when a live standard SUB-ROM signature is found; modes 4-6/8 remain unsupported
 0062,CHGCLR,jump,stub,M2,
 0066,NMI,jump,stub,M1,Safe empty NMI return only
 0069,CLRSPR,jump,stub,M2,

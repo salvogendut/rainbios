@@ -48,8 +48,9 @@ The main BIOS currently provides:
   of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`;
-- partial Screen 0/1/2 setup, text and Graphics II console output, scrolling,
-  VRAM primitives, and project-owned printable glyphs;
+- partial Screen 0/1/2 setup, a guarded register-only V9938 Screen 7 handoff,
+  text and Graphics II console output, scrolling, VRAM primitives, and
+  project-owned printable glyphs;
 - international keyboard scanning and partial character-input services;
 - cassette motor, leader, framed-byte input/output, and BBC BASIC sequential
   cassette storage;
@@ -137,6 +138,46 @@ floppy drive B, writes, non-NMS controllers, and real-hardware timing remain
 pending.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
+
+## Nextor SD Mapper GeoBench Boot (Resolved)
+
+GeoBench (`GBMSX.IMG`) now reaches its Screen 7 desktop under RainBIOS + SD
+Mapper V2 in the 1983 emulator on branch `feature/nextor-boot`.
+
+### Fixed and verified
+
+- `BIOSSLT` was computed as `0x83` instead of `0x00`: the pre-DOS scratch-area
+  clear (`ld hl,#f300 / ld (hl),#c9 / ld de,#f301 / ld bc,#007f / ldir`) advanced
+  the main `DE`/`BC`, so the later `ld a,d / and #03 / ld (BIOSSLT),a` used a
+  clobbered slot map. The clear now runs inside `exx/exx`, and the BIOSSLT write
+  is verified as `val=00`.
+- The four joystick/paddle entries (`GTSTCK` `00D5h`, `GTTRIG` `00D8h`, `GTPAD`
+  `00DBh`, `GTPDL` `00DEh`) were `unsupported_call`; they are now real stubs
+  (`ei; xor a; ret`) so Nextor's boot input scan gets valid empty reads.
+- **Root cause correction**: `FFE8h` is the documented V9938 `RG9SAV` mirror,
+  not a disk flag, and the `80h`/`82h` NT-bit difference was not causal. The
+  recurring `81F0h` path is GeoBench's open-source `msx_wait_tick` frame-pacing
+  routine, proving that the application had already started; it was not an SD
+  Mapper loader loop.
+- **Screen 7 `CHGMOD` handoff**: GeoBench calls public `CHGMOD 7`, but the MSX1
+  ROM previously rejected every mode above 3 and left V9938 R0=`00h` while the
+  application populated bitmap VRAM. `CHGMOD 7` now scans for a live standard
+  `CD` SUB-ROM signature as a V9938 guard without publishing `EXBRSA`, and a
+  partial register setup produces R0=`0Ah` and maintains R8-R23 at the standard
+  `FFE7h-FFF6h` shadow addresses without changing the MSX1 `WRTVDP` contract.
+- **Rejected experiment removed**: forcing R1=`60h` before every disk handoff
+  made the GeoBench bitmap visible but broke the ordinary Nextor text prompt by
+  clearing M1. The guarded `CHGMOD 7` path now establishes R1 only when Screen 7
+  is actually requested.
+- **Verification**: an uninstrumented 2,501-frame run with the adjacent 1983
+  binary (`git 58e3590`) and local GeoBench image reports `vdp_r0=0A`,
+  `vdp_r1=62`, mapper `03,02,01,00`, and renders the GeoBench
+  desktop. The final PC may be `81F2h` because the desktop intentionally waits
+  there for the next V9938 retrace edge.
+
+The temporary emulator traces under `/tmp/opencode/1983-test` are no longer an
+implementation input. Do not disassemble the opaque SD Mapper or system ROMs;
+future investigation must remain at public interfaces and observable state.
 
 ## Floppy Test Design
 

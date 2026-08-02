@@ -79,10 +79,10 @@ open-source implementation difference is not copied.
 - Material consulted: Chapter 2 interrupt model; Chapter 3 slot
   initialization; Chapter 5 cartridge headers, section 3 international
   keyboard/character input, and section 7 inter-slot call interfaces;
-  Appendix 1 interrupt/VDP/mode/console and `PHYDIO` call contracts; Appendix 4
-  MAIN-ROM work-area and hook listings; Appendix 8 control-character
-  assignments; and the published cassette motor, leader, framed-byte, and
-  tape-format behavior
+  Appendix 1 interrupt/VDP/mode/console and `PHYDIO` call contracts, including
+  the MSX2 `CHGMOD` and R8-R23 `WRTVDP` interfaces; Appendix 4 MAIN-ROM
+  work-area and hook listings; Appendix 8 control-character assignments; and
+  the published cassette motor, leader, framed-byte, and tape-format behavior
 - Purpose: define the M1 slot-call register contract and the documented
   `F380h-FFCAh` work-area layout
 - RainBIOS use: interface and behavioral facts only
@@ -151,10 +151,10 @@ implementation inputs. They remain quarantined under
 - Repository revision consulted:
   `fc85ab4e3dc23975e22b24c5e69244bd570c6aa5`
 - License: GPL-2.0 in the repository `LICENSE`
-- Tested binary self-identification: `git 74c9148` (the locally built binary
+- Tested binary self-identification: `git 58e3590` (the locally built binary
   predates the latest source-only inspection)
 - Tested binary SHA-256:
-  `458e672afa370fdf8fafd6293308d0c72001505fd9f554ec5a6e94551b5c74d1`
+  `b1686cf2b11b2f212d336568920ec2ed9a326262131757e48e2c22025d4d6cc5`
 - Material consulted for disk validation: the documented NMS 8250 WD2793
   memory window in `TECHNICAL.md`, controller register behavior in
   `src/wd2793.c`, raw-image geometry behavior in `src/floppy.c`, and public
@@ -379,3 +379,47 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - Purpose: cross-check the MSX-DOS 1 kernel's exact calling convention and
   DPB byte ownership before implementing RainBIOS `DSKCHG`/`GETDPB`
 - RainBIOS use: interface and behavioral facts only; no code copied
+
+## 2026-08-02 — MSX Assembly Page system-variable reference
+
+- Page consulted: `https://map.grauw.nl/resources/msxsystemvars.php`
+- Material consulted: the standardized V9938 register-shadow block at
+  `FFE7h-FFF6h`, specifically `RG9SAV` at `FFE8h`
+- Purpose: identify the apparent GeoBench boot-state delta correctly and avoid
+  treating `FFE8h` as disk-kernel storage
+- RainBIOS use: interface facts only
+
+## 2026-08-02 — GeoBench MSX2 source compatibility cross-check
+
+- Adjacent open-source repository revision:
+  `f83b43feda2730d7c33fca9135f603c113ccc5db`
+- License: BSD-3-Clause in `LICENSE`
+- Files consulted: `kernel/msx_stub.asm`, `kernel/boot_msx.asm`,
+  `lib/msx/screen7.asm`, `lib/msx/bios.inc`, and `kernel/msx_launcher.asm`
+- Purpose: establish that the observed `81F0h` wait is GeoBench's resident
+  V9938 frame-pacing routine after program startup, and that its loader invokes
+  the public `CHGMOD 7` entry before applying its own R9 and sprite settings
+- RainBIOS use: calling-contract and externally visible behavior cross-check;
+  no GeoBench implementation code copied
+- Relevant checksums:
+  - `kernel/msx_stub.asm`:
+    `1670eb36086be0b0fcdba355121e965898e61810bf139452d13ca57120ac17d7`
+  - `kernel/boot_msx.asm`:
+    `eb83571d8136bfc1351f23bbabd16a9fbff81813c9a6a1573db2048bb55d3bf1`
+  - `lib/msx/screen7.asm`:
+    `bea32afe352a2410083429b14db73ab03dbc38def5181674aeba00559474b83`
+
+## 2026-08-02 — NMS 8250 `CHGMOD 7` black-box observation
+
+- Environment: the attributed 1983 emulator's Philips NMS 8250 PAL profile,
+  locally supplied authorized system firmware, SD Mapper V2, and the local
+  GeoBench image
+- Invocation: GeoBench calls the public main-BIOS `CHGMOD` entry with `A=7`
+- Observable result: V9938 R0-R6 become
+  `0Ah,20h,1Fh,80h,01h,F7h,1Eh`; R8-R23 become
+  `08h,82h,00h,01h,00h,00h,00h,00h,0Fh,00h,00h,00h,00h,3Bh,05h,00h`,
+  with R7 derived from the active colors and R1 display-enable restored later
+- Purpose: define the minimum guarded Screen 7 handoff needed by the current
+  compatibility target
+- RainBIOS use: public hardware-register behavior only; no firmware bytes,
+  internal control flow, disassembly, or decompilation were inspected

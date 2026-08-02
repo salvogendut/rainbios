@@ -165,6 +165,11 @@ passes a documented smoke-test matrix.
 
 ## M5 — MSX2 main BIOS and SUB-ROM
 
+Status: not started. The MSX1 ROM can scan for the standard `CD` SUB-ROM
+signature when providing a guarded partial Screen 7 `CHGMOD` handoff for
+current Nextor/GeoBench compatibility testing, but it does not publish
+`EXBRSA`, expose general SUB-ROM dispatch, or constitute an MSX2 main BIOS.
+
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;
 - implement bitmap modes, palette, commands, clock, and extended VRAM calls;
