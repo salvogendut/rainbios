@@ -74,10 +74,20 @@ expanded primary slot. Dedicated openMSX fixtures cover physical selector
 state, all address pages, expanded cartridge INIT, and expanded BBC BASIC menu
 launch; 1983 confirms boot with MSX2 expanded-slot RAM.
 
-- add page-0/page-3 `CALSLT` support if a compatible stack/trampoline contract
-  can be established;
-- add memory-mapper sizing and segment allocation beyond the fixed 64 KiB
-  baseline;
+M1I extends `CALSLT`/`CALLF` to page-0 and page-3 targets. Page-0 targets
+switch page 0 through the page-3 `CLPRIM` helper (primary and expanded, with
+the selector restored on return); page-3 targets use the ordinary returning
+path when they already occupy page 3, and otherwise install a return frame in
+the target's writable page-3 RAM that restores the map, the selector, and the
+caller's stack. The openMSX slot probes cover page-0, page-3 same-slot,
+page-3 different-slot (primary and expanded), and the fail-closed cases.
+
+M1J detects the memory-mapper segment count at boot with a page-2 marker
+probe, publishes it in `MAPPER_SEGMENTS`, and restores the `3,2,1,0` baseline.
+Machines without a mapper report one segment. The `test-openmsx-mapper` target
+verifies the count and that a segment beyond the fixed 64 KiB baseline maps
+distinct RAM.
+
 - add keyboard and device processing to the initial IM 1 interrupt handler;
 - run the original diagnostic cartridge on hardware;
 

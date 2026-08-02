@@ -251,6 +251,92 @@ proc callf_done {} {
         [primary_map] [main_slttbl1] [hardware_selector1] \
         [expr {[reg F] & 1}]]
     reset_expanded_slot
+
+    # Page-0 expanded target in Expanded RAM 2 (slot 2.2): the selector write is
+    # safe because the target primary differs from the page-0 primary, and
+    # CLPRIM switches page 0 from page-3 RAM.
+    foreach {offset value} {
+        0x1000 0x3E  0x1001 0x6A  0x1002 0x01  0x1003 0x34  0x1004 0x12
+        0x1005 0x11  0x1006 0x78  0x1007 0x56  0x1008 0x21  0x1009 0xBC
+        0x100A 0x9A  0x100B 0xC9
+    } {
+        debug write "Expanded RAM 2" $offset $value
+    }
+    reg A 0x11
+    reg BC 0x2222
+    reg DE 0x3333
+    reg HL 0x4444
+    reg IX 0x1000
+    reg IY 0x8A00
+    reg F 0
+    invoke_bios 0x001C p0_expanded_done
+}
+
+proc p0_expanded_done {} {
+    puts $::expanded_handle [format \
+        "CALSLT0EXP=%02X,%04X,%04X,%04X,%02X/%02X/%02X/%d" \
+        [reg A] [reg BC] [reg DE] [reg HL] \
+        [primary_map] [main_slttbl1] [hardware_selector1] \
+        [expr {[reg F] & 1}]]
+    reset_expanded_slot
+
+    # Page-3 target in a different slot (Expanded RAM 2, slot 2.2) while page 3
+    # maps Main RAM: the page-3 return frame is installed in the target's RAM.
+    foreach {offset value} {
+        0xC000 0x3E  0xC001 0xA5  0xC002 0x01  0xC003 0x21  0xC004 0x43
+        0xC005 0x11  0xC006 0x87  0xC007 0x65  0xC008 0x21  0xC009 0xCB
+        0xC00A 0xA9  0xC00B 0x37  0xC00C 0xC9
+    } {
+        debug write "Expanded RAM 2" $offset $value
+    }
+    reg A 0x44
+    reg BC 0x5555
+    reg DE 0x6666
+    reg HL 0x7777
+    reg IX 0xC000
+    reg IY 0x8A00
+    reg F 0
+    invoke_bios 0x001C p3_expanded_done
+}
+
+proc p3_expanded_done {} {
+    puts $::expanded_handle [format \
+        "CALSLT3EXP=%02X,%04X,%04X,%04X,%02X/%02X/%02X/%d" \
+        [reg A] [reg BC] [reg DE] [reg HL] \
+        [primary_map] [main_slttbl1] [hardware_selector1] \
+        [expr {[reg F] & 1}]]
+
+    # Page-3 primary target in Main RAM (slot 1) while page 3 maps the expanded
+    # slot: same page-3 return-frame path with no selector to restore. Map page 3
+    # to a populated subslot so the probe's return sentinel lands in real RAM.
+    foreach {offset value} {
+        0xC000 0x3E  0xC001 0xB5  0xC002 0x01  0xC003 0x21  0xC004 0x43
+        0xC005 0x11  0xC006 0x87  0xC007 0x65  0xC008 0x21  0xC009 0xCB
+        0xC00A 0xA9  0xC00B 0x37  0xC00C 0xC9
+    } {
+        debug write "Main RAM" $offset $value
+    }
+    debug write "ioports" 0xA8 0x90
+    poke 0xFFFF 0x80
+    debug write "Main RAM" 0xFCC7 0x80
+    debug write "ioports" 0xA8 0x90
+    reg A 0x44
+    reg BC 0x5555
+    reg DE 0x6666
+    reg HL 0x7777
+    reg IX 0xC000
+    reg IY 0x0100
+    reg F 0
+    invoke_bios 0x001C p3_primary_done
+}
+
+proc p3_primary_done {} {
+    puts $::expanded_handle [format \
+        "CALSLT3PRIM=%02X,%04X,%04X,%04X,%02X/%02X/%02X/%d" \
+        [reg A] [reg BC] [reg DE] [reg HL] \
+        [primary_map] [main_slttbl1] [hardware_selector1] \
+        [expr {[reg F] & 1}]]
+    reset_expanded_slot
     reg A 0x83
     reg F 0
     reg HL 0x8000

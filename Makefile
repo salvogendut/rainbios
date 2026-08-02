@@ -40,6 +40,10 @@ OPENMSX_EXPANDED_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_EXPANDED.xml
 OPENMSX_EXPANDED_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/expanded-slot-calls.txt
+OPENMSX_MAPPER_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_MAPPER.xml
+OPENMSX_MAPPER_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/mapper.txt
 OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
 OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
 OPENMSX_CONTROLLER_REPORT := $(OPENMSX_M1_REPORT_DIR)/controller.txt
@@ -254,7 +258,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
-	test-openmsx-expanded-slots \
+	test-openmsx-expanded-slots test-openmsx-mapper \
 	test-openmsx-services test-openmsx-keyboard test-openmsx-controller \
 	test-openmsx-geobench-sunrise \
 	test-openmsx-font \
@@ -642,6 +646,20 @@ $(OPENMSX_EXPANDED_MACHINE): \
 		tests/openmsx/RainBIOS_M1_EXPANDED.xml.in $(MSX1_ROM)
 	mkdir -p $(@D)
 	sed 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' $< > $@
+
+$(OPENMSX_MAPPER_MACHINE): \
+		tests/openmsx/RainBIOS_M1_MAPPER.xml.in $(MSX1_ROM)
+	mkdir -p $(@D)
+	sed 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' $< > $@
+
+test-openmsx-mapper: $(OPENMSX_MAPPER_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_MAPPER \
+		-command "set mapper_output {$(abspath $(OPENMSX_MAPPER_REPORT))}" \
+		-script "$(abspath tests/openmsx/mapper_probe.tcl)"
+	$(PYTHON) tools/check_mapper_probe.py $(OPENMSX_MAPPER_REPORT)
 
 test-openmsx-expanded-slots: $(OPENMSX_EXPANDED_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)

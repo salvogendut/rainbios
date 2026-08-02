@@ -37,6 +37,30 @@ class ExpandedSlotCallsProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "INVALID"):
             validate_report(report.replace("INVALID=50/00/1", "INVALID=E0/00/0"))
 
+    def test_page0_expanded_must_restore_selector(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        with self.assertRaisesRegex(ValueError, "CALSLT0EXP"):
+            validate_report(
+                report.replace("CALSLT0EXP=6A,1234,5678,9ABC,50/00/00/0",
+                               "CALSLT0EXP=6A,1234,5678,9ABC,50/80/00/0")
+            )
+
+    def test_page3_expanded_must_return_target_results(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        with self.assertRaisesRegex(ValueError, "CALSLT3EXP"):
+            validate_report(
+                report.replace("CALSLT3EXP=A5,4321,6587,A9CB,50/00/00/1",
+                               "CALSLT3EXP=44,5555,6666,7777,50/00/00/1")
+            )
+
+    def test_page3_primary_must_restore_map(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        with self.assertRaisesRegex(ValueError, "CALSLT3PRIM"):
+            validate_report(
+                report.replace("CALSLT3PRIM=B5,4321,6587,A9CB,90/80/80/1",
+                               "CALSLT3PRIM=B5,4321,6587,A9CB,50/80/80/1")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

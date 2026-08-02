@@ -42,6 +42,22 @@ class SlotCallsProbeTests(unittest.TestCase):
                 )
             )
 
+    def test_page0_call_must_restore_map(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        with self.assertRaisesRegex(ValueError, "CALSLT0"):
+            validate_report(
+                report.replace("CALSLT0=5A,1234,5678,9ABC,F0,0",
+                               "CALSLT0=5A,1234,5678,9ABC,30,0")
+            )
+
+    def test_page3_call_must_preserve_carry(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        with self.assertRaisesRegex(ValueError, "CALSLT3"):
+            validate_report(
+                report.replace("CALSLT3=A5,4321,6587,A9CB,F0,1",
+                               "CALSLT3=A5,4321,6587,A9CB,F0,0")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,7 @@ proc slot_call_returned {} {
 
 proc start_probe {} {
     set ::slot_handle [open $::slot_output w]
+    puts $::slot_handle "MAPPER_SEGMENTS=[format %02X [peek 0xF345]]"
     puts $::slot_handle "RDPRIM=[format %02X [peek 0xF380]],[format %02X [peek 0xF381]],[format %02X [peek 0xF382]],[format %02X [peek 0xF383]],[format %02X [peek 0xF384]]"
     puts $::slot_handle "WRPRIM=[format %02X [peek 0xF385]],[format %02X [peek 0xF386]],[format %02X [peek 0xF387]],[format %02X [peek 0xF388]],[format %02X [peek 0xF389]],[format %02X [peek 0xF38A]],[format %02X [peek 0xF38B]]"
     puts $::slot_handle "CLPRIM=[format %02X [peek 0xF38C]],[format %02X [peek 0xF38D]],[format %02X [peek 0xF38E]],[format %02X [peek 0xF38F]],[format %02X [peek 0xF390]],[format %02X [peek 0xF391]],[format %02X [peek 0xF392]],[format %02X [peek 0xF393]],[format %02X [peek 0xF394]],[format %02X [peek 0xF395]],[format %02X [peek 0xF396]],[format %02X [peek 0xF397]],[format %02X [peek 0xF398]],[format %02X [peek 0xF399]]"
@@ -287,6 +288,18 @@ proc calslt_expanded_done {} {
         format "CALSLTEXP=%04X,%04X,%02X,%d" \
             [reg IX] [reg IY] [primary_map] [expr {[reg F] & 1}]
     ]
+    # Page-0 target in Probe RAM: LD A,5A; LD BC,1234; LD DE,5678; LD HL,9ABC; RET
+    foreach {offset value} {
+        0x1000 0x3E  0x1001 0x5A  0x1002 0x01  0x1003 0x34  0x1004 0x12
+        0x1005 0x11  0x1006 0x78  0x1007 0x56  0x1008 0x21  0x1009 0xBC
+        0x100A 0x9A  0x100B 0xC9
+    } {
+        debug write "Probe RAM" $offset $value
+    }
+    reg A 0x11
+    reg BC 0x2222
+    reg DE 0x3333
+    reg HL 0x4444
     reg IX 0x1000
     reg IY 0x0300
     reg F 0
@@ -295,8 +308,34 @@ proc calslt_expanded_done {} {
 
 proc calslt_page0_done {} {
     puts $::slot_handle [
-        format "CALSLT0=%04X,%04X,%02X,%d" \
-            [reg IX] [reg IY] [primary_map] [expr {[reg F] & 1}]
+        format "CALSLT0=%02X,%04X,%04X,%04X,%02X,%d" \
+            [reg A] [reg BC] [reg DE] [reg HL] [primary_map] \
+            [expr {[reg F] & 1}]
+    ]
+    # Page-3 target in Probe RAM. Slot 3 already occupies page 3, so the switch
+    # is a no-op: LD A,A5; LD BC,4321; LD DE,6587; LD HL,A9CB; SCF; RET
+    foreach {offset value} {
+        0xC000 0x3E  0xC001 0xA5  0xC002 0x01  0xC003 0x21  0xC004 0x43
+        0xC005 0x11  0xC006 0x87  0xC007 0x65  0xC008 0x21  0xC009 0xCB
+        0xC00A 0xA9  0xC00B 0x37  0xC00C 0xC9
+    } {
+        debug write "Probe RAM" $offset $value
+    }
+    reg A 0x44
+    reg BC 0x5555
+    reg DE 0x6666
+    reg HL 0x7777
+    reg IX 0xC000
+    reg IY 0x0300
+    reg F 0
+    invoke_bios 0x001C calslt_page3_done
+}
+
+proc calslt_page3_done {} {
+    puts $::slot_handle [
+        format "CALSLT3=%02X,%04X,%04X,%04X,%02X,%d" \
+            [reg A] [reg BC] [reg DE] [reg HL] [primary_map] \
+            [expr {[reg F] & 1}]
     ]
     close $::slot_handle
     exit

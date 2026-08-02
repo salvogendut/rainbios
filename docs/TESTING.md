@@ -82,8 +82,9 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-options` | Space-key menu route and Screen 1 rendering |
 | `test-openmsx-audio` | Non-silent startup-jingle PCM capture |
 | `test-openmsx-m1` | Primary, split, decoy, and expanded RAM discovery layouts |
-| `test-openmsx-slots` | Primary `RSLREG`, `WSLREG`, `ENASLT`, `RDSLT`, `WRSLT`, and returning `CALSLT` |
-| `test-openmsx-expanded-slots` | Expanded selectors, slot tables, all pages, restoration, and returning `CALSLT` |
+| `test-openmsx-slots` | Primary `RSLREG`, `WSLREG`, `ENASLT`, `RDSLT`, `WRSLT`, and returning `CALSLT` incl. page-0/page-3 primary targets |
+| `test-openmsx-expanded-slots` | Expanded selectors, slot tables, all pages, restoration, and returning `CALSLT` incl. page-0 and page-3 different-slot targets |
+| `test-openmsx-mapper` | Boot-time memory-mapper sizing and access to a segment beyond the fixed 64 KiB baseline |
 | `test-openmsx-services` | Interrupt, hook, VDP, mode, console, scrolling, and `CLS` services |
 | `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, and blocking `CHGET` |
 | `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, and PSG R15 preservation |
