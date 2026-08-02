@@ -187,10 +187,10 @@ STACK_TOP       equ #f380
                 jp unsupported_call             ; 00CC ERAFNK
                 jp unsupported_call             ; 00CF DSPFNK
                 jp unsupported_call             ; 00D2 TOTEXT
-                jp unsupported_call             ; 00D5 GTSTCK
-                jp unsupported_call             ; 00D8 GTTRIG
-                jp unsupported_call             ; 00DB GTPAD
-                jp unsupported_call             ; 00DE GTPDL
+                jp gtstck                        ; 00D5 GTSTCK
+                jp gttrig                        ; 00D8 GTTRIG
+                jp gtpad                         ; 00DB GTPAD
+                jp gtpdl                         ; 00DE GTPDL
                 jp tapion                       ; 00E1 TAPION
                 jp tapin                        ; 00E4 TAPIN
                 jp tapiof                       ; 00E7 TAPIOF
@@ -418,12 +418,16 @@ bootstrap_primary_ram_found:
                 pop de
 
 ; F300h-F37Fh is the pre-DOS scratch area. Initialize it to safe returns, then
-; use its first bytes only until a disk kernel takes ownership.
+; use its first bytes only until a disk kernel takes ownership. The LDIR
+; advances the main DE/BC, so keep the reset map, RAM primary, and RAM
+; secondary in the alternate bank while the clearing runs.
+                exx
                 ld hl,#f300
                 ld (hl),#c9
                 ld de,#f301
                 ld bc,#007f
                 ldir
+                exx
 
 ; Publish the full slot ID of the discovered RAM for Disk-ROM extensions.
 ; B=4 is the unexpanded sentinel; otherwise B is the secondary slot number.
@@ -3492,6 +3496,26 @@ snsmat:
                 or c
                 out (PPI_CONTROL_C),a
                 in a,(PPI_KEYBOARD)
+                ret
+
+; GTSTCK / GTTRIG / GTPAD / GTPDL: no pointing/input device attached, so every
+; read reports "nothing connected / nothing pressed". Carry stays clear so callers
+; interpret the result as valid.
+gtstck:
+                ei
+                xor a
+                ret
+gttrig:
+                ei
+                xor a
+                ret
+gtpad:
+                ei
+                xor a
+                ret
+gtpdl:
+                ei
+                xor a
                 ret
 
 ; Standardized F380h-F399h primary-slot primitives. Callers prepare complete
