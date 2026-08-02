@@ -36,6 +36,7 @@ EXPECTED = {
     "QINLIN": "03,0,61,62,63,01",
     "PINLINBRK": "00,1",
     "BEEP": "OK",
+    "DEADKEY": "85,82,62,79",
 }
 
 

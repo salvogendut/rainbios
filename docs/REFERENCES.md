@@ -456,6 +456,18 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the line-input
   and beep routines are original RainBIOS work
 
+## 2026-08-02 — Dead-key and accented-character contracts
+
+- Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
+  work-area (`FCACh`: 1 = grave, 2 = acute, 3 = circumflex, 4 = umlaut) and
+  the MSX1 Technical Handbook §5.2.5 dead-key functions (combining set
+  a/e/i/o/u/y/space, fallback to the plain character)
+- Cross-check: the MSX international character set (Wikipedia MSX character
+  set, citing the Unicode MSX.TXT mapping) for the accented byte codes
+- Purpose: define M3F's accent latch and combination table
+- RainBIOS use: interface and externally observable behavior facts only; the
+  latch, combination table, and scan integration are original RainBIOS work
+
 ## 2026-08-02 — GeoBench MSX2 source compatibility cross-check
 
 - Adjacent open-source repository revision:
