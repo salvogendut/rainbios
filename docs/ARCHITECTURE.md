@@ -142,6 +142,15 @@ long/short leaders and 1200-baud FSK. Standard CAS input is confirmed in
 openMSX and 1983. Slow sampled-WAV replay remains a separate decoder-hardening
 task.
 
+M3C initializes the PSG GPIO directions and implements `GTSTCK` for cursor keys
+and both joystick connectors plus `GTTRIG` for Space and both buttons on each
+connector. Connector reads preserve the other connector and Kana LED state in
+PSG R15. `GTPAD` selectors 12-19 perform the standard four-nibble mouse
+transaction on either connector, cache signed relative motion in `PADX`/`PADY`,
+and return buttons through `GTTRIG`. Touch panels, light pens, explicit
+trackball detection, and `GTPDL` paddle timing remain unsupported. The public
+contract and limitations are in `docs/abi/controllers.md`.
+
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
 checks primary cartridges before waiting through the buffered keyboard path.

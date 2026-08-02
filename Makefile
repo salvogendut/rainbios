@@ -39,6 +39,7 @@ OPENMSX_EXPANDED_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/expanded-slot-calls.txt
 OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
 OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
+OPENMSX_CONTROLLER_REPORT := $(OPENMSX_M1_REPORT_DIR)/controller.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
@@ -240,7 +241,8 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots \
-	test-openmsx-services test-openmsx-keyboard test-openmsx-font \
+	test-openmsx-services test-openmsx-keyboard test-openmsx-controller \
+	test-openmsx-font \
 	test-openmsx-cls \
 	test-openmsx-tape \
 	test-1983-tape \
@@ -638,6 +640,15 @@ test-openmsx-keyboard: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set keyboard_output {$(abspath $(OPENMSX_KEYBOARD_REPORT))}" \
 		-script "$(abspath tests/openmsx/keyboard_probe.tcl)"
 	$(PYTHON) tools/check_keyboard_probe.py $(OPENMSX_KEYBOARD_REPORT)
+
+test-openmsx-controller: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set controller_output {$(abspath $(OPENMSX_CONTROLLER_REPORT))}" \
+		-script "$(abspath tests/openmsx/controller_probe.tcl)"
+	$(PYTHON) tools/check_controller_probe.py $(OPENMSX_CONTROLLER_REPORT)
 
 test-openmsx-font: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)

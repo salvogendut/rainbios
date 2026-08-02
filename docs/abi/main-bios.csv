@@ -45,7 +45,7 @@ address,name,kind,status,milestone,notes
 0087,CALATR,jump,stub,M2,
 008A,GSPSIZ,jump,stub,M2,
 008D,GRPPRT,jump,stub,M2,
-0090,GICINI,jump,stub,M3,
+0090,GICINI,jump,partial,M3,Initializes PSG R0-R15 and safe controller lines; PLAY statement work-area initialization remains pending
 0093,WRTPSG,jump,partial,M3,Needs register-clobber tests
 0096,RDPSG,jump,partial,M3,Needs register-clobber tests
 0099,STRTMS,jump,stub,M3,
@@ -68,9 +68,9 @@ address,name,kind,status,milestone,notes
 00CC,ERAFNK,jump,stub,M2,
 00CF,DSPFNK,jump,stub,M2,
 00D2,TOTEXT,jump,stub,M2,
-00D5,GTSTCK,jump,stub,M3,
-00D8,GTTRIG,jump,stub,M3,
-00DB,GTPAD,jump,stub,M3,
+00D5,GTSTCK,jump,implemented,M3,Cursor keys and joystick ports 1/2 return standard directions 0-8
+00D8,GTTRIG,jump,implemented,M3,Space and both buttons on joystick ports 1/2 return 00h/FFh and preserve non-AF registers
+00DB,GTPAD,jump,partial,M3,Mouse selectors 12-19 implemented; touch panel light pen and explicit trackball detection remain pending
 00DE,GTPDL,jump,stub,M3,
 00E1,TAPION,jump,implemented,M3,
 00E4,TAPIN,jump,implemented,M3,

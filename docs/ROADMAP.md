@@ -133,9 +133,18 @@ input/output calls. Original fixtures confirm raw CAS input in openMSX and
 from BBC BASIC `SAVE` in openMSX. Standard CAS input is the current baseline;
 slow sampled-WAV replay remains pending.
 
+M3C partially implements `GICINI` through the PSG hardware registers, including
+the controller GPIO baseline, and implements cursor-key and two-port
+joystick directions through `GTSTCK`, implements all documented `GTTRIG`
+selectors, and implements the two-port mouse request/X/Y subset of `GTPAD`.
+An openMSX probe covers all eight cursor directions, active and neutral
+connector reads, Space, trigger register preservation, both mouse selectors,
+the openMSX `01h,01h` empty-port coordinate signature, and PSG R15 state.
+
 - complete auto-repeat, dead-key state, function-key expansion, key click,
   and break handling;
-- implement PSG initialization, joystick, trigger, and paddle calls;
+- complete `GICINI` PLAY statement work-area initialization;
+- implement touch-panel, light-pen, trackball-detection, and paddle calls;
 - implement or explicitly classify printer and remaining basic-device calls;
 - make interrupt frequency and locale selectable build properties.
 

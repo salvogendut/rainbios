@@ -78,7 +78,8 @@ open-source implementation difference is not copied.
   `https://konamiman.github.io/MSX2-Technical-Handbook/`
 - Material consulted: Chapter 2 interrupt model; Chapter 3 slot
   initialization; Chapter 5 cartridge headers, section 3 international
-  keyboard/character input, and section 7 inter-slot call interfaces;
+  keyboard/character input, sections 5.1-5.4 universal controller I/O, and
+  section 7 inter-slot call interfaces;
   Appendix 1 interrupt/VDP/mode/console and `PHYDIO` call contracts, including
   the MSX2 `CHGMOD` and R8-R23 `WRTVDP` interfaces; Appendix 4 MAIN-ROM
   work-area and hook listings; Appendix 8 control-character assignments; and
@@ -132,6 +133,11 @@ M3B uses the published PSG/PPI cassette wiring and `TAP*`/`STMOTR` contracts.
 The adaptive input decoder, FSK output, CAS/WAV fixtures, BBC BASIC sequential
 storage adapter, and emulator probes are original project work. No
 proprietary BIOS source or ROM disassembly was consulted for this milestone.
+
+M3C uses the published `GICINI`, `GTSTCK`, `GTTRIG`, `GTPAD`, PSG R7/R14/R15,
+connector-pin, and `PADX`/`PADY` contracts. The direction tables, R15-preserving
+port selection, mouse transaction, and conformance probe are original RainBIOS
+work. No proprietary BIOS source, ROM data, or ROM disassembly was consulted.
 
 M1G/M4A use the published normal cartridge header, primary-slot memory access,
 five-byte hook, and interrupt contracts. The `RBP1` validation rules, menu
@@ -423,3 +429,58 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   compatibility target
 - RainBIOS use: public hardware-register behavior only; no firmware bytes,
   internal control flow, disassembly, or decompilation were inspected
+
+## 2026-08-02 — MSX controller and mouse interfaces
+
+- Primary specifications:
+  - *MSX Technical Data Book — Hardware/Software Specifications*, hardware
+    pp. 25-28 and BIOS pp. 124-125, public scan already identified above
+  - MSX2 Technical Handbook Chapter 5, sections 5.1-5.4:
+    `https://konamiman.github.io/MSX2-Technical-Handbook/md/Chapter5a.html`
+- Supplementary public interface references:
+  - `https://map.grauw.nl/resources/msxbios.php#GTSTCK`
+  - `https://map.grauw.nl/resources/msx_io_ports.php#psgioports`
+  - `https://map.grauw.nl/resources/sound/generalinstrument_ay-3-8910.pdf`
+- Material consulted: `GTSTCK` direction values and selectors; `GTTRIG`
+  selectors and `00h`/`FFh` results; mouse `GTPAD` request/cache selectors;
+  PSG GPIO direction bits; active-low connector inputs; and R15 connector,
+  button-direction, pin-8, and Kana LED bits
+- Purpose: define M3C's public controller behavior and hardware interface
+- RainBIOS use: interface and hardware facts only
+
+## 2026-08-02 — Open-source mouse protocol cross-checks
+
+- openMSX 21.0 source distribution, GPL-2.0, files consulted:
+  `src/input/Mouse.cc`, `src/input/JoystickDevice.hh`, `src/input/MSXJoystick.cc`,
+  and `src/sound/MSXPSG.cc`
+- MSXgl source revision:
+  `946ce2b4448fb5a5c9900ccf1fdfbddfe2533a3c`, file
+  `engine/src/mouse.c`, whose header attributes the mouse module under
+  CC-BY-SA
+- Material consulted: X-high/X-low/Y-high/Y-low nibble order, pin-8 edge
+  progression, active-low button placement, timeout behavior, and working
+  3.58 MHz Z80 settling-loop magnitudes
+- Purpose: cross-check the public hardware protocol and choose conservative
+  first/subsequent sample delays where the MSX specifications give no numeric
+  settling interval
+- RainBIOS use: protocol behavior and timing facts only; no implementation code
+  copied
+
+## 2026-08-02 — GeoBench MSX input source
+
+- Adjacent open-source repository revision:
+  `f83b43feda2730d7c33fca9135f603c113ccc5db`
+- License: BSD-3-Clause in `LICENSE`
+- Files consulted: `lib/msx/input.asm` and `docs/MSX2.md`
+- Relevant checksums:
+  - `lib/msx/input.asm`:
+    `6ccaf39d360767f66b70d0fd7a0c6550d6fe189a05a73af68d535db05306f660`
+  - `docs/MSX2.md`:
+    `969562a84011d708982a308bb3a925c840978ac3820ae3d28529dd1ca92cd66d`
+- Material consulted: public BIOS calls used for cursor, joystick, trigger, and
+  mouse input; standard direction mapping; mouse opt-in behavior; and the
+  documented `FFh,FFh` / `01h,01h` empty-port filters
+- Purpose: identify why the rendered GeoBench desktop had no usable pointer and
+  define an endpoint-compatible public BIOS test
+- RainBIOS use: calling-contract and externally visible behavior cross-check;
+  no GeoBench implementation code copied

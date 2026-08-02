@@ -142,7 +142,7 @@ occupies page 1.
 ## Nextor SD Mapper GeoBench Boot (Resolved)
 
 GeoBench (`GBMSX.IMG`) now reaches its Screen 7 desktop under RainBIOS + SD
-Mapper V2 in the 1983 emulator on branch `feature/nextor-boot`.
+Mapper V2 in the 1983 emulator.
 
 ### Fixed and verified
 
@@ -152,8 +152,10 @@ Mapper V2 in the 1983 emulator on branch `feature/nextor-boot`.
   clobbered slot map. The clear now runs inside `exx/exx`, and the BIOSSLT write
   is verified as `val=00`.
 - The four joystick/paddle entries (`GTSTCK` `00D5h`, `GTTRIG` `00D8h`, `GTPAD`
-  `00DBh`, `GTPDL` `00DEh`) were `unsupported_call`; they are now real stubs
-  (`ei; xor a; ret`) so Nextor's boot input scan gets valid empty reads.
+  `00DBh`, `GTPDL` `00DEh`) initially became neutral stubs so Nextor's boot
+  input scan could complete. Issue #18 replaces the first three with cursor,
+  joystick, trigger, and two-port mouse behavior; only paddle timing remains a
+  neutral stub.
 - **Root cause correction**: `FFE8h` is the documented V9938 `RG9SAV` mirror,
   not a disk flag, and the `80h`/`82h` NT-bit difference was not causal. The
   recurring `81F0h` path is GeoBench's open-source `msx_wait_tick` frame-pacing
@@ -174,6 +176,46 @@ Mapper V2 in the 1983 emulator on branch `feature/nextor-boot`.
   `vdp_r1=62`, mapper `03,02,01,00`, and renders the GeoBench
   desktop. The final PC may be `81F2h` because the desktop intentionally waits
   there for the next V9938 retrace edge.
+
+### GeoBench pointer input follow-up
+
+GeoBench's open-source MSX input layer calls `GTSTCK 0` for cursor keys,
+`GTSTCK 1` for joystick port 1, `GTTRIG 0/1` for activation, and, when mouse
+input is enabled, `GTPAD 12/13/14` for signed relative motion. The old neutral
+stubs therefore explained why every pointer path was immobile even though the
+desktop rendered correctly.
+
+Branch `issue-18-mouse-support` now provides those public contracts. The
+openMSX controller probe verifies direction values 0-8, an active connector,
+Space, neutral triggers, both mouse request/cache groups, the openMSX
+`01h,01h` empty-port coordinate signature, strict R7 port directions, and
+seeded PSG R15 preservation. Mouse buttons continue through `GTTRIG`;
+touch-panel, light-pen, explicit
+trackball-detection, and paddle protocols remain outside this slice. `GICINI`
+now initializes the PSG hardware and controller baseline atomically; its public
+entry enables interrupts on return while cold boot uses a private DI body. It
+remains ABI-partial because PLAY statement work-area initialization is not part
+of this issue.
+
+Current verification on this branch: 139 host tests pass; the openMSX
+controller, keyboard, services, and startup-audio probes pass; Sunrise Nextor
+and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
+and MSX component tests pass; and an uninstrumented 2,502-frame GeoBench run
+still renders the Screen 7 desktop with R0=`0Ah`, R1=`62h`, and mapper pages
+`03,02,01,00`. The automated openMSX mouse case verifies idle requests and
+button lines; deterministic non-zero host-motion injection remains a test
+harness gap rather than a committed test. A separate temporary focused-X11
+endpoint probe injected host motion `(+80,-40)` into openMSX's mouse pluggable
+and observed `GTPAD` request/X/Y bytes `FFh,28h,ECh`, exactly matching the
+pluggable's 2:1 host scaling and RainBIOS's positive-right/positive-down BIOS
+sign convention.
+
+A follow-up isolated `Xvfb`/fluxbox run confirmed that XTest motion reaches
+openMSX's X11 event layer, but openMSX 21.0 does not forward that synthetic
+motion into the emulated mouse accumulator in this setup: `GTPAD` remains
+`FFh,00h,00h`. Do not turn that path into a committed movement test. A future
+non-zero automated probe needs an openMSX replay/device test double or a
+headless 1983 input-injection interface rather than desktop automation.
 
 The temporary emulator traces under `/tmp/opencode/1983-test` are no longer an
 implementation input. Do not disassemble the opaque SD Mapper or system ROMs;
@@ -312,7 +354,7 @@ is:
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
 | M1 reset/slots/RAM/interrupts | In progress | Page-0/page-3 `CALSLT`, mapper sizing/allocation, broader interrupt devices, hardware test |
 | M2 MSX1 display/console | In progress | Remaining VDP, sprite, color, control-character, cursor, and boundary behavior |
-| M3 keyboard/PSG/basic devices | In progress | Repeat/locks/function keys, break, PSG init, controllers, printer classification |
+| M3 keyboard/PSG/basic devices | In progress | Repeat/locks/function keys, break, advanced pointing devices, printer classification |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Not started | Separate MSX2 ROMs, V9938, SUB-ROM calls, bitmap modes, palette, clock |
 | M6 completeness/optional components | In progress | ABI gaps, behavior characterization, releases, and broader disk functionality |
