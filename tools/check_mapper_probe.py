@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Validate the RainBIOS expanded-slot openMSX report."""
+"""Validate the RainBIOS M1 memory-mapper sizing report."""
 
 from __future__ import annotations
 
@@ -9,25 +9,10 @@ import pathlib
 
 
 EXPECTED = {
-    "INIT": "00,00,80,00/00,00,00,00/50/00",
-    "RDSLT0": "11,1234,A1,50/00/0",
-    "RDSLT1": "22,5234,A2,50/00/0",
-    "RDSLT2": "33,9234,A3,50/00/0",
-    "RDSLT3": "44,D234,A4,50/00/0",
-    "WRSLT0": "51,1234,51,50/00/0",
-    "WRSLT1": "62,5234,62,50/00/0",
-    "WRSLT2": "73,9234,73,50/00/0",
-    "WRSLT3": "84,D234,84,50/00/0",
-    "ENASLT0": "52/01/01/0",
-    "ENASLT1": "58/08/08/0",
-    "ENASLT2": "60/30/30/0",
-    "ENASLT3": "90/40/40/0",
-    "CALSLT": "5A,1234,5678,9ABC,5000,8A00,08/54/40/40/1",
-    "CALLF": "5A,1234,5678,9ABC,5000,8A00,08/54/40/40/1",
-    "CALSLT0EXP": "6A,1234,5678,9ABC,50/00/00/0",
-    "CALSLT3EXP": "A5,4321,6587,A9CB,50/00/00/1",
-    "CALSLT3PRIM": "B5,4321,6587,A9CB,90/80/80/1",
-    "INVALID": "50/00/1",
+    "MAPPER_SEGMENTS": "08",
+    "BASELINE_MAP": "F0",
+    "SEG7": "7A",
+    "SEG0": "5A",
 }
 
 
@@ -52,7 +37,10 @@ def main() -> int:
         validate_report(arguments.report.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         parser.error(str(error))
-    print(f"validated expanded-slot calls: {arguments.report}")
+    print(
+        f"validated M1 memory-mapper sizing: "
+        f"{EXPECTED['MAPPER_SEGMENTS']} segments"
+    )
     return 0
 
 

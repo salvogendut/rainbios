@@ -39,13 +39,15 @@ The main BIOS currently provides:
 - deterministic reset, 32 KiB RAM discovery, stack/work-area initialization,
   and a project-owned Graphics II boot UI;
 - primary and expanded slot discovery and control, including `RDSLT`, `WRSLT`,
-  `ENASLT`, page-1/page-2 `CALSLT`, and inline `CALLF`;
+  `ENASLT`, `CALSLT` for page-0/page-1/page-2/page-3 targets, and inline
+  `CALLF`;
 - exact normal-register inputs into cross-slot calls and exact restoration of
   primary/secondary mappings after returning calls;
 - a mapper-compatible expanded `CALSLT` frame whose saved page-2/page-3
   selectors may be patched by a disk kernel before restoration;
-- a fixed 64 KiB memory-mapper baseline of segments `3,2,1,0` and publication
-  of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
+- a fixed 64 KiB memory-mapper baseline of segments `3,2,1,0`, boot-time
+  detection of the mapper's segment count published in `MAPPER_SEGMENTS`, and
+  publication of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`;
 - partial Screen 0/1/2/3 setup, a guarded register-only V9938 Screen 7 handoff,
@@ -352,7 +354,8 @@ openMSX is installed as a Flatpak on the current workstation. Use:
 
 ```sh
 make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
-  test-openmsx-services test-openmsx-keyboard test-openmsx-controller \
+  test-openmsx-mapper test-openmsx-services test-openmsx-keyboard \
+  test-openmsx-controller \
   test-openmsx-disk-fault test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
@@ -377,7 +380,7 @@ is:
 | Milestone | Status | Remaining focus |
 | --- | --- | --- |
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
-| M1 reset/slots/RAM/interrupts | In progress | Page-0/page-3 `CALSLT`, mapper sizing/allocation, broader interrupt devices, hardware test |
+| M1 reset/slots/RAM/interrupts | In progress | Broader interrupt devices, hardware test |
 | M2 MSX1 display/console | In progress | Remaining VDP, sprite, color, control-character, cursor, and boundary behavior |
 | M3 keyboard/PSG/basic devices | In progress | Repeat/locks/function keys, break, advanced pointing devices, printer classification |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
@@ -460,6 +463,9 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tests/cartridges/disk_fault_rom.asm` | Controller fault-injection cartridge |
 | `tests/openmsx/disk_fault_probe.tcl` | openMSX WD2793 controller test double |
 | `tests/openmsx/controller_probe.tcl` | Public controller and mouse BIOS probe |
+| `tests/openmsx/RainBIOS_M1_MAPPER.xml.in` | Memory-mapper sizing fixture |
+| `tests/openmsx/mapper_probe.tcl` | Mapper segment-count and beyond-64 KiB probe |
+| `tools/check_mapper_probe.py` | Mapper sizing report validator |
 | `tests/openmsx/RainBIOS_GeoBench.xml.in` | Open-source V9938/mapper GeoBench machine fixture |
 | `tests/openmsx/geobench_probe.tcl` | openMSX GeoBench state and screenshot probe |
 

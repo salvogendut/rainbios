@@ -403,6 +403,27 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   treating `FFE8h` as disk-kernel storage
 - RainBIOS use: interface facts only
 
+## 2026-08-02 — Memory-mapper sizing behavior
+
+- Primary specification: the standard MSX memory-mapper interface where the
+  four reserved ports `FCh`-`FFh` select a 16 KiB segment per page and the
+  segment register masks the written value with `segments-1`
+- Cross-check: the 1983 emulator's `mapper_segment_mask` in `src/msx.c`
+  (revision `bf78cb4`, local build) confirms the power-of-two segment masking
+  used by the boot-time sizing probe
+- Purpose: define the page-2 marker probe that detects the mapper's segment
+  count and publishes it in `MAPPER_SEGMENTS`
+- RainBIOS use: externally observable hardware behavior only; the sizing
+  routine and work-area byte are original RainBIOS work
+
+## 2026-08-02 — openMSX memory-mapper fixture
+
+- Material consulted: the openMSX `MemoryMapper` device configuration in the
+  existing `tests/openmsx/RainBIOS_GeoBench.xml.in` (`<size>512</size>`)
+- Purpose: build the `RainBIOS_M1_MAPPER.xml.in` fixture with a 128 KiB mapper
+  for the sizing probe
+- RainBIOS use: validation fixture only; no firmware code derived
+
 ## 2026-08-02 — GeoBench MSX2 source compatibility cross-check
 
 - Adjacent open-source repository revision:

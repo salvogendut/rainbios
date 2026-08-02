@@ -83,6 +83,7 @@ IDE_SLOT        equ #f309
 SD_FLAGS        equ #f30a
 SD_INIT_TRIES   equ #f30b
 RAMAD0          equ #f341
+MAPPER_SEGMENTS equ #f345
 H_PHYD          equ #ffa7
 H_FORM          equ #ffac
 H_ISFL          equ #fedf
@@ -103,6 +104,7 @@ INITIAL_MEMSIZ  equ #f168
 INITIAL_STKTOP  equ #f0a0
 EXTENSION_STACK equ #f092
 STACK_TOP       equ #f380
+CALSLT_P3_FRAME equ #f360
 
                 org #0000
 
@@ -462,6 +464,7 @@ bootstrap_ram_slot_ready:
                 and #03
                 ld (BIOSSLT),a
                 call bootstrap_expanded_slots
+                call bootstrap_size_mapper
                 ld hl,#8000
                 ld (BOTTOM),hl
                 ld hl,STACK_TOP
@@ -2956,6 +2959,49 @@ bootstrap_main_selector_ready:
                 ld (BIOSSLT),a
                 ret
 
+; Detect the memory-mapper segment count and publish it in MAPPER_SEGMENTS.
+; Page 2 is probed: map segment 0, write a marker, then test each power of two.
+; The smallest power of two that maps back to segment 0 is the segment count,
+; because the mapper register masks the value with segments-1. Machines without
+; a mapper ignore the reserved ports, so every probe keeps the marker and the
+; count is one (the plain 64 KiB). The 3,2,1,0 baseline is restored afterward.
+bootstrap_size_mapper:
+                ld a,1
+                ld (MAPPER_SEGMENTS),a
+                xor a
+                out (MAPPER_PAGE2),a           ; segment 0 in page 2
+                ld a,#5a
+                ld (#8000),a                   ; marker
+                ld b,1
+bootstrap_size_bit:
+                ld a,b
+                out (MAPPER_PAGE2),a
+                ld a,(#8000)
+                cp #5a
+                jr z,bootstrap_size_found
+                ld a,b
+                add a,a
+                ld b,a
+                jr nc,bootstrap_size_bit
+                ld a,128                       ; 4 MiB maps cap at 128 segments
+                ld (MAPPER_SEGMENTS),a
+                jr bootstrap_size_restore
+bootstrap_size_found:
+                ld a,b
+                ld (MAPPER_SEGMENTS),a
+bootstrap_size_restore:
+                ld a,3
+                out (MAPPER_PAGE0),a
+                ld a,2
+                out (MAPPER_PAGE1),a
+                ld a,1
+                out (MAPPER_PAGE2),a
+                xor a
+                out (MAPPER_PAGE3),a
+                xor a
+                ld (#8000),a                   ; clear the marker
+                ret
+
 ; Inter-slot memory calls. Page-0 accesses finish from mapped RAM because the
 ; BIOS disappears immediately after the PPI write. Page-3 expanded accesses
 ; restore both selectors before using the stack again.
@@ -3360,9 +3406,12 @@ primary_slot_map_page0:
                 or c
                 ret
 
-; Partial inter-slot call. Primary and expanded targets in IX are accepted in
-; page 1 or page 2. Both pages leave this page-0 routine and the page-3 stack
-; visible. Restoration state is kept in the call's stack frame because the
+; Inter-slot call. Primary and expanded targets in IX are accepted in every
+; page. Page-1/page-2 targets and page-3 targets that already occupy page 3
+; leave this page-0 routine and the page-3 stack visible. Page-0 targets switch
+; page 0 through the page-3 CLPRIM helper because the PPI write hides this page;
+; page-3 targets in another slot get a return frame installed in their own
+; page-3 RAM. Restoration state is kept in the call's stack frame because the
 ; called routine may destroy every normal register.
 calslt:
                 di
@@ -3379,7 +3428,25 @@ calslt:
                 cp #40
                 jr z,calslt_page_supported
                 cp #80
-                jr nz,calslt_unsupported
+                jr z,calslt_page_supported
+                cp #c0
+                jp z,calslt_page3_primary
+
+; Page-0 primary target. The PPI write would hide this page-0 code, so CLPRIM
+; (copied to page-3 RAM at boot) performs the switch, the call, and the map
+; restore. CLPRIM's `pop af` recovers the old map from the word pushed here.
+calslt_page0_primary:
+                ld a,b
+                and #03
+                ld c,a
+                call primary_slot_map
+                ld e,a                         ; E = new map
+                ld a,d
+                push af                        ; old map for CLPRIM's pop af
+                ld a,e
+                exx
+                jp CLPRIM
+
 calslt_page_supported:
                 ld a,b
                 and #03
@@ -3413,7 +3480,54 @@ calslt_expanded:
                 cp #40
                 jr z,calslt_expanded_page_supported
                 cp #80
-                jr nz,calslt_unsupported
+                jr z,calslt_expanded_page_supported
+                cp #c0
+                jp z,calslt_expanded_page3
+
+; Page-0 expanded target. Writing the page-0 subslot selector hides page 0 only
+; when the target primary is also the primary currently mapped in page 0; that
+; case fails closed. Otherwise the selector is written from this page-0 code,
+; CLPRIM performs the page-0 switch and call, and the return frame restores the
+; selector and the previous map.
+calslt_page0_expanded:
+                ld a,b
+                call expanded_slot_check
+                jr z,calslt_unsupported
+                in a,(PPI_SLOT)
+                and #03
+                ld e,a
+                ld a,c
+                and #03
+                cp e
+                jr nz,calslt_page0_expanded_ok
+                jp calslt_unsupported
+calslt_page0_expanded_ok:
+                ld a,c
+                call expanded_temporary_select
+                ld e,b                         ; old secondary selector
+                in a,(PPI_SLOT)
+                ld d,a                         ; old primary map
+                ld h,d
+                ld l,e
+                push hl                        ; old map, old selector
+                ld b,d
+                push bc                        ; old map, primary slot
+                ld hl,SLTTBL
+                ld a,l
+                add a,c
+                ld l,a
+                push hl                        ; selector mirror address
+                ld hl,calslt_page0_expanded_return
+                push hl
+                ld h,d
+                ld l,0
+                push hl                        ; old map for CLPRIM's pop af
+                ld a,d
+                and #fc
+                or c                           ; new page-0 map
+                exx
+                jp CLPRIM
+
 calslt_expanded_page_supported:
                 ld a,b
                 call expanded_slot_check
@@ -3463,6 +3577,221 @@ calslt_expanded_return:
                 exx
                 ex af,af'
                 ret
+
+; Page-0 expanded targets return here after CLPRIM restores the primary map.
+; Recover the target primary's selector through the SLTTBL mirror and FFFFh.
+calslt_page0_expanded_return:
+                ex af,af'
+                exx
+                pop hl                         ; selector mirror address
+                pop bc                         ; B = old primary map, C = primary
+                pop de                         ; E = old secondary selector
+                ld a,e
+                call expanded_store_selector
+                call expanded_write_selector
+                ld a,b
+                out (PPI_SLOT),a
+                exx
+                ex af,af'
+                ret
+
+; Page-3 primary target. If the target slot already occupies page 3 the switch
+; is a no-op and the ordinary returning-call path keeps the stack visible.
+; Otherwise the target's page-3 memory must be writable RAM: a return frame is
+; installed there and the caller's stack and previous mapping are recovered
+; after the target returns.
+calslt_page3_primary:
+                ld a,b
+                and #03
+                ld c,a
+                push bc                        ; save slot ID for the no-op path
+                call primary_slot_map          ; A = new map, D = old map
+                ld e,a                         ; E = new map
+                pop bc                         ; B = slot ID, C = primary
+                in a,(PPI_SLOT)
+                and #c0
+                ld h,a                         ; H = current page-3 bits
+                ld a,e
+                and #c0
+                cp h
+                jp z,calslt_page_supported     ; no-op switch: normal call
+                ld hl,0
+                add hl,sp                      ; HL = caller's SP
+                push hl
+                pop bc                         ; BC = caller's SP
+                ld a,e
+                out (PPI_SLOT),a               ; switch page 3 to the target
+                ld hl,CALSLT_P3_FRAME
+                ld a,#55
+                ld (hl),a
+                cp (hl)
+                jp nz,calslt_page3_fail
+                ld a,#aa
+                ld (hl),a
+                cp (hl)
+                jp nz,calslt_page3_fail
+                ld a,b
+                ld (CALSLT_P3_FRAME+4),a       ; caller SP high
+                ld a,c
+                ld (CALSLT_P3_FRAME+5),a       ; caller SP low
+                ld a,d
+                ld (CALSLT_P3_FRAME+2),a       ; old primary map
+                xor a
+                ld (CALSLT_P3_FRAME+3),a
+                ld (CALSLT_P3_FRAME+6),a       ; old selector = 0
+                ld (CALSLT_P3_FRAME+7),a
+                ld (CALSLT_P3_FRAME+8),a       ; primary flag
+                ld hl,calslt_page3_return
+                ld (CALSLT_P3_FRAME),hl
+                ld sp,CALSLT_P3_FRAME
+                exx
+                ex af,af'
+                jp (ix)
+
+; Page-3 expanded target. A target that already occupies page 3 (same selector
+; and same primary) uses the ordinary expanded returning-call path; anything
+; else gets the page-3 return frame so the caller's stack survives. The old
+; selector is captured from the single expanded_temporary_select call so the
+; frame restores the pre-call value rather than the freshly written one.
+calslt_expanded_page3:
+                ld a,b
+                call expanded_slot_check
+                jp z,calslt_unsupported
+                push bc
+                call expanded_temporary_select ; A = new selector, B = old selector
+                ld e,b                         ; E = old selector (for the frame)
+                cp b                           ; selector unchanged?
+                pop bc                         ; B = slot ID, Z preserved
+                jp nz,calslt_page3_expanded_frame
+                ld a,b
+                and #03
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                ld d,a
+                in a,(PPI_SLOT)
+                and #c0
+                cp d
+                jp nz,calslt_page3_expanded_frame
+                jp calslt_expanded_page_supported   ; no-op switch
+calslt_page3_expanded_frame:
+                ld a,b
+                and #03
+                ld c,a                         ; C = primary
+                in a,(PPI_SLOT)
+                ld d,a                         ; D = old primary map
+                ld a,d
+                and #3f
+                ld b,a
+                ld a,c
+                and #03
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                add a,a
+                or b                           ; A = new page-3 map
+                out (PPI_SLOT),a               ; switch page 3 to the target primary
+                ld a,c
+                ld (CALSLT_P3_FRAME+9),a       ; target primary slot (C intact here)
+                ld hl,0
+                add hl,sp                      ; HL = caller's SP
+                ld b,h
+                ld c,l                         ; BC = caller's SP
+                ld hl,CALSLT_P3_FRAME
+                ld a,#55
+                ld (hl),a
+                cp (hl)
+                jp nz,calslt_page3_expanded_fail
+                ld a,#aa
+                ld (hl),a
+                cp (hl)
+                jp nz,calslt_page3_expanded_fail
+                ld a,b
+                ld (CALSLT_P3_FRAME+4),a       ; caller SP high
+                ld a,c
+                ld (CALSLT_P3_FRAME+5),a       ; caller SP low
+                ld a,d
+                ld (CALSLT_P3_FRAME+2),a       ; old primary map
+                xor a
+                ld (CALSLT_P3_FRAME+3),a
+                ld a,e
+                ld (CALSLT_P3_FRAME+6),a       ; old selector
+                xor a
+                ld (CALSLT_P3_FRAME+7),a
+                ld a,#ff
+                ld (CALSLT_P3_FRAME+8),a       ; expanded flag
+                ld hl,calslt_page3_return
+                ld (CALSLT_P3_FRAME),hl
+                ld sp,CALSLT_P3_FRAME
+                exx
+                ex af,af'
+                jp (ix)
+
+; Page-3 target in another slot returns here after its RET pops the frame
+; address. The caller's SP was parked in the alternate BC by the frame's EXX,
+; so the frame only supplies the previous mapping and, for expanded targets,
+; the primary selector to restore. Frame reads happen while page 3 still maps
+; the target; the mirror write happens after the map is restored.
+calslt_page3_return:
+                ex af,af'
+                exx                          ; normal BC = caller's SP
+                ld a,(CALSLT_P3_FRAME+8)     ; expanded flag
+                ld d,a
+                bit 7,a
+                jr z,calslt_page3_ret_map
+                ld a,(CALSLT_P3_FRAME+2)     ; old primary map
+                ld l,a
+                ld a,(CALSLT_P3_FRAME+9)     ; target primary slot
+                ld h,a
+                ld a,(CALSLT_P3_FRAME+6)     ; old selector
+                ld e,a
+                ld (#ffff),a                 ; restore the target primary's selector
+                jr calslt_page3_ret_restore
+calslt_page3_ret_map:
+                ld a,(CALSLT_P3_FRAME+2)     ; old primary map
+                ld l,a
+calslt_page3_ret_restore:
+                ld a,l
+                out (PPI_SLOT),a             ; restore page 3 = old slot
+                ld a,d                       ; expanded flag
+                bit 7,a
+                jr z,calslt_page3_ret_done
+                ld a,h                       ; primary slot
+                ld hl,SLTTBL
+                add a,l
+                ld l,a
+                jr nc,calslt_page3_ret_mirror
+                inc h
+calslt_page3_ret_mirror:
+                ld (hl),e                    ; keep the SLTTBL mirror consistent
+calslt_page3_ret_done:
+                ld h,b
+                ld l,c
+                ld sp,hl                     ; restore caller's SP
+                exx
+                ex af,af'
+                ret
+
+calslt_page3_fail:
+                ld a,d
+                out (PPI_SLOT),a               ; restore page 3 = old slot
+                exx
+                ex af,af'
+                jp unsupported_call
+
+calslt_page3_expanded_fail:
+                ld a,e
+                ld (#ffff),a                   ; restore the target primary's selector
+                ld a,d
+                out (PPI_SLOT),a               ; restore page 3 = old slot
+                exx
+                ex af,af'
+                jp unsupported_call
 
 ; Slot control. RSLREG and WSLREG map directly to the PPI register. ENASLT
 ; updates both the primary and secondary selectors for expanded slot IDs.
