@@ -83,6 +83,33 @@ class KeyboardProbeTests(unittest.TestCase):
                 self.make_report().replace("REPEAT=61,61,61", "REPEAT=61,00,00")
             )
 
+    def test_pinlin_must_return_buffer_and_count(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PINLIN"):
+            validate_report(
+                self.make_report().replace(
+                    "PINLIN=03,0,61,62,63", "PINLIN=03,0,00,62,63"
+                )
+            )
+
+    def test_pinlin_backspace_must_remove_a_char(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PINLINBS"):
+            validate_report(
+                self.make_report().replace("PINLINBS=02,61,63", "PINLINBS=03,61,62,63")
+            )
+
+    def test_qinlin_must_set_auto_flag(self) -> None:
+        with self.assertRaisesRegex(ValueError, "QINLIN"):
+            validate_report(
+                self.make_report().replace("QINLIN=03,0,61,62,63,01",
+                                           "QINLIN=03,0,61,62,63,00")
+            )
+
+    def test_pinlin_break_must_set_carry(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PINLINBRK"):
+            validate_report(
+                self.make_report().replace("PINLINBRK=00,1", "PINLINBRK=00,0")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

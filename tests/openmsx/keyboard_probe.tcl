@@ -241,6 +241,60 @@ proc repeat_release {} {
 proc repeat_count {} {
     record_keyboard [format "REPEAT=%02X,%02X,%02X" \
         [peek 0xFBF0] [peek 0xFBF1] [peek 0xFBF2]]
+    # ---- M3 line-input slice ----
+    # PINLIN "abc" + Return from a seeded buffer
+    seed_buffer {0x61 0x62 0x63 0x0D}
+    invoke_bios 0x00AE pinlin_abc_done
+}
+
+proc seed_buffer {chars} {
+    set i 0
+    foreach ch $chars {
+        poke [expr {0xFBF0 + $i}] $ch
+        incr i
+    }
+    poke 0xF3F8 [expr {(0xFBF0 + $i) & 0xFF}]
+    poke 0xF3F9 [expr {(0xFBF0 + $i) >> 8}]
+    poke 0xF3FA 0xF0
+    poke 0xF3FB 0xFB
+}
+
+proc pinlin_abc_done {} {
+    record_keyboard [format "PINLIN=%02X,%d,%02X,%02X,%02X" \
+        [reg B] [expr {[reg F] & 1}] \
+        [peek 0xF55E] [peek 0xF55F] [peek 0xF560]]
+    # PINLIN "ab" + Backspace + "c" + Return -> "ac"
+    seed_buffer {0x61 0x62 0x08 0x63 0x0D}
+    invoke_bios 0x00AE pinlin_bs_done
+}
+
+proc pinlin_bs_done {} {
+    record_keyboard [format "PINLINBS=%02X,%02X,%02X" \
+        [reg B] [peek 0xF55E] [peek 0xF55F]]
+    # QINLIN seeds the prompt and returns "?" + space + "abc"
+    seed_buffer {0x61 0x62 0x63 0x0D}
+    invoke_bios 0x00B4 qinlin_done
+}
+
+proc qinlin_done {} {
+    record_keyboard [format "QINLIN=%02X,%d,%02X,%02X,%02X,%02X" \
+        [reg B] [expr {[reg F] & 1}] \
+        [peek 0xF55E] [peek 0xF55F] [peek 0xF560] [peek 0xF6AA]]
+    # PINLIN ends with carry set on a Ctrl-STOP break
+    seed_buffer {}
+    keymatrixdown 6 0x80
+    keymatrixdown 7 0x08
+    invoke_bios 0x00AE pinlin_break_done
+    after time 0.10 {keymatrixup 6 0x80; keymatrixup 7 0x08}
+}
+
+proc pinlin_break_done {} {
+    record_keyboard [format "PINLINBRK=%02X,%d" [reg B] [expr {[reg F] & 1}]]
+    invoke_bios 0x00C0 beep_done
+}
+
+proc beep_done {} {
+    record_keyboard "BEEP=OK"
     exit
 }
 

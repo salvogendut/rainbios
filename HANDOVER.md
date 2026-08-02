@@ -55,8 +55,8 @@ The main BIOS currently provides:
   project-owned printable glyphs;
 - international keyboard scanning, auto-repeat, Ctrl-STOP break handling
   (`BREAKX`/`ISCNTC`/`CKCNTC`), function-key strings and display
-  (`INIFNK`/`FNKSB`/`ERAFNK`/`DSPFNK`/`TOTEXT`), and partial character-input
-  services;
+  (`INIFNK`/`FNKSB`/`ERAFNK`/`DSPFNK`/`TOTEXT`), prompt/line input
+  (`INLIN`/`PINLIN`/`QINLIN`), `BEEP`, and partial character-input services;
 - cassette motor, leader, framed-byte input/output, and BBC BASIC sequential
   cassette storage;
 - cartridge discovery in primary and expanded slots, RainBIOS payload
@@ -385,7 +385,7 @@ is:
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
 | M1 reset/slots/RAM/interrupts | In progress | Broader interrupt devices, hardware test |
 | M2 MSX1 display/console | In progress | Remaining VDP, sprite, color, control-character, cursor, and boundary behavior |
-| M3 keyboard/PSG/basic devices | In progress | Dead keys, key click, pointing/paddle, printer |
+| M3 keyboard/PSG/basic devices | In progress | Dead keys, key click, cursor editing, pointing/paddle, printer |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Not started | Separate MSX2 ROMs, V9938, SUB-ROM calls, bitmap modes, palette, clock |
 | M6 completeness/optional components | In progress | ABI gaps, behavior characterization, releases, and broader disk functionality |

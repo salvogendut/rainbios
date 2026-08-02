@@ -55,13 +55,13 @@ address,name,kind,status,milestone,notes
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,
 00AB,CNVCHR,jump,stub,M3,
-00AE,PINLIN,jump,stub,M3,
-00B1,INLIN,jump,stub,M3,
-00B4,QINLIN,jump,stub,M3,
+00AE,PINLIN,jump,partial,M3,Reads keyboard input into BUFFER until Return or Ctrl-STOP; HL returns BUFFER-1 and B the count, carry set on a break
+00B1,INLIN,jump,partial,M3,PINLIN with AUTFLG set; editing covers append, backspace/delete, and break
+00B4,QINLIN,jump,partial,M3,Prints a question mark and space then performs INLIN
 00B7,BREAKX,jump,implemented,M3,Tests the physical Ctrl-STOP matrix and returns carry when both keys are held with interrupts inhibited
 00BA,ISCNTC,jump,partial,M3,Consumes a latched INTFLG break; carry and a cleared buffer on a break
 00BD,CKCNTC,jump,partial,M3,Shares ISCNTC's break consumption
-00C0,BEEP,jump,stub,M3,
+00C0,BEEP,jump,implemented,M3,Short PSG channel-A tone
 00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
 00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking
 00C9,FNKSB,jump,partial,M2,Displays or erases the function keys according to CNSDFG

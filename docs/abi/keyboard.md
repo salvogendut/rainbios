@@ -53,5 +53,17 @@ The openMSX keyboard probe now covers the break latch and consumption, both
 STOP variants, buffer clearing, the `CNSDFG` transitions, text-mode forcing,
 and auto-repeat.
 
-Dead keys, key click, Code lock, and CAPS behavior beyond the implemented
-state/LED remain future compatibility work.
+## Line input (M3E)
+
+`PINLIN` reads keyboard input into `BUFFER` (`F55Eh`) until Return or a
+Ctrl-STOP break. `INLIN` behaves the same and sets `AUTFLG` (`F6AAh`);
+`QINLIN` prints a question mark and a space before `INLIN`. On Return, the
+line is echoed (unless `AUTFLG` is set), terminated with CR, `HL` returns
+`BUFFER-1`, `B` holds the character count, and carry is clear. On a break,
+carry is set and the partial line is discarded. Backspace and Delete remove
+the last character; other editing keys are not yet handled.
+
+`BEEP` emits a short tone on PSG channel A.
+
+Dead keys, key click, Code lock, cursor editing inside a line, and CAPS
+behavior beyond the implemented state/LED remain future compatibility work.
