@@ -31,6 +31,11 @@ EXPECTED = {
     "FNKSB": "FF",
     "TOTEXT": "01,FF",
     "REPEAT": "61,61,61",
+    "PINLIN": "03,0,61,62,63",
+    "PINLINBS": "02,61,63",
+    "QINLIN": "03,0,61,62,63,01",
+    "PINLINBRK": "00,1",
+    "BEEP": "OK",
 }
 
 

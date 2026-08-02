@@ -446,6 +446,16 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   and function-key display
 - RainBIOS use: validation harness only
 
+## 2026-08-02 — Line-input and BEEP contracts
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`PINLIN`,
+  `INLIN`, `QINLIN`, `BEEP`) and the `BUFFER`/`AUTFLG` work-area addresses
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries
+- Purpose: define M3E's prompt/line-input buffer contract (`HL = BUFFER-1`,
+  count in B, carry on a break) and the short beep
+- RainBIOS use: interface and observable behavior facts only; the line-input
+  and beep routines are original RainBIOS work
+
 ## 2026-08-02 — GeoBench MSX2 source compatibility cross-check
 
 - Adjacent open-source repository revision:

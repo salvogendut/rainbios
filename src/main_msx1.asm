@@ -48,6 +48,10 @@ PUTPNT          equ #f3f8
 GETPNT          equ #f3fa
 CLIKSW          equ #f3db
 CNSDFG          equ #f3de
+BUFFER          equ #f55e
+INLIN_START_COL equ #f55c
+INLIN_TMP       equ #f55b
+AUTFLG          equ #f6aa
 FNKSTR          equ #f87f
 FNKFLG          equ #fbce
 INTFLG          equ #fc9b
@@ -188,13 +192,13 @@ CALSLT_P3_FRAME equ #f360
                 jp unsupported_call             ; 00A5 LPTOUT
                 jp unsupported_call             ; 00A8 LPTSTT
                 jp unsupported_call             ; 00AB CNVCHR
-                jp unsupported_call             ; 00AE PINLIN
-                jp unsupported_call             ; 00B1 INLIN
-                jp unsupported_call             ; 00B4 QINLIN
+                jp pinlin                        ; 00AE PINLIN
+                jp inlin                         ; 00B1 INLIN
+                jp qinlin                        ; 00B4 QINLIN
                 jp breakx                        ; 00B7 BREAKX
                 jp iscntc                        ; 00BA ISCNTC
                 jp ckcntc                        ; 00BD CKCNTC
-                jp unsupported_call             ; 00C0 BEEP
+                jp beep                          ; 00C0 BEEP
                 jp cls                          ; 00C3 CLS
                 jp posit                        ; 00C6 POSIT
                 jp fnksb                         ; 00C9 FNKSB
@@ -1943,6 +1947,131 @@ iscntc_no_break:
 ; BASIC's break check shares ISCNTC's behavior.
 ckcntc:
                 jp iscntc
+
+; Store keyboard input in BUFFER until Return or Ctrl-STOP. Echoed unless
+; AUTFLG is set. On Return, carry is clear and B is the character count;
+; on a break, carry is set. HL returns BUFFER-1 in both cases.
+pinlin:
+                xor a
+                ld (AUTFLG),a
+                jr pinlin_impl
+inlin:
+                ld a,1
+                ld (AUTFLG),a
+pinlin_impl:
+                ld a,(CSRX)
+                ld (INLIN_START_COL),a
+                ld hl,BUFFER
+                ld b,0                          ; B = character count
+inlin_loop:
+                call breakx
+                jr c,inlin_finish_break
+                call chget
+                ld (INLIN_TMP),a                ; keep the char across the checks
+                cp #0d
+                jr z,inlin_cr
+                cp #08                          ; backspace
+                jr z,inlin_backspace
+                cp #7f                          ; delete removes the last char
+                jr z,inlin_backspace
+                cp #20
+                jr c,inlin_loop                 ; other control chars ignored
+                cp 127
+                jr nc,inlin_loop
+                ld a,b
+                cp 255
+                jr nc,inlin_loop                ; line full
+                ld a,(INLIN_TMP)
+                ld (hl),a                       ; store
+                inc hl
+                inc b
+                ld a,(AUTFLG)
+                or a
+                jr nz,inlin_loop
+                ld a,(INLIN_TMP)
+                push bc
+                push hl
+                call chput
+                pop hl
+                pop bc
+                jr inlin_loop
+inlin_backspace:
+                ld a,b
+                or a
+                jr z,inlin_loop
+                ld a,(CSRX)
+                ld e,a
+                ld a,(INLIN_START_COL)
+                cp e
+                jr nc,inlin_loop                ; at or before the input start
+                dec hl
+                dec b
+                ld a,(AUTFLG)
+                or a
+                jr nz,inlin_loop
+                push bc
+                push hl
+                ld a,#08
+                call chput                      ; cursor back
+                ld a,#20
+                call chput                      ; erase
+                ld a,#08
+                call chput                      ; cursor back
+                pop hl
+                pop bc
+                jr inlin_loop
+inlin_cr:
+                ld (hl),#0d                     ; terminate for string use
+                xor a                           ; carry clear
+inlin_finish:
+                ld hl,BUFFER
+                dec hl
+                ret
+inlin_finish_break:
+                scf                             ; carry set
+                jr inlin_finish
+
+; QINLIN displays "? " and then performs INLIN.
+qinlin:
+                push hl
+                ld a,"?"
+                call chput
+                ld a,#20
+                call chput
+                pop hl
+                jp inlin
+
+; Generate a short audible tone on PSG channel A.
+beep:
+                push bc
+                push de
+                push hl
+                xor a
+                out (PSG_ADDRESS),a
+                ld a,#9a
+                out (PSG_WRITE),a               ; R0: tone period low
+                ld a,1
+                out (PSG_ADDRESS),a
+                xor a
+                out (PSG_WRITE),a               ; R1: period high
+                ld a,8
+                out (PSG_ADDRESS),a
+                ld a,#0f
+                out (PSG_WRITE),a               ; R8: channel A volume
+                ld bc,#2000
+beep_delay:
+                dec bc
+                ld a,b
+                or c
+                jr nz,beep_delay
+                ld a,8
+                out (PSG_ADDRESS),a
+                xor a
+                out (PSG_WRITE),a               ; silence
+                pop hl
+                pop de
+                pop bc
+                ret
 
 ; Fill FNKSTR with the ten default 16-byte function-key strings.
 inifnk:

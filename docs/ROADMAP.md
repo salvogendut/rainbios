@@ -168,6 +168,13 @@ render/erase the bottom text line, and force the text width. The openMSX
 keyboard probe covers the break latch, both stop variants, buffer clearing,
 the display-flag transitions, text-mode forcing, and auto-repeat.
 
+M3E implements the prompt/line-input path. `PINLIN` reads keyboard input into
+`BUFFER` until Return or a Ctrl-STOP break, returning `HL = BUFFER-1`, the
+character count in `B`, and carry on a break; `INLIN` adds the `AUTFLG` echo
+suppression and `QINLIN` prints the `? ` prompt. Backspace and Delete remove
+the last character. `BEEP` emits a short PSG tone. The keyboard probe covers
+plain, backspace-edited, prompted, and break-terminated lines plus the beep.
+
 - complete dead-key state, key click, and the remaining editing-key behavior;
 - complete `GICINI` PLAY statement work-area initialization;
 - implement touch-panel, light-pen, trackball-detection, and paddle calls;
