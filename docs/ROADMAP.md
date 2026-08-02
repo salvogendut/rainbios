@@ -88,7 +88,8 @@ Machines without a mapper report one segment. The `test-openmsx-mapper` target
 verifies the count and that a segment beyond the fixed 64 KiB baseline maps
 distinct RAM.
 
-- add keyboard and device processing to the initial IM 1 interrupt handler;
+- process broader interrupt sources (controllers, cassette, disk) in the IM 1
+  handler; the keyboard scan itself is covered by M3A/M3D;
 - run the original diagnostic cartridge on hardware;
 
 Exit criterion: cold boot reaches the diagnostic cartridge on representative
