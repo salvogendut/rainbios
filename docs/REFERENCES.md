@@ -14,7 +14,9 @@ reviewable.
   the observable requirement that temporary secondary selections are mirrored
   in `SLTTBL` and restored afterward; later, the extension initialization and
   boot-call ordering in `src/main.asm` and the documented `RAMAD0`-`RAMAD3`
-  interface locations in `src/disk.asm`
+  interface locations in `src/disk.asm`; later, the openMSX MSX2 machine
+  layout in `configs/openMSX/C-BIOS_MSX2.xml` and the built `cbios_sub.rom`
+  solely as open-source integration-fixture inputs
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
 - Excluded: copying or adapting device or service implementation routines,
@@ -34,10 +36,16 @@ reviewable.
     `552fefd09c228cf569ac1ccb916a355362ccc70b5c90bcd3cae1d46fee6d6144`
   - `src/disk.asm`:
     `5c2abd2accf995cb8f567d5527cb199a1a9170bc9131a47449f3d2ac757fe583`
+  - `configs/openMSX/C-BIOS_MSX2.xml`:
+    `9cca145d7758860ff2334a26670ef88e03de03a39375fc98f7316f16c5c354c7`
+  - `roms/cbios_sub.rom`:
+    `95db258195d1dea673b3826a8ef3d4b747f87f93587ae66e137acd2e39c3c0f1`
 
-The openMSX MSX1 machine configuration was later adapted as an integration
-test fixture in `tests/openmsx`. Its license and copyright notices are retained
-in `LICENSES/CBIOS.txt`; this does not affect firmware implementation
+The openMSX MSX1 and MSX2 machine configurations were later adapted as
+integration-test fixtures in `tests/openmsx`. The MSX2 fixture executes the
+official open-source C-BIOS SUB-ROM while RainBIOS supplies the MAIN-ROM under
+test. The C-BIOS license and copyright notices are retained in
+`LICENSES/CBIOS.txt`; this does not affect RainBIOS firmware implementation
 provenance.
 
 ## 2026-07-30 — C-BIOS-XRX local fork
@@ -401,7 +409,9 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   `f83b43feda2730d7c33fca9135f603c113ccc5db`
 - License: BSD-3-Clause in `LICENSE`
 - Files consulted: `kernel/msx_stub.asm`, `kernel/boot_msx.asm`,
-  `lib/msx/screen7.asm`, `lib/msx/bios.inc`, and `kernel/msx_launcher.asm`
+  `kernel/assets.asm`, `lib/msx/screen7.asm`, `lib/msx/screen7_lut.inc`,
+  `lib/msx/bank.asm`, `lib/msx/fs.asm`, `lib/msx/bios.inc`,
+  `kernel/msx_launcher.asm`, `docs/MSX2.md`, and the generated MSX symbol maps
 - Purpose: establish that the observed `81F0h` wait is GeoBench's resident
   V9938 frame-pacing routine after program startup, and that its loader invokes
   the public `CHGMOD 7` entry before applying its own R9 and sprite settings
@@ -414,6 +424,46 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
     `eb83571d8136bfc1351f23bbabd16a9fbff81813c9a6a1573db2048bb55d3bf1`
   - `lib/msx/screen7.asm`:
     `bea32afe352a2410083429b14db73ab03dbc38def5181674aeba00559474b83`
+  - `kernel/assets.asm`:
+    `96bcb9db012ad4850049aee1f664e26fca338acd42d9add124822d979029e62b`
+  - `lib/msx/screen7_lut.inc`:
+    `6c98f04164fa839f2946a667efadcedb11a20405eb74d30a52586724bc7f624d`
+  - `lib/msx/bank.asm`:
+    `19463241d47ce94c4001e236b1787710120a9333e84e045dc683a8c7eb1141f5`
+  - `lib/msx/fs.asm`:
+    `0359c1fbfa0aeb3551dd89737bbd2dcd11dfe1c1a66fc9f39a8fab679253bfcd`
+  - `docs/MSX2.md`:
+    `969562a84011d708982a308bb3a925c840978ac3820ae3d28529dd1ca92cd66d`
+
+The local `QA/GBMSX.IMG` integration input is 33,554,432 bytes with SHA-256
+`47d19058e4096a3f1de497e223d749bf0195cf3c10019c1be8b52a0b77630e8f`.
+It is not a RainBIOS release artifact. The adjacent GeoBench worktree already
+contained unrelated generated-file modifications and was kept read-only.
+
+## 2026-08-02 — openMSX 21.0 GeoBench validation environment
+
+- Installed distribution: Flatpak `org.openmsx.openMSX`, version 21.0
+- Material consulted: the command manual's `screenshot`, emulated-time, and
+  real-time callback interfaces; the stock `SunriseIDE_Nextor.xml` extension;
+  and the bundled `_vdp_access_test.tcl` diagnostic helper
+- Purpose: build a standard Sunrise IDE test environment, capture a rendered
+  Screen 7 state only after the host renderer catches up, and distinguish
+  GeoBench application startup from timing-sensitive VDP output
+- RainBIOS use: validation configuration and observable emulator diagnostics
+  only; no emulator implementation code copied
+- Relevant checksums:
+  - `SunriseIDE_Nextor.xml`:
+    `9573e19557d1467db6fd5bb9cb996e7f21261057194fe7d37827d75ecd667a39`
+  - `commands.html`:
+    `6a5e5cf2eb3069da1448db973a1b4b6a5ae4f91c784b7e63ffaf555f4c8176b8`
+  - `_vdp_access_test.tcl`:
+    `8ff656ab0afbaf79bf6499c54b008a4506d4ea4a03bcea4cb1fe44cf7649c0f6`
+
+The timing helper reports several sub-29-cycle VDP I/O sites in the current
+GeoBench binary, including its status polling, Screen 7 transfer, text, and
+sprite paths. Enabling the helper changes the rendered result, so the committed
+openMSX acceptance target leaves it disabled and records only the unmodified
+boot state. This diagnosis is not used to derive RainBIOS firmware code.
 
 ## 2026-08-02 — NMS 8250 `CHGMOD 7` black-box observation
 
