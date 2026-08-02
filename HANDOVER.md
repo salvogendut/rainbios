@@ -138,6 +138,51 @@ pending.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 
+## Nextor SD Mapper Boot Investigation (Active)
+
+GeoBench (`GBMSX.IMG`) does not boot under RainBIOS + SD Mapper V2 in the 1983
+emulator; Nextor hangs in an input-polling loop before the screen is enabled.
+This is the current focus on branch `feature/nextor-boot`.
+
+### Fixed and verified
+
+- `BIOSSLT` was computed as `0x83` instead of `0x00`: the pre-DOS scratch-area
+  clear (`ld hl,#f300 / ld (hl),#c9 / ld de,#f301 / ld bc,#007f / ldir`) advanced
+  the main `DE`/`BC`, so the later `ld a,d / and #03 / ld (BIOSSLT),a` used a
+  clobbered slot map. The clear now runs inside `exx/exx`, and the BIOSSLT write
+  is verified as `val=00`.
+- The four joystick/paddle entries (`GTSTCK` `00D5h`, `GTTRIG` `00D8h`, `GTPAD`
+  `00DBh`, `GTPDL` `00DEh`) were `unsupported_call`; they are now real stubs
+  (`ei; xor a; ret`) so Nextor's boot input scan gets valid empty reads.
+
+### Current hypothesis
+
+- The hang is a Nextor boot path that repeatedly calls the BIOS **CHGMOD**
+  (jump-table `005Fh` -> `091Ch`) through Nextor's dispatch at `EE3Ch`. The
+  dispatch sequence also scans SNSMAT heavily (6818 calls vs 221 on the MSX2
+  BIOS baseline).
+- CHGMOD is invoked with a mode value that is neither 0, 1, 2, nor 3, so it falls
+  through to `unsupported_call` (`075Eh`, `scf; ret`) and returns with carry set.
+  Nextor keeps re-issuing the call and never escapes the loop.
+- The MSX2 BIOS baseline boots the same image to GeoBench without entering this
+  loop during boot; it reaches the input poll only late, during GeoBench's own
+  post-run wait. The MSX2 exit state is `pc=0358 vdp_r0=0A` (screen on); RainBIOS
+  ends at `pc=EE74/81F0` with `vdp_r0=00` (screen never enabled).
+
+### Debug instrumentation (1983, committed as temporary)
+
+- `src/msx.c`: logs `BIOSSLT` (`FCC0h`) writes and early slot reads of port `A8h`.
+- `src/z80.c`: traces the Nextor dispatch loop (pc/slot/op/ix/iy/af/sp + key
+  memory cells) and dumps `EE00h-EE7Fh`, page 0, and the `F1E0h` I/O table once.
+- Note: the trace prints the post-increment pc, so an executed byte at `091Ch`
+  appears as `pc=091D op=B7`.
+
+### Next step
+
+Find the caller that issues the CHGMOD dispatch with the bad mode value and
+determine what value A carries; compare with the MSX2 BIOS run to see which BIOS
+entry returns differently and drives Nextor into the wait.
+
 ## Floppy Test Design
 
 The production disk shell and all test shells include the same shared driver.
