@@ -157,8 +157,18 @@ An openMSX probe covers all eight cursor directions, active and neutral
 connector reads, Space, trigger register preservation, both mouse selectors,
 the openMSX `01h,01h` empty-port coordinate signature, and PSG R15 state.
 
-- complete auto-repeat, dead-key state, function-key expansion, key click,
-  and break handling;
+M3D completes the interactive keyboard path. The STOP key latches a break in
+`INTFLG` (Ctrl-STOP = 3, STOP alone = 4) and clears pending input; `BREAKX`
+tests the physical Ctrl-STOP matrix directly, and `ISCNTC`/`CKCNTC` consume
+the latched break and return carry so disk kernels and Nextor can abort.
+Held keys auto-repeat through `SCNCNT`/`REPCNT`, restarting the delay on any
+new press. `INIFNK` seeds the ten default function-key strings in `FNKSTR`;
+`FNKSB`, `ERAFNK`, `DSPFNK`, and `TOTEXT` manage the `CNSDFG` display flag,
+render/erase the bottom text line, and force the text width. The openMSX
+keyboard probe covers the break latch, both stop variants, buffer clearing,
+the display-flag transitions, text-mode forcing, and auto-repeat.
+
+- complete dead-key state, key click, and the remaining editing-key behavior;
 - complete `GICINI` PLAY statement work-area initialization;
 - implement touch-panel, light-pen, trackball-detection, and paddle calls;
 - implement or explicitly classify printer and remaining basic-device calls;

@@ -46,6 +46,11 @@ SCNCNT          equ #f3f6
 REPCNT          equ #f3f7
 PUTPNT          equ #f3f8
 GETPNT          equ #f3fa
+CLIKSW          equ #f3db
+CNSDFG          equ #f3de
+FNKSTR          equ #f87f
+FNKFLG          equ #fbce
+INTFLG          equ #fc9b
 NAMBAS          equ #f922
 CGPBAS          equ #f924
 PATBAS          equ #f926
@@ -145,7 +150,7 @@ CALSLT_P3_FRAME equ #f360
                 defs #0038-$,#ff
                 jp keyint                       ; 0038 KEYINT
                 jp unsupported_call             ; 003B INITIO
-                jp unsupported_call             ; 003E INIFNK
+                jp inifnk                        ; 003E INIFNK
                 jp disscr                       ; 0041 DISSCR
                 jp enascr                       ; 0044 ENASCR
                 jp wrtvdp                       ; 0047 WRTVDP
@@ -186,16 +191,16 @@ CALSLT_P3_FRAME equ #f360
                 jp unsupported_call             ; 00AE PINLIN
                 jp unsupported_call             ; 00B1 INLIN
                 jp unsupported_call             ; 00B4 QINLIN
-                jp unsupported_call             ; 00B7 BREAKX
-                jp unsupported_call             ; 00BA ISCNTC
-                jp unsupported_call             ; 00BD CKCNTC
+                jp breakx                        ; 00B7 BREAKX
+                jp iscntc                        ; 00BA ISCNTC
+                jp ckcntc                        ; 00BD CKCNTC
                 jp unsupported_call             ; 00C0 BEEP
                 jp cls                          ; 00C3 CLS
                 jp posit                        ; 00C6 POSIT
-                jp unsupported_call             ; 00C9 FNKSB
-                jp unsupported_call             ; 00CC ERAFNK
-                jp unsupported_call             ; 00CF DSPFNK
-                jp unsupported_call             ; 00D2 TOTEXT
+                jp fnksb                         ; 00C9 FNKSB
+                jp erafnk                        ; 00CC ERAFNK
+                jp dspfnk                        ; 00CF DSPFNK
+                jp totext                        ; 00D2 TOTEXT
                 jp gtstck                        ; 00D5 GTSTCK
                 jp gttrig                        ; 00D8 GTTRIG
                 jp gtpad                         ; 00DB GTPAD
@@ -530,6 +535,10 @@ bootstrap_empty_hook:
                 ld (REPCNT),a
                 xor a
                 ld (CAPST),a                    ; caps off at boot
+                ld (INTFLG),a                   ; no pending break
+                ld (CNSDFG),a                   ; function keys hidden
+                ld (CLIKSW),a                   ; no key click
+                call inifnk                     ; default function-key strings
                 in a,(PPI_CONTROL_C)
                 or #40
                 out (PPI_CONTROL_C),a           ; CAPS LED off
@@ -1840,11 +1849,213 @@ posit:
                 ld (CSRY),a
                 ret
 
+setrd:
+                di
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                out (VDP_CONTROL),a
+                ei
+                ret
+
+setwrt:
+                di
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                or #40
+                out (VDP_CONTROL),a
+                ei
+                ret
+
+rdvrm:
+                call setrd
+                in a,(VDP_DATA)
+                ret
+
+wrtvrm:
+                push af
+                call setwrt
+                pop af
+                out (VDP_DATA),a
+                ret
+
+filvrm:
+                jp filvrm_impl
+
+; Nextor 2.1 calls the original MSX BIOS keyboard decoder at this undocumented
+; address while distinguishing Russian and international keyboards. KILBUF is
+; called first, so queue a non-"J" marker to select the international layout.
+                defs #0d89-$,#ff
+nextor_keyboard_layout_probe:
+                push af
+                push bc
+                push de
+                push hl
+                ld a,"N"
+                call keyboard_buffer_put
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+; Test whether Ctrl-STOP is held right now through the physical matrix.
+; Carry is set when both keys are pressed. Interrupts are inhibited, matching
+; the published contract.
+breakx:
+                di
+                ld a,7
+                call snsmat
+                bit 3,a                         ; STOP (active-low)
+                jr nz,breakx_released
+                ld a,6
+                call snsmat
+                bit 7,a                         ; CTRL (active-low)
+                jr nz,breakx_released
+                scf
+                ret
+breakx_released:
+                or a
+                ret
+
+; Consume a latched STOP/break event from INTFLG. Carry is set on a break so
+; callers such as disk kernels and Nextor can abort. A break also discards
+; pending keyboard input.
+iscntc:
+                di
+                ld a,(INTFLG)
+                or a
+                jr z,iscntc_no_break
+                xor a
+                ld (INTFLG),a                   ; consume the event
+                call kilbuf
+                scf
+                ei
+                ret
+iscntc_no_break:
+                ei
+                or a
+                ret
+
+; BASIC's break check shares ISCNTC's behavior.
+ckcntc:
+                jp iscntc
+
+; Fill FNKSTR with the ten default 16-byte function-key strings.
+inifnk:
+                ld hl,default_fnkstr
+                ld de,FNKSTR
+                ld bc,160
+                ldir
+                ret
+
+; Show or hide the function keys depending on CNSDFG.
+fnksb:
+                ld a,(CNSDFG)
+                or a
+                jp nz,dspfnk
+                jp erafnk
+
+; Erase the function-key display and clear the display flag.
+erafnk:
+                xor a
+                ld (CNSDFG),a
+                ld a,(CRTCNT)
+                dec a
+                ld l,a
+                xor a
+                ld h,a                          ; last row, column 0
+                ld b,a
+                call posit
+                ld a,(LINLEN)
+                ld c,a
+                ld a,#20
+erafnk_clear:
+                push bc
+                call chput
+                pop bc
+                dec c
+                jr nz,erafnk_clear
+                ret
+
+; Display the function-key strings on the bottom line and set the display flag.
+dspfnk:
+                ld a,#ff
+                ld (CNSDFG),a
+                ld a,(CRTCNT)
+                dec a
+                ld l,a
+                xor a
+                ld h,a                          ; last row, column 0
+                call posit
+                ld ix,FNKSTR
+                ld b,10                         ; ten keys
+dspfnk_key:
+                push bc
+                ld c,16                         ; each string is 16 bytes
+dspfnk_char:
+                ld a,(ix)
+                inc ix
+                push bc
+                call chput
+                pop bc
+                dec c
+                jr nz,dspfnk_char
+                pop bc
+                djnz dspfnk_key
+                ret
+
+; Force the text mode and refresh the function-key display state.
+totext:
+                ld a,(LINLEN)
+                cp 40
+                jr z,totext_40
+                call init32
+                jr totext_refresh
+totext_40:
+                call initxt
+totext_refresh:
+                jp fnksb
+
+; Ten default function-key strings, each 16 bytes, padded with spaces. The
+; published defaults are BASIC-oriented; the strings are user-replaceable.
+default_fnkstr:
+                db "LIST",#0d
+                defs 11,32
+                db "RUN",#0d
+                defs 12,32
+                db "LOAD",#22,#0d
+                defs 10,32
+                db "SAVE",#22,#0d
+                defs 10,32
+                db "CONT",#0d
+                defs 11,32
+                db ",",#22,"LPT1:",#22,#0d
+                defs 7,32
+                db "TRON",#0d
+                defs 11,32
+                db "TROFF",#0d
+                defs 10,32
+                db "KEY LIST",#0d
+                defs 7,32
+                db "SCREEN 0",#0d
+                defs 7,32
 ; Partial international-keyboard input. KEYINT records newly pressed matrix
 ; positions in the standard 40-byte circular buffer. The CAPS lock toggles
-; letter case like the official BIOS; function-key expansion, dead keys, key
-; click, and auto-repeat remain later M3 work.
+; letter case like the official BIOS; STOP latches INTFLG for BREAKX/ISCNTC,
+; and held keys auto-repeat through SCNCNT/REPCNT. Dead keys and the audible
+; key click remain later M3 work.
 keyboard_scan:
+                ld hl,SCNCNT
+                dec (hl)                        ; auto-repeat timing
+                jr nz,keyboard_scan_press
+                ld a,(REPCNT)
+                ld (SCNCNT),a
+                call keyboard_repeat
+keyboard_scan_press:
                 ld a,6
                 call snsmat
                 ld d,a                          ; current modifier row
@@ -1866,6 +2077,8 @@ keyboard_scan_row:
                 ld a,c
                 or a
                 jr z,keyboard_scan_next
+                ld a,(REPCNT)
+                ld (SCNCNT),a                   ; new press restarts the repeat
                 push bc
                 push de
                 push hl
@@ -1889,6 +2102,8 @@ keyboard_scan_next:
 keyboard_scan_modifier:
                 bit 3,c                         ; CAPS key edge?
                 jr z,keyboard_scan_next
+                ld a,(REPCNT)
+                ld (SCNCNT),a                   ; CAPS restarts the repeat
                 ld a,(CAPST)
                 cpl
                 ld (CAPST),a
@@ -1974,6 +2189,23 @@ keyboard_translate_ctrl:
                 and #1f                         ; Ctrl+A through Ctrl+Z
                 ret
 keyboard_translate_row7:
+                ; bit 3 is STOP: latch a break instead of enqueuing. Ctrl-STOP
+                ; sets INTFLG = 3; STOP alone sets INTFLG = 4.
+                ld a,e
+                cp 3
+                jr nz,keyboard_translate_row7_key
+                bit 7,d                         ; CTRL held? (active-low)
+                ld a,3
+                jr z,keyboard_translate_stop
+                ld a,4
+keyboard_translate_stop:
+                ld (INTFLG),a
+                ld hl,KEYBUF                    ; a break discards pending input
+                ld (PUTPNT),hl
+                ld (GETPNT),hl
+                xor a
+                ret
+keyboard_translate_row7_key:
                 ld hl,keymap_row7
                 jr keyboard_translate_special
 keyboard_translate_row8:
@@ -2013,6 +2245,70 @@ keyboard_buffer_put_compare:
 keyboard_buffer_put_full:
                 pop af
                 ret
+
+; Re-enqueue the first key held across both the previous and current scan,
+; matching the auto-repeat interval. Modifiers and STOP never repeat.
+keyboard_repeat:
+                ld b,0
+                ld hl,OLDKEY
+keyboard_repeat_row:
+                ld a,b
+                call snsmat
+                cpl                             ; currently pressed bits
+                ld c,a
+                ld a,(hl)                       ; previous row (active-low)
+                cpl
+                and c                           ; held across both scans
+                jr nz,keyboard_repeat_found
+keyboard_repeat_next_row:
+                inc hl
+                inc b
+                ld a,b
+                cp 9
+                jr nz,keyboard_repeat_row
+                ret
+keyboard_repeat_found:
+                ld a,b
+                cp 6
+                jr z,keyboard_repeat_next_row
+                push bc
+                ld a,6
+                call snsmat
+                pop bc
+                ld d,a                          ; modifier row
+                ld a,b
+                call snsmat
+                cpl
+                ld c,a
+                ld a,(hl)
+                cpl
+                and c                           ; held bits (recomputed)
+                ld c,a
+                ld e,0
+keyboard_repeat_bit:
+                srl c
+                jr nc,keyboard_repeat_next_bit
+                ld a,b
+                cp 7
+                jr nz,keyboard_repeat_translate
+                ld a,e
+                cp 3
+                jr z,keyboard_repeat_next_bit   ; STOP does not repeat
+keyboard_repeat_translate:
+                push bc
+                push de
+                call keyboard_translate
+                or a
+                call nz,keyboard_buffer_put
+                pop de
+                pop bc
+                ret
+keyboard_repeat_next_bit:
+                inc e
+                ld a,e
+                cp 8
+                jr nz,keyboard_repeat_bit
+                jr keyboard_repeat_next_row
 
 ; Return Z when the keyboard buffer is empty and NZ when input is ready.
 ; Only AF is changed, matching the public entry contract.
@@ -2072,58 +2368,6 @@ kilbuf:
                 ei
                 ret
 
-setrd:
-                di
-                ld a,l
-                out (VDP_CONTROL),a
-                ld a,h
-                and #3f
-                out (VDP_CONTROL),a
-                ei
-                ret
-
-setwrt:
-                di
-                ld a,l
-                out (VDP_CONTROL),a
-                ld a,h
-                and #3f
-                or #40
-                out (VDP_CONTROL),a
-                ei
-                ret
-
-rdvrm:
-                call setrd
-                in a,(VDP_DATA)
-                ret
-
-wrtvrm:
-                push af
-                call setwrt
-                pop af
-                out (VDP_DATA),a
-                ret
-
-filvrm:
-                jp filvrm_impl
-
-; Nextor 2.1 calls the original MSX BIOS keyboard decoder at this undocumented
-; address while distinguishing Russian and international keyboards. KILBUF is
-; called first, so queue a non-"J" marker to select the international layout.
-                defs #0d89-$,#ff
-nextor_keyboard_layout_probe:
-                push af
-                push bc
-                push de
-                push hl
-                ld a,"N"
-                call keyboard_buffer_put
-                pop hl
-                pop de
-                pop bc
-                pop af
-                ret
 
 ; Test for a standard "CD" SUB-ROM without publishing EXBRSA: doing so would
 ; advertise the still-unimplemented EXTROM entry. E holds the current slot ID

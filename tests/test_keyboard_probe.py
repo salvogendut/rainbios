@@ -47,6 +47,42 @@ class KeyboardProbeTests(unittest.TestCase):
                 self.make_report().replace("BLOCKING=0D", "BLOCKING=00")
             )
 
+    def test_inifnk_must_seed_list_prefix(self) -> None:
+        with self.assertRaisesRegex(ValueError, "FNK"):
+            validate_report(
+                self.make_report().replace("FNK=4C,49,53", "FNK=00,00,00")
+            )
+
+    def test_ctrl_stop_must_set_breakx_carry(self) -> None:
+        with self.assertRaisesRegex(ValueError, "BREAKX1"):
+            validate_report(
+                self.make_report().replace("BREAKX1=1", "BREAKX1=0")
+            )
+
+    def test_iscntc_must_consume_the_break(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ISCNTC1"):
+            validate_report(
+                self.make_report().replace("ISCNTC1=1,00", "ISCNTC1=1,03")
+            )
+
+    def test_dspfnk_must_set_display_flag(self) -> None:
+        with self.assertRaisesRegex(ValueError, "DSPFNK"):
+            validate_report(
+                self.make_report().replace("DSPFNK=FF", "DSPFNK=00")
+            )
+
+    def test_totext_must_stay_in_text_mode(self) -> None:
+        with self.assertRaisesRegex(ValueError, "TOTEXT"):
+            validate_report(
+                self.make_report().replace("TOTEXT=01,FF", "TOTEXT=02,FF")
+            )
+
+    def test_auto_repeat_must_fill_the_buffer(self) -> None:
+        with self.assertRaisesRegex(ValueError, "REPEAT"):
+            validate_report(
+                self.make_report().replace("REPEAT=61,61,61", "REPEAT=61,00,00")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

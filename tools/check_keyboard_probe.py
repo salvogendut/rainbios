@@ -19,6 +19,18 @@ EXPECTED = {
     "BLOCKING": "0D",
     "CAPSON": "41",
     "CAPSOFF": "61",
+    "FNK": "4C,49,53",
+    "CNSDFG": "00",
+    "BREAKX0": "0",
+    "ISCNTC0": "0",
+    "BREAKX1": "1",
+    "ISCNTC1": "1,00",
+    "ISCNTC2": "0",
+    "ERAFNK": "00",
+    "DSPFNK": "FF",
+    "FNKSB": "FF",
+    "TOTEXT": "01,FF",
+    "REPEAT": "61,61,61",
 }
 
 

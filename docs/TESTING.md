@@ -86,7 +86,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-expanded-slots` | Expanded selectors, slot tables, all pages, restoration, and returning `CALSLT` incl. page-0 and page-3 different-slot targets |
 | `test-openmsx-mapper` | Boot-time memory-mapper sizing and access to a segment beyond the fixed 64 KiB baseline |
 | `test-openmsx-services` | Interrupt, hook, VDP, mode, console, scrolling, and `CLS` services |
-| `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, and blocking `CHGET` |
+| `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, blocking `CHGET`, Ctrl-STOP break, function-key display flags, text-mode forcing, and auto-repeat |
 | `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, and PSG R15 preservation |
 | `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 without changing the isolated image copy |
 | `test-openmsx-font` | Printable project-owned font coverage |

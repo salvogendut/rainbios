@@ -18,7 +18,7 @@ address,name,kind,status,milestone,notes
 0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs; page-0/page-3 targets follow the CALSLT paths
 0038,KEYINT,jump,partial,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY
 003B,INITIO,jump,stub,M1,
-003E,INIFNK,jump,stub,M3,
+003E,INIFNK,jump,partial,M3,Fills FNKSTR with the ten default function-key strings
 0041,DISSCR,jump,partial,M2,Updates TMS9918 register 1 through the shadowed WRTVDP path
 0044,ENASCR,jump,partial,M2,Updates TMS9918 register 1 through the shadowed WRTVDP path
 0047,WRTVDP,jump,partial,M2,Accepts B=data and C=register; updates MSX1 register shadows 0 through 7 atomically
@@ -58,16 +58,16 @@ address,name,kind,status,milestone,notes
 00AE,PINLIN,jump,stub,M3,
 00B1,INLIN,jump,stub,M3,
 00B4,QINLIN,jump,stub,M3,
-00B7,BREAKX,jump,stub,M3,
-00BA,ISCNTC,jump,stub,M3,
-00BD,CKCNTC,jump,stub,M3,
+00B7,BREAKX,jump,implemented,M3,Tests the physical Ctrl-STOP matrix and returns carry when both keys are held with interrupts inhibited
+00BA,ISCNTC,jump,partial,M3,Consumes a latched INTFLG break; carry and a cleared buffer on a break
+00BD,CKCNTC,jump,partial,M3,Shares ISCNTC's break consumption
 00C0,BEEP,jump,stub,M3,
 00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
 00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking
-00C9,FNKSB,jump,stub,M2,
-00CC,ERAFNK,jump,stub,M2,
-00CF,DSPFNK,jump,stub,M2,
-00D2,TOTEXT,jump,stub,M2,
+00C9,FNKSB,jump,partial,M2,Displays or erases the function keys according to CNSDFG
+00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line
+00CF,DSPFNK,jump,partial,M2,Sets CNSDFG and renders the FNKSTR strings on the bottom line
+00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display
 00D5,GTSTCK,jump,implemented,M3,Cursor keys and joystick ports 1/2 return standard directions 0-8
 00D8,GTTRIG,jump,implemented,M3,Space and both buttons on joystick ports 1/2 return 00h/FFh and preserve non-AF registers
 00DB,GTPAD,jump,partial,M3,Mouse selectors 12-19 implemented; touch panel light pen and explicit trackball detection remain pending

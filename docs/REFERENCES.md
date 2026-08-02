@@ -424,6 +424,28 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   for the sizing probe
 - RainBIOS use: validation fixture only; no firmware code derived
 
+## 2026-08-02 — Keyboard break, auto-repeat, and function-key contracts
+
+- Primary specifications: MSX2 Technical Handbook Appendix 1 (`BREAKX`,
+  `INIFNK`, `FNKSB`, `ERAFNK`, `DSPFNK`, `TOTEXT`) and Appendix 4 work-area
+  list (`INTFLG` at `FC9Bh`, `FNKSTR` at `F87Fh`, `FNKFLG` at `FBCEh`,
+  `CNSDFG`, `CLIKSW`, `SCNCNT`, `REPCNT`, `OLDKEY`, `NEWKEY`)
+- Cross-checks: the MSX Assembly Page system-variables and BIOS references,
+  and the open-source `msxsyssrc` `basekey` source for the `INTFLG` values
+  (03h = Ctrl-STOP, 04h = STOP) and the `CNSDFG`/`FNKFLG` wording
+- Purpose: define M3D's stop/break latch, auto-repeat counters, and function-key
+  display/string behavior
+- RainBIOS use: interface and externally observable behavior facts only; the
+  scan, latch, repeat, and display routines are original RainBIOS work
+
+## 2026-08-02 — openMSX keyboard matrix injection
+
+- Material consulted: openMSX's built-in `keymatrixdown`/`keymatrixup`
+  commands used by the existing keyboard probe
+- Purpose: hold physical matrix rows to exercise STOP/CTRL, auto-repeat holds,
+  and function-key display
+- RainBIOS use: validation harness only
+
 ## 2026-08-02 — GeoBench MSX2 source compatibility cross-check
 
 - Adjacent open-source repository revision:
