@@ -19,6 +19,9 @@ Optional integration suites require:
 - the adjacent open-source 1983 checkout and model catalogue, defaulting to
   `../1983/1983` and `../1983/1983-models.conf`;
 - the sibling BBC BASIC checkout for payload integration targets;
+- the official open-source C-BIOS 0.29a SUB-ROM at
+  `../cbios-0.29a/roms/cbios_sub.rom` for the current V9938 fixture;
+- a local GeoBench `GBMSX.IMG` at `../geobench/QA/GBMSX.IMG`;
 - local cartridge/storage ROMs for explicitly named black-box tests.
 
 External ROMs and generated media are not RainBIOS release artifacts. Their
@@ -84,6 +87,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-services` | Interrupt, hook, VDP, mode, console, scrolling, and `CLS` services |
 | `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, and blocking `CHGET` |
 | `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, and PSG R15 preservation |
+| `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 without changing the isolated image copy |
 | `test-openmsx-font` | Printable project-owned font coverage |
 | `test-openmsx-cls` | Screen 0/1/2/3 clearing and cursor state |
 
@@ -160,6 +164,8 @@ make test-1983 \
 | `test-1983-sd-empty-sunrise` | Empty SD Mapper preserves a second Nextor kernel and Sunrise boot |
 | `test-1983-nextor` | Sunrise `INIT`, `H.RUNC`, `NEXTOR.SYS`, and rendered `A:\>` prompt |
 | `test-1983-nextor-sd` | SD Mapper one-card auto-boot plus dual-card chooser selection and matching Nextor prompts |
+| `test-1983-geobench-sunrise` | Sunrise/Nextor reaches the complete GeoBench Screen 7 desktop |
+| `test-1983-geobench-sd` | SD Mapper/Nextor reaches the complete GeoBench Screen 7 desktop |
 
 The storage tests default to local ROMs under `../1983/ROMS`. Override
 `SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs remain
@@ -200,6 +206,34 @@ These files are user-supplied test inputs, not RainBIOS dependencies or release
 artifacts. RainBIOS neither downloads nor bundles a DOS; users may choose any
 compatible system for their media. Nextor is freely available from its upstream
 project and provides the currently validated integration path.
+
+## GeoBench integration
+
+Run the complete local matrix with:
+
+```sh
+make test-1983-geobench-sunrise test-1983-geobench-sd
+make test-openmsx-geobench-sunrise \
+  OPENMSX='flatpak run org.openmsx.openMSX'
+```
+
+The defaults are `../geobench/QA/GBMSX.IMG`, the Sunrise and SD Mapper ROMs
+under `../1983/ROMS`, and the C-BIOS 0.29a open-source SUB-ROM named above.
+These are local test inputs and are not release artifacts. Both 1983 targets
+mount the image read-only and require R0=`0Ah`, R1=`62h`, `SCRMOD=7`, mapper
+pages `03h,02h,01h,00h`, nonblank VRAM, and the full desktop geometry.
+
+The openMSX target starts from a fresh private copy of the image and proves
+that it remains byte-identical afterward. It requires the same Screen 7 and
+mapper baseline, the GeoBench desktop segment mapped into page 1, and active
+blue/red/white UI output. The sampled PC is recorded for diagnostics but is not
+required to be in page 1 because a capture can legitimately interrupt the
+desktop in a kernel or frame-pacing routine. The target deliberately does not
+enable openMSX's `toggle_vdp_access_test` helper: that diagnostic identifies
+timing-sensitive VDP access sites in the current GeoBench image and changes
+the rendered result. Full desktop-geometry parity in an unmodified openMSX run
+therefore remains a separate compatibility gap; the target is a boot-state
+gate, while the two 1983 targets are desktop-render gates.
 
 ## External cartridge smoke tests
 

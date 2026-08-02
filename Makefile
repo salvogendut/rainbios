@@ -13,6 +13,9 @@ SUNRISE_ROM ?= ../1983/ROMS/Nextor-2.1.1.SunriseIDE.ROM
 SD_MAPPER_ROM ?= ../1983/ROMS/SDM V2 Nextor2.1.1.rom
 NEXTOR_SYS ?= ../1983/DOS/NEXTOR.SYS
 NEXTOR_COMMAND ?= ../1983/DOS/COMMAND2.COM
+CBIOS_SUB_ROM ?= ../cbios-0.29a/roms/cbios_sub.rom
+GEOBENCH_IMAGE ?= ../geobench/QA/GBMSX.IMG
+OPENMSX_GEOBENCH_CAPTURE_TIME ?= 15
 
 BUILD_DIR := build
 MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
@@ -174,6 +177,13 @@ OPENMSX_EXTERNAL_ARKANO_SCREEN := \
 	$(OPENMSX_ROOT)/external-arkano.png
 OPENMSX_EXTERNAL_DIAGNOSTICS_SCREEN := \
 	$(OPENMSX_ROOT)/external-diagnostics.png
+OPENMSX_GEOBENCH_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_GeoBench.xml
+OPENMSX_GEOBENCH_REPORT := $(OPENMSX_M1_REPORT_DIR)/geobench-sunrise.txt
+OPENMSX_GEOBENCH_SCREEN := $(OPENMSX_ROOT)/geobench-sunrise.png
+OPENMSX_SUNRISE_SYSTEM_ROM := \
+	$(OPENMSX_SHARE)/systemroms/Nextor-2.1.1.SunriseIDE.ROM
+OPENMSX_GEOBENCH_IMAGE := $(OPENMSX_ROOT)/media/geobench-sunrise.img
 EMULATOR_1983_DIR := $(BUILD_DIR)/1983
 EMULATOR_1983_SCREEN := $(EMULATOR_1983_DIR)/rainbios_logo.ppm
 EMULATOR_1983_EXPANDED_SCREEN := \
@@ -228,6 +238,10 @@ EMULATOR_1983_NEXTOR_SD_B_SCREEN := \
 	$(EMULATOR_1983_DIR)/nextor-sd-b-prompt.ppm
 EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN := \
 	$(EMULATOR_1983_DIR)/nextor-sd-dual-prompt.ppm
+EMULATOR_1983_GEOBENCH_SUNRISE_SCREEN := \
+	$(EMULATOR_1983_DIR)/geobench-sunrise.ppm
+EMULATOR_1983_GEOBENCH_SD_SCREEN := \
+	$(EMULATOR_1983_DIR)/geobench-sd.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -242,6 +256,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots \
 	test-openmsx-services test-openmsx-keyboard test-openmsx-controller \
+	test-openmsx-geobench-sunrise \
 	test-openmsx-font \
 	test-openmsx-cls \
 	test-openmsx-tape \
@@ -265,6 +280,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-1983-sd-boot test-1983-sd-menu test-1983-sd-empty-floppy \
 	test-1983-sd-empty-sunrise \
 	test-1983-nextor test-1983-nextor-sd \
+	test-1983-geobench-sunrise test-1983-geobench-sd \
 	run-1983-ide-boot run-1983-sd-boot run-1983-nextor \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
@@ -599,6 +615,20 @@ test-openmsx-m1: $(OPENMSX_M1_MACHINES) $(OPENMSX_M1_SPLIT_MACHINE) \
 		--expanded-primary 0 --expanded-primary 3 \
 		--selector 0xA0 --bios-slot 0x80 "$$report"
 
+$(OPENMSX_GEOBENCH_MACHINE): \
+		tests/openmsx/RainBIOS_GeoBench.xml.in $(MSX1_ROM) $(CBIOS_SUB_ROM)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CBIOS_SUB_ROM@|$(abspath $(CBIOS_SUB_ROM))|' $< > $@
+
+$(OPENMSX_SUNRISE_SYSTEM_ROM): $(SUNRISE_ROM)
+	mkdir -p $(@D)
+	cp "$<" "$@"
+
+$(OPENMSX_GEOBENCH_IMAGE): $(GEOBENCH_IMAGE)
+	mkdir -p $(@D)
+	cp "$<" "$@"
+
 test-openmsx-slots: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
@@ -649,6 +679,20 @@ test-openmsx-controller: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set controller_output {$(abspath $(OPENMSX_CONTROLLER_REPORT))}" \
 		-script "$(abspath tests/openmsx/controller_probe.tcl)"
 	$(PYTHON) tools/check_controller_probe.py $(OPENMSX_CONTROLLER_REPORT)
+
+test-openmsx-geobench-sunrise: $(OPENMSX_GEOBENCH_MACHINE) \
+		$(OPENMSX_SUNRISE_SYSTEM_ROM) $(OPENMSX_GEOBENCH_IMAGE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	cp "$(GEOBENCH_IMAGE)" "$(OPENMSX_GEOBENCH_IMAGE)"
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_GeoBench -ext SunriseIDE_Nextor \
+		-hda "$(abspath $(OPENMSX_GEOBENCH_IMAGE))" \
+		-command "set geobench_output {$(abspath $(OPENMSX_GEOBENCH_REPORT))}; set geobench_screenshot {$(abspath $(OPENMSX_GEOBENCH_SCREEN))}; set geobench_capture_time $(OPENMSX_GEOBENCH_CAPTURE_TIME)" \
+		-script "$(abspath tests/openmsx/geobench_probe.tcl)"
+	cmp "$(GEOBENCH_IMAGE)" "$(OPENMSX_GEOBENCH_IMAGE)"
+	$(PYTHON) tools/check_geobench.py --boot-state $(OPENMSX_GEOBENCH_REPORT) \
+		$(OPENMSX_GEOBENCH_SCREEN)
 
 test-openmsx-font: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -1199,6 +1243,28 @@ test-1983-nextor-sd: $(MSX1_ROM) $(NEXTOR_IMAGE)
 		--screenshot "$(EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN)"
 	$(PYTHON) tools/check_nextor_screenshot.py --sd-card B --sd-dual \
 		$(EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN)
+
+test-1983-geobench-sunrise: $(MSX1_ROM)
+	test -f "$(CBIOS_SUB_ROM)"
+	test -f "$(SUNRISE_ROM)"
+	test -f "$(GEOBENCH_IMAGE)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_geobench.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --subrom "$(CBIOS_SUB_ROM)" \
+		--sunrise-rom "$(SUNRISE_ROM)" --image "$(GEOBENCH_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_GEOBENCH_SUNRISE_SCREEN)"
+
+test-1983-geobench-sd: $(MSX1_ROM)
+	test -f "$(CBIOS_SUB_ROM)"
+	test -f "$(SD_MAPPER_ROM)"
+	test -f "$(GEOBENCH_IMAGE)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_geobench.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --subrom "$(CBIOS_SUB_ROM)" \
+		--sd-mapper-rom "$(SD_MAPPER_ROM)" --image "$(GEOBENCH_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_GEOBENCH_SD_SCREEN)"
 
 run-1983-ide-boot: \
 		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(IDE_BOOT_IMAGE)

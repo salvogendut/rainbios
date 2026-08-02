@@ -105,6 +105,12 @@ and RainBIOS in openMSX; 1983 independently confirms the rendered multicolour
 frame. The interrupt path now preserves both normal and shadow Z80 registers
 so cross-slot `H.TIMI` hooks cannot corrupt the interpreter.
 
+M2C adds partial `CHGCLR`, `SETMLT`, and `INIMLT` implementations. Screen 3
+publishes its table bases, programs VDP R0-R6, hides sprites, initializes the
+name and pattern planes, and applies the selected colors. A keyboard-driven
+1983 diagnostics check verifies the resulting multicolor VDP state and a
+nonblank rendered frame.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
@@ -217,6 +223,8 @@ validation remain pending; M7 owns the implemented boot-sector paths.
 
 ## M7 — Disk boot
 
+Status: in progress.
+
 The production NMS 8250 disk extension now installs a `H.RUNC` bootstrap hook.
 At cold boot RainBIOS selects the disk device and the hook reads the boot
 sector into `C000h`, validates the MSX-DOS `EBh`/`E9h` signature, and enters the
@@ -247,6 +255,17 @@ fallback. These paths also cover the pre-DOS stack, the mapper-compatible
 expanded `CALSLT` frame, and Nextor's direct use of the original-BIOS keyboard
 decoder at `0D89h`.
 
+The GeoBench application layer is now an explicit three-target integration
+matrix. Sunrise IDE and SD Mapper V2 in 1983 both require the complete Screen 7
+desktop with R0=`0Ah`, R1=`62h`, `SCRMOD=7`, and mapper pages
+`03h,02h,01h,00h`. The openMSX Sunrise target independently requires the
+desktop segment to be mapped into page 1 with the same Screen 7 baseline and
+active UI output, using an isolated image copy that must remain unchanged. The
+sampled PC is diagnostic only because it can transiently be in a kernel or
+frame-pacing routine. The current GeoBench image still performs timing-sensitive
+VDP accesses in an unmodified openMSX run, so full openMSX desktop-geometry
+parity remains open and is not claimed by that boot-state gate.
+
 RainBIOS provides the firmware interfaces needed by disk systems; it will not
 bundle or prescribe a DOS. Users supply the system of their choice, while the
 test matrix uses the freely available Nextor as its primary compatibility
@@ -258,6 +277,8 @@ target.
   `ENAKRN` entry) once a real kernel consumes them;
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
+- close the timing-sensitive GeoBench/openMSX rendering gap and promote that
+  boot-state test to the same full-desktop geometry gate used in 1983;
 - filesystem services, formatting, floppy drive B, other controllers, writable
   media, and real-hardware timing validation remain pending.
 

@@ -48,7 +48,7 @@ The main BIOS currently provides:
   of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`;
-- partial Screen 0/1/2 setup, a guarded register-only V9938 Screen 7 handoff,
+- partial Screen 0/1/2/3 setup, a guarded register-only V9938 Screen 7 handoff,
   text and Graphics II console output, scrolling, VRAM primitives, and
   project-owned printable glyphs;
 - international keyboard scanning and partial character-input services;
@@ -139,10 +139,18 @@ pending.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 
-## Nextor SD Mapper GeoBench Boot (Resolved)
+## GeoBench Boot Status
 
-GeoBench (`GBMSX.IMG`) now reaches its Screen 7 desktop under RainBIOS + SD
-Mapper V2 in the 1983 emulator.
+GeoBench (`GBMSX.IMG`) is user-confirmed to boot under RainBIOS through both
+Sunrise IDE and SD Mapper V2. That claim now has three explicit integration
+targets instead of relying on an ordinary Nextor prompt. The two 1983 targets
+require the full rendered Screen 7 desktop through Sunrise and SD Mapper. The
+openMSX Sunrise target requires GeoBench's desktop segment to be active in
+page 1 with Screen 7 and visible UI output. The
+instantaneous PC is diagnostic only because capture can occur in a kernel or
+frame-pacing routine. The target does not yet claim the same exact desktop
+geometry because the current GeoBench image contains timing-sensitive VDP
+access sites under openMSX.
 
 ### Fixed and verified
 
@@ -171,13 +179,26 @@ Mapper V2 in the 1983 emulator.
   made the GeoBench bitmap visible but broke the ordinary Nextor text prompt by
   clearing M1. The guarded `CHGMOD 7` path now establishes R1 only when Screen 7
   is actually requested.
-- **Verification**: an uninstrumented 2,501-frame run with the adjacent 1983
-  binary (`git 58e3590`) and local GeoBench image reports `vdp_r0=0A`,
-  `vdp_r1=62`, mapper `03,02,01,00`, and renders the GeoBench
-  desktop. The final PC may be `81F2h` because the desktop intentionally waits
-  there for the next V9938 retrace edge.
+- **Verification**: `test-1983-geobench-sunrise` and
+  `test-1983-geobench-sd` run the adjacent 1983 binary (`git 58e3590`) for
+  2,502 frames, report R0=`0Ah`, R1=`62h`, `SCRMOD=7`, mapper
+  `03h,02h,01h,00h`, and require the complete GeoBench desktop. The Sunrise
+  run ends with slot `FCh`; the SD Mapper run ends with slot `A8h`.
+- **Independent openMSX boot gate**: `test-openmsx-geobench-sunrise` uses a
+  C-BIOS 0.29a open-source SUB-ROM, a 512 KiB mapper, the standard
+  `SunriseIDE_Nextor` extension, and a fresh private copy of `GBMSX.IMG`. It
+  observes the desktop segment mapped into page 1, R0=`0Ah`, R1=`62h`,
+  `SCRMOD=7`, raw mapper readback `E3h,E2h,E1h,E0h`, active UI colours, and a
+  byte-identical image after exit. The sampled PC may be in the desktop or a
+  transient kernel/frame-pacing path and is retained as diagnostic output.
+- **openMSX visual boundary**: enabling openMSX's
+  `toggle_vdp_access_test` diagnostic identifies multiple too-fast VDP I/O
+  sites in the current GeoBench binary and changes its rendered result. The
+  committed test does not enable that helper. Full desktop-geometry parity in
+  an unmodified openMSX run remains a real follow-up, not a hidden relaxation
+  of the 1983 screenshot gate.
 
-### GeoBench pointer input follow-up
+### GeoBench pointer input status
 
 GeoBench's open-source MSX input layer calls `GTSTCK 0` for cursor keys,
 `GTSTCK 1` for joystick port 1, `GTTRIG 0/1` for activation, and, when mouse
@@ -185,7 +206,8 @@ input is enabled, `GTPAD 12/13/14` for signed relative motion. The old neutral
 stubs therefore explained why every pointer path was immobile even though the
 desktop rendered correctly.
 
-Branch `issue-18-mouse-support` now provides those public contracts. The
+PR #19 merged the `issue-18-mouse-support` implementation into `main`, which
+now provides those public contracts. The
 openMSX controller probe verifies direction values 0-8, an active connector,
 Space, neutral triggers, both mouse request/cache groups, the openMSX
 `01h,01h` empty-port coordinate signature, strict R7 port directions, and
@@ -197,12 +219,12 @@ entry enables interrupts on return while cold boot uses a private DI body. It
 remains ABI-partial because PLAY statement work-area initialization is not part
 of this issue.
 
-Current verification on this branch: 139 host tests pass; the openMSX
+Current verification on `main`: 148 host tests pass; the openMSX
 controller, keyboard, services, and startup-audio probes pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
-and MSX component tests pass; and an uninstrumented 2,502-frame GeoBench run
-still renders the Screen 7 desktop with R0=`0Ah`, R1=`62h`, and mapper pages
-`03,02,01,00`. The automated openMSX mouse case verifies idle requests and
+and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
+render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.
+The automated openMSX mouse case verifies idle requests and
 button lines; deterministic non-zero host-motion injection remains a test
 harness gap rather than a committed test. A separate temporary focused-X11
 endpoint probe injected host motion `(+80,-40)` into openMSX's mouse pluggable
@@ -285,7 +307,7 @@ See `tests/openmsx/disk_fault_probe.tcl`.
 
 ## Build And Validation
 
-Core requirements are GNU Make, Python 3.9+, Pillow 10+, and RASM 3.x.
+Core requirements are GNU Make, Python 3.10+, Pillow 10+, and RASM 3.x.
 
 Run host validation:
 
@@ -313,6 +335,8 @@ make test-1983-sd-empty-floppy
 make test-1983-sd-empty-sunrise
 make test-1983-nextor
 make test-1983-nextor-sd
+make test-1983-geobench-sunrise
+make test-1983-geobench-sd
 ```
 
 The default emulator paths expect the adjacent open-source 1983 checkout:
@@ -327,8 +351,9 @@ The tested 1983 revision is recorded in `docs/REFERENCES.md`.
 openMSX is installed as a Flatpak on the current workstation. Use:
 
 ```sh
-make test-openmsx-slots test-openmsx-expanded-slots test-openmsx-services \
-  test-openmsx-disk-fault \
+make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
+  test-openmsx-services test-openmsx-keyboard test-openmsx-controller \
+  test-openmsx-disk-fault test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
@@ -361,6 +386,15 @@ is:
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
+
+The GeoBench storage boot matrix is now automated. The next emulator
+compatibility slice is to close the narrower openMSX rendering gap: reproduce
+the current image's timing-sensitive VDP writes without enabling openMSX's
+diagnostic helper, correct the responsible public-interface timing in the
+appropriate open-source component, and then promote
+`test-openmsx-geobench-sunrise` from a boot-state gate to the same exact
+desktop-geometry gate used by both 1983 targets. Do not weaken the 1983 gates
+or treat a timing-altered diagnostic run as acceptance evidence.
 
 The immediate floppy priority is real NMS 8250-compatible hardware validation.
 `docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ
@@ -401,6 +435,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
 | `docs/abi/main-bios.csv` | Truthful fixed-entry implementation status |
+| `docs/abi/controllers.md` | Keyboard, joystick, trigger, and mouse contracts |
 | `docs/abi/nms8250-disk-rom.md` | Disk component ABI and limitations |
 | `docs/ROADMAP.md` | Authoritative milestone plan |
 | `docs/DEVELOPMENT_POLICY.md` | Source-isolation and provenance rules |
@@ -409,6 +444,9 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/make_test_disk.py` | Deterministic raw DSK fixture generator |
 | `tools/make_ide_image.py` | Deterministic raw IDE boot fixture generator |
 | `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
+| `tools/check_controller_probe.py` | Controller and mouse report validator |
+| `tools/check_geobench.py` | GeoBench runtime, mapper, Screen 7, and rendered-output validator |
+| `tools/run_1983_geobench.py` | Shared Sunrise/SD Mapper GeoBench runner for 1983 |
 | `tools/run_1983_disk_baseline.py` | Symbol-based disk integration runner |
 | `tools/run_1983_disk_boot.py` | Production/fallback disk runner, including mixed SD Mapper configurations |
 | `tools/run_1983_ide_boot.py` | Symbol-based Sunrise IDE integration runner |
@@ -421,6 +459,9 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tests/cartridges/disk_production_init_input.asm` | Production hook/drive registration probe |
 | `tests/cartridges/disk_fault_rom.asm` | Controller fault-injection cartridge |
 | `tests/openmsx/disk_fault_probe.tcl` | openMSX WD2793 controller test double |
+| `tests/openmsx/controller_probe.tcl` | Public controller and mouse BIOS probe |
+| `tests/openmsx/RainBIOS_GeoBench.xml.in` | Open-source V9938/mapper GeoBench machine fixture |
+| `tests/openmsx/geobench_probe.tcl` | openMSX GeoBench state and screenshot probe |
 
 ## Engineering Notes
 
@@ -428,9 +469,8 @@ Broader project work can instead return to the unfinished M1-M4 items in
   test callbacks.
 - Use `apply_patch` for manual edits and preserve unrelated worktree changes.
 - Keep generated artifacts under `build/`; do not commit ROMs, DSK images,
-  screenshots, or symbol files.
-- `rainbios-old.png` is an untracked local backup and must not be committed or
-  modified.
+  generated emulator captures, or symbol files. Curated screenshots may live
+  under `screenshots/` when their provenance and license sidecars are tracked.
 - Update ABI and roadmap claims whenever behavior changes.
 - Treat emulator implementation details as validation inputs, not code to copy.
 - Do not add backward-compatibility behavior without a concrete shipped or
