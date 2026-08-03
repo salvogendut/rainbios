@@ -112,3 +112,15 @@ over a clean state.
 Dead-key+Shift is not yet distinguished (each accent glyph maps to one accent
 type), Code lock, and CAPS behavior beyond the implemented state/LED remain
 future compatibility work.
+
+## Text cursor movement (M2)
+
+`RIGHTC` (`00FCh`) and `LEFTC` (`00FFh`) move the cursor one column right or
+left within `CSRX`, stopping at the line end (`LINLEN`) and column one.
+`UPC` (`0102h`) and `DOWNC` (`0108h`) move `CSRY` one row, stopping at the
+top and at the bottom row (`CRTCNT`). `TUPC` (`0105h`) and `TDOWNC` (`010Bh`)
+behave the same but scroll the text when the cursor is already on the
+boundary row: `TUPC` scrolls the display down one row and `TDOWNC` scrolls
+it up one row, using the same Screen 0/1/2 name, pattern, and colour layouts
+as the wrap scroll in `CHPUT`. The cursor-move probe verifies each move, both
+edges, and both scrolling directions against the seeded name table.

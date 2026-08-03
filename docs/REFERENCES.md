@@ -474,6 +474,19 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the editing
   and work-area initialization routines are original RainBIOS work
 
+## 2026-08-03 — Text cursor movement
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`RIGHTC`,
+  `LEFTC`, `UPC`, `TUPC`, `DOWNC`, `TDOWNC`), which describe the plain and
+  scrolling cursor moves and the edge behavior at the start/end of the line
+  and the top/bottom of the text screen
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries
+- Purpose: define M2D's cursor work-variable updates (`CSRX`/`CSRY`, with
+  `LINLEN` and `CRTCNT` as the bounds) and the one-row scroll of `TUPC`/
+  `TDOWNC` at the boundary rows
+- RainBIOS use: interface and observable behavior facts only; the cursor
+  updates and the Screen 0/1/2 scroll-down helper are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
