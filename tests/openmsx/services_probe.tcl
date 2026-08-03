@@ -242,6 +242,18 @@ proc motor_stopped {} {
             [peek 0xF3BA] [peek 0xF3BB] \
             [expr {[debug read "ioports" 0xAA] & 0x10}]
     ]
+    # Disk motor-off timer: arm it and let the IM 1 handler clear it.
+    poke 0xF3BE 1
+    poke 0xF3BC 1
+    poke 0xF3BD 10
+    after time 0.23 disk_motor_expired
+}
+
+proc disk_motor_expired {} {
+    puts $::services_handle [
+        format "DISKMOTOR=%02X,%02X" \
+            [peek 0xF3BC] [peek 0xF3BD]
+    ]
     close $::services_handle
     exit
 }

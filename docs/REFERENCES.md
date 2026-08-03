@@ -629,6 +629,19 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   RainBIOS behavior (the standard BIOS does not snapshot controllers or
   auto-stop the cassette motor)
 
+## 2026-08-03 — Floppy motor-off timer in the IM 1 handler
+
+- Primary specification: the NMS 8250 WD2793 memory window
+  (`FDC_DRIVE` at `7FFDh`, motor-on via the drive register bit) and the
+  `disk_motor_off` write already used by the shared disk driver
+- Cross-check: the RainBIOS disk driver (`src/disk_nms8250_driver.asm`),
+  which turns the motor off by writing zero to the FDC drive register
+- Purpose: define M1L's `DISK_MOTOR_TIMER`/`DISK_PRESENT` work bytes and the
+  IM 1 handler's motor-off write at timer expiry, plus the `disk_motor_arm`
+  helper for the disk ROM
+- RainBIOS use: the FDC register facts follow the hardware window; the
+  timer service and arm helper are original RainBIOS behavior
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

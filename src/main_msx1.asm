@@ -40,6 +40,11 @@ CONTROLLER_PORT2 equ #f3b9
 CAS_MOTOR       equ #f3ba
 CAS_MOTOR_TIMER equ #f3bb
 CAS_MOTOR_FRAMES equ 120
+DISK_MOTOR      equ #f3bc
+DISK_MOTOR_TIMER equ #f3bd
+DISK_PRESENT    equ #f3be
+DISK_MOTOR_FRAMES equ 120
+FDC_DRIVE       equ #7ffd
 MLTNAM          equ #f3d1
 MLTCOL          equ #f3d3
 MLTCGP          equ #f3d5
@@ -581,6 +586,9 @@ bootstrap_empty_hook:
                 ld (SD_FLAGS),a
                 ld (CAS_MOTOR),a
                 ld (CAS_MOTOR_TIMER),a
+                ld (DISK_MOTOR),a
+                ld (DISK_MOTOR_TIMER),a
+                ld (DISK_PRESENT),a
                 ld hl,0
                 ld (PAYLOAD_ENTRY),hl
                 ld (PAYLOAD_RAM_END),hl
@@ -1263,6 +1271,7 @@ keyint:
                 call keyboard_click_update
                 call controller_capture
                 call cassette_motor_tick
+                call disk_motor_tick
                 call HOOKBASE+5                  ; H.TIMI
                 pop af
                 ld (STATFL),a
@@ -3353,12 +3362,16 @@ cold_boot_init_disk_impl:
                 ld a,(H_RUNC)
                 cp #c9
                 ret z
-                call cold_boot_select_sd_card
-                jr nc,cold_boot_init_disk_kernel
-                call cold_boot_phyd_boot
-                ret
+                 call cold_boot_select_sd_card
+                 jr nc,cold_boot_init_disk_kernel
+                 ld a,1
+                 ld (DISK_PRESENT),a
+                 call cold_boot_phyd_boot
+                 ret
 cold_boot_init_disk_kernel:
-                ld a,(DEVICE)
+                 ld a,1
+                 ld (DISK_PRESENT),a
+                 ld a,(DEVICE)
                 or a
                 jr nz,cold_boot_init_disk_device_ready
                 inc a
@@ -5113,6 +5126,40 @@ cassette_motor_stop:
                 ld (CAS_MOTOR),a
                 ld a,#09
                 out (PPI_CONTROL),a
+                ret
+
+; Auto-stop the floppy motor about two seconds after the last disk access.
+; The NMS 8250 disk ROM arms the timer through disk_motor_arm; when it expires
+; the handler writes the motor-off value to the FDC drive register, guarded by
+; DISK_PRESENT so the write only happens on a machine whose disk ROM owns page
+; 1's FDC window.
+disk_motor_tick:
+                ld a,(DISK_MOTOR)
+                or a
+                ret z
+                ld a,(DISK_MOTOR_TIMER)
+                or a
+                jr z,disk_motor_stop
+                dec a
+                ld (DISK_MOTOR_TIMER),a
+                ret
+disk_motor_stop:
+                xor a
+                ld (DISK_MOTOR),a
+                ld a,(DISK_PRESENT)
+                or a
+                ret z
+                xor a
+                ld (FDC_DRIVE),a
+                ret
+
+; Arm the floppy motor-off timer. Callers (the NMS 8250 disk ROM) invoke this
+; after starting the motor so the IM 1 handler stops it after the timeout.
+disk_motor_arm:
+                ld a,1
+                ld (DISK_MOTOR),a
+                ld a,DISK_MOTOR_FRAMES
+                ld (DISK_MOTOR_TIMER),a
                 ret
 
 ; Cursor keys and both joystick connectors use the standard 0=center,
