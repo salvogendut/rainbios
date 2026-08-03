@@ -525,6 +525,17 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the sprite
   routines and the conformance probe are original RainBIOS work
 
+## 2026-08-03 — GRPPRT graphics character print
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`GRPPRT`,
+  008Dh), which defines printing a character on the graphic screen with the
+  character code in A and no documented register changes
+- Cross-check: the MSX Assembly Page BIOS reference for the same entry
+- Purpose: define M2H's Screen 2 character print (project font, FORCLR colour
+  cell, one 8-pixel cell cursor advance, CR/LF cursor movement)
+- RainBIOS use: interface and observable behavior facts only; the print
+  routine and the conformance probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

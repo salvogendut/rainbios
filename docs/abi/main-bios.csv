@@ -44,7 +44,7 @@ address,name,kind,status,milestone,notes
 0084,CALPAT,jump,implemented,M2,Returns the VRAM pattern address for a sprite: PATBAS plus A*8 (8x8) or (A&0FCh)*8 (16x16)
 0087,CALATR,jump,implemented,M2,Returns the VRAM attribute address for a sprite: ATRBAS plus A*4
 008A,GSPSIZ,jump,implemented,M2,Selects 8x8/16x16 sprites (A=0/1), updates R1 and its shadow, and returns the byte size 8 or 32 with carry set for 16x16
-008D,GRPPRT,jump,stub,M2,
+008D,GRPPRT,jump,implemented,M2,Prints the character in A on the graphic screen at the cursor using the project font and FORCLR, then advances the cursor by one 8-pixel cell; CR/LF move the cursor
 0090,GICINI,jump,implemented,M3,Initializes PSG R0-R15 and the PLAY statement work area (QUEUES points to QUETAB, FRCNEW=255, voice static data and queues cleared)
 0093,WRTPSG,jump,partial,M3,Needs register-clobber tests
 0096,RDPSG,jump,partial,M3,Needs register-clobber tests
