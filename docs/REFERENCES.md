@@ -559,6 +559,17 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   the `GLYPHS_5X7` header); the character-code assignments follow the
   published MSX international set
 
+## 2026-08-03 — TMS9918 VDP-state initialization
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`DISSCR`,
+  `ENASCR`, `WRTVDP`, `INITXT`, `INIT32`, `INITGRP`) and the TMS9918 R0-R7
+  register layout (display-enable bit 6, mode bits, table bases)
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries
+- Purpose: define M2K's boot VDP state, shadow/live register agreement, and
+  the per-mode table bases and mode bytes the VDP-state probe asserts
+- RainBIOS use: interface and observable behavior facts only; the register
+  programming and the conformance probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

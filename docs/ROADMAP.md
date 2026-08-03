@@ -178,6 +178,15 @@ symbols. The font probe dumps a sample of the accented glyphs from the live
 pattern table and the checker compares them to the built font; host tests lock
 the glyph bytes and provenance.
 
+M2K verifies the TMS9918-compatible VDP-state initialization. The boot
+publishes all eight register shadows and a consistent Graphics II state (the
+live registers match the shadows, and the name/pattern/colour/sprite bases
+plus `SCRMOD`/`LINLEN` are published); `DISSCR`/`ENASCR` toggle the R1 display
+bit through the shadowed path, `WRTVDP` keeps the shadows in sync, and
+`INITXT`/`INIT32`/`INITGRP` each end with live registers equal to their
+shadows and the correct table bases and mode bytes. The VDP-state probe locks
+in the boot, display-toggle, shadow-write, and per-mode states.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
