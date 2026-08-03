@@ -547,6 +547,18 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the control
   handlers and the conformance probe are original RainBIOS work
 
+## 2026-08-03 — MSX international character set
+
+- Primary specification: Wikipedia "MSX character set" international variant
+  table, giving the character for each byte code 0x80-0xA3
+- Cross-check: the MSX2 Technical Handbook Appendix 4 work-area listing and
+  the RainBIOS dead-key table, which emit the same lowercase accented codes
+- Purpose: define M2J's font glyphs for all 36 international characters,
+  including the 21 lowercase forms the dead-key path produces
+- RainBIOS use: the glyph shapes are original project BSD-3-Clause work (per
+  the `GLYPHS_5X7` header); the character-code assignments follow the
+  published MSX international set
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
