@@ -290,6 +290,37 @@ proc qinlin_done {} {
 
 proc pinlin_break_done {} {
     record_keyboard [format "PINLINBRK=%02X,%d" [reg B] [expr {[reg F] & 1}]]
+    # The Ctrl-STOP keys release at +0.10; wait for them so the next input
+    # does not break immediately.
+    after time 0.20 pinlin_mid
+}
+
+proc pinlin_mid {} {
+    # M3 mid-line editing: "abcd" + left,left + X (insert) + Backspace
+    # (remove X) + Delete (remove c) + Home + Z (insert at start) + Return
+    # -> "Zabd"
+    seed_buffer {0x61 0x62 0x63 0x64 0x1d 0x1d 0x58 0x08 0x7f 0x0b 0x5a 0x0d}
+    invoke_bios 0x00AE pinlin_mid_done
+}
+
+proc pinlin_mid_done {} {
+    record_keyboard [format "PINLINMID=%02X,%d,%02X,%02X,%02X,%02X" \
+        [reg B] [expr {[reg F] & 1}] \
+        [peek 0xF55E] [peek 0xF55F] [peek 0xF560] [peek 0xF561]]
+    # PINLIN "ab" + right + "X" + Return -> "abX" (right at the end appends)
+    seed_buffer {0x61 0x62 0x1c 0x58 0x0d}
+    invoke_bios 0x00AE pinlin_right_done
+}
+
+proc pinlin_right_done {} {
+    record_keyboard [format "PINLINRIGHT=%02X,%d,%02X,%02X,%02X" \
+        [reg B] [expr {[reg F] & 1}] \
+        [peek 0xF55E] [peek 0xF55F] [peek 0xF560]]
+    # Reset the buffer pointers so the dead-key output starts at FBF0 again.
+    invoke_bios 0x0156 pinlin_right_killed
+}
+
+proc pinlin_right_killed {} {
     invoke_bios 0x00C0 beep_done
 }
 
@@ -325,7 +356,7 @@ proc deadkey_done {} {
     # for a few frames, then low.
     poke 0xF3DB 1
     keymatrixdown 2 0x40
-    after time 0.01 click_high
+    after time 0.03 click_high
 }
 
 proc click_high {} {
@@ -338,6 +369,19 @@ proc click_low {} {
     keymatrixup 2 0x40
     record_keyboard [format "CLICK2=%02X" \
         [expr {[debug read "ioports" 0xAA] & 0xFF}]]
+    # M3 GICINI: after the PSG registers, the PLAY statement work area is
+    # initialized (QUEUES -> QUETAB, interpreter free, counters and voice
+    # queues cleared).
+    invoke_bios 0x0090 gicini_done
+}
+
+proc gicini_done {} {
+    record_keyboard [
+        format "GICINI=%04X,%02X,%02X,%02X,%02X,%02X" \
+            [word_at 0xF3F3] [peek 0xF3F5] \
+            [peek 0xFB3F] [peek 0xFB40] \
+            [peek 0xFB41] [peek 0xF975]
+    ]
     exit
 }
 

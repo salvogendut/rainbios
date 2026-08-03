@@ -35,10 +35,13 @@ EXPECTED = {
     "PINLINBS": "02,61,63",
     "QINLIN": "03,0,61,62,63,01",
     "PINLINBRK": "00,1",
+    "PINLINMID": "04,0,5A,61,62,64",
+    "PINLINRIGHT": "03,0,61,62,58",
     "BEEP": "OK",
     "DEADKEY": "85,82,62,79",
     "CLICK1": "F8",
     "CLICK2": "78",
+    "GICINI": "F959,FF,00,00,00,00",
 }
 
 

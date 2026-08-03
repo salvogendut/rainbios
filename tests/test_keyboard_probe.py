@@ -143,6 +143,34 @@ class KeyboardProbeTests(unittest.TestCase):
                 self.make_report().replace("CLICK2=78", "CLICK2=F8")
             )
 
+    def test_mid_line_edit_must_keep_the_right_chars(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PINLINMID"):
+            validate_report(
+                self.make_report().replace("PINLINMID=04,0,5A,61,62,64",
+                                           "PINLINMID=04,0,5A,62,58,64")
+            )
+
+    def test_cursor_right_append_must_keep_the_order(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PINLINRIGHT"):
+            validate_report(
+                self.make_report().replace("PINLINRIGHT=03,0,61,62,58",
+                                           "PINLINRIGHT=03,0,61,58,62")
+            )
+
+    def test_gicini_must_point_queues_at_the_queue_table(self) -> None:
+        with self.assertRaisesRegex(ValueError, "GICINI"):
+            validate_report(
+                self.make_report().replace("GICINI=F959,FF,00,00,00,00",
+                                           "GICINI=F95B,FF,00,00,00,00")
+            )
+
+    def test_gicini_must_clear_the_music_work_area(self) -> None:
+        with self.assertRaisesRegex(ValueError, "GICINI"):
+            validate_report(
+                self.make_report().replace("GICINI=F959,FF,00,00,00,00",
+                                           "GICINI=F959,FF,01,00,00,00")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

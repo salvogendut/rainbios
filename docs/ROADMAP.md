@@ -172,9 +172,9 @@ the display-flag transitions, text-mode forcing, and auto-repeat.
 M3E implements the prompt/line-input path. `PINLIN` reads keyboard input into
 `BUFFER` until Return or a Ctrl-STOP break, returning `HL = BUFFER-1`, the
 character count in `B`, and carry on a break; `INLIN` adds the `AUTFLG` echo
-suppression and `QINLIN` prints the `? ` prompt. Backspace and Delete remove
-the last character. `BEEP` emits a short PSG tone. The keyboard probe covers
-plain, backspace-edited, prompted, and break-terminated lines plus the beep.
+suppression and `QINLIN` prints the `? ` prompt. `BEEP` emits a short PSG tone.
+The keyboard probe covers plain, backspace-edited, prompted, and
+break-terminated lines plus the beep.
 
 M3F implements international dead-key input. The accent glyphs latch
 `DEADST` (grave, acute, circumflex, umlaut) and the next a/e/i/o/u/y combines
@@ -189,8 +189,16 @@ the PSG port-A pin (0 with no paddle), restoring R15. The keyboard probe
 checks the click bit, and the controller probe checks the no-paddle neutral
 result.
 
-- complete the remaining editing-key behavior (mid-line cursor editing);
-- complete `GICINI` PLAY statement work-area initialization;
+M3H completes the editing-key behavior inside `PINLIN`/`INLIN`: the cursor
+moves left and right, Home returns to the start, typing inserts at the cursor,
+Backspace removes the character before it, and Delete removes the character
+under it, redrawing the line from its saved start position after each edit.
+`GICINI` now initializes the full PLAY statement work area in addition to the
+PSG hardware: `QUEUES` points at the queue table, `FRCNEW` is 255, and the
+voice static data and the three voice queues are cleared (`MUSICF`/`PLYCNT`
+zero). The keyboard probe covers the mid-line insert/Backspace/Delete/Home
+sequence, cursor-right append, and the initialized `GICINI` work area.
+
 - implement touch-panel, light-pen, and trackball-detection calls;
 - implement or explicitly classify printer and remaining basic-device calls;
 - make interrupt frequency and locale selectable build properties.

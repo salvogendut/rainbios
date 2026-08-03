@@ -48,9 +48,11 @@ PUTPNT          equ #f3f8
 GETPNT          equ #f3fa
 CLIKSW          equ #f3db
 CLICKCNT        equ #f559
+INLIN_CNT       equ #f558
 CNSDFG          equ #f3de
 BUFFER          equ #f55e
 INLIN_START_COL equ #f55c
+INLIN_START_ROW equ #f55d
 INLIN_TMP       equ #f55b
 DEADKEY_TMP     equ #f55a
 AUTFLG          equ #f6aa
@@ -110,6 +112,14 @@ NEXTOR_VERSION  equ #f318
 PTRFIL          equ #f864
 VOICEN          equ #fb38
 VCBA            equ #fb41
+QUEUES          equ #f3f3
+FRCNEW          equ #f3f5
+MUSICF          equ #fb3f
+PLYCNT          equ #fb40
+PLAY_AREA       equ #fb35
+PLAY_AREA_END   equ #fb91
+QUETAB          equ #f959
+QUEUE_END       equ #faf5
 MEMSIZ          equ #f672
 STKTOP          equ #f674
 INITIAL_MEMSIZ  equ #f168
@@ -1965,67 +1975,130 @@ inlin:
 pinlin_impl:
                 ld a,(CSRX)
                 ld (INLIN_START_COL),a
+                ld a,(CSRY)
+                ld (INLIN_START_ROW),a
                 ld hl,BUFFER
                 ld b,0                          ; B = character count
+                ld c,0                          ; C = cursor position
 inlin_loop:
+                push bc
                 call breakx
-                jr c,inlin_finish_break
+                pop bc
+                jp c,inlin_finish_break
                 call chget
                 ld (INLIN_TMP),a                ; keep the char across the checks
                 cp #0d
-                jr z,inlin_cr
+                jp z,inlin_cr
                 cp #08                          ; backspace
-                jr z,inlin_backspace
-                cp #7f                          ; delete removes the last char
-                jr z,inlin_backspace
+                jp z,inlin_backspace
+                cp #7f                          ; delete under the cursor
+                jp z,inlin_delete
+                cp #1c                          ; cursor right
+                jp z,inlin_cursor_right
+                cp #1d                          ; cursor left
+                jp z,inlin_cursor_left
+                cp #0b                          ; home
+                jp z,inlin_home
+                cp #12                          ; insert toggle (always insert)
+                jp z,inlin_loop
                 cp #20
-                jr c,inlin_loop                 ; other control chars ignored
+                jp c,inlin_loop                 ; other control chars ignored
                 cp 127
-                jr nc,inlin_loop
+                jp nc,inlin_loop
                 ld a,b
                 cp 255
-                jr nc,inlin_loop                ; line full
+                jp nc,inlin_loop                ; line full
                 ld a,(INLIN_TMP)
-                ld (hl),a                       ; store
-                inc hl
-                inc b
-                ld a,(AUTFLG)
-                or a
-                jr nz,inlin_loop
-                ld a,(INLIN_TMP)
-                push bc
-                push hl
-                call chput
-                pop hl
-                pop bc
-                jr inlin_loop
+                call inlin_insert
+                jp inlin_loop
 inlin_backspace:
+                ld a,c
+                or a
+                jp z,inlin_loop                 ; at the start
                 ld a,b
-                or a
-                jr z,inlin_loop
-                ld a,(CSRX)
+                sub c
+                jr z,inlin_bs_shift_done        ; nothing after the cursor
+                ld (INLIN_CNT),a                ; count = B - C
+                ld a,c
+inlin_bs_shift:
+                push af
+                ld hl,BUFFER
+                ld d,0
                 ld e,a
-                ld a,(INLIN_START_COL)
-                cp e
-                jr nc,inlin_loop                ; at or before the input start
+                add hl,de
+                ld e,(hl)                       ; buf[A]
                 dec hl
+                ld (hl),e                       ; buf[A-1] = buf[A]
+                pop af
+                inc a
+                ld hl,INLIN_CNT
+                dec (hl)
+                jr nz,inlin_bs_shift
+inlin_bs_shift_done:
+                dec c
                 dec b
-                ld a,(AUTFLG)
+                call inlin_render
+                jp inlin_loop
+inlin_delete:
+                ld a,c
+                cp b
+                jp nc,inlin_loop                ; nothing under the cursor
+                ld a,b
+                sub c
+                dec a                           ; A = B - C - 1
+                jr z,inlin_del_shift_done
+                ld (INLIN_CNT),a                ; count = B - C - 1
+                ld a,c
+inlin_del_shift:
+                push af
+                ld hl,BUFFER
+                ld d,0
+                ld e,a
+                add hl,de
+                inc hl
+                ld e,(hl)                       ; buf[A+1]
+                dec hl
+                ld (hl),e                       ; buf[A] = buf[A+1]
+                pop af
+                inc a
+                ld hl,INLIN_CNT
+                dec (hl)
+                jr nz,inlin_del_shift
+inlin_del_shift_done:
+                dec b
+                call inlin_render
+                jp inlin_loop
+inlin_cursor_left:
+                ld a,c
                 or a
-                jr nz,inlin_loop
-                push bc
-                push hl
-                ld a,#08
-                call chput                      ; cursor back
-                ld a,#20
-                call chput                      ; erase
-                ld a,#08
-                call chput                      ; cursor back
-                pop hl
-                pop bc
-                jr inlin_loop
+                jp z,inlin_loop
+                dec c
+                ld a,(CSRX)
+                dec a
+                ld (CSRX),a
+                jp inlin_loop
+inlin_cursor_right:
+                ld a,c
+                cp b
+                jp nc,inlin_loop
+                inc c
+                ld a,(CSRX)
+                inc a
+                ld (CSRX),a
+                jp inlin_loop
+inlin_home:
+                xor a
+                ld c,a
+                ld a,(INLIN_START_COL)
+                ld (CSRX),a
+                jp inlin_loop
 inlin_cr:
-                ld (hl),#0d                     ; terminate for string use
+                ; terminate at the current length
+                ld hl,BUFFER
+                ld d,0
+                ld e,b
+                add hl,de
+                ld (hl),#0d
                 xor a                           ; carry clear
 inlin_finish:
                 ld hl,BUFFER
@@ -2034,6 +2107,95 @@ inlin_finish:
 inlin_finish_break:
                 scf                             ; carry set
                 jr inlin_finish
+
+; Insert A at the cursor: shift the tail right, store, advance B and C, and
+; redraw the line.
+inlin_insert:
+                ld (INLIN_TMP),a
+                ld a,b
+                sub c
+                jr z,inlin_insert_store         ; append at the end
+                ld (INLIN_CNT),a                ; count = B - C (chars to shift)
+                ld a,b
+                dec a                           ; A = B - 1
+inlin_insert_shift:
+                ; buf[A+1] = buf[A]
+                push af
+                ld hl,BUFFER
+                ld d,0
+                ld e,a
+                add hl,de
+                ld e,(hl)
+                inc hl
+                ld (hl),e
+                pop af
+                dec a
+                ld hl,INLIN_CNT
+                dec (hl)
+                jr nz,inlin_insert_shift
+inlin_insert_store:
+                ld hl,BUFFER
+                ld d,0
+                ld e,c
+                add hl,de
+                ld a,(INLIN_TMP)
+                ld (hl),a                       ; buf[C] = char
+                inc b
+                inc c
+                jr inlin_render
+
+; Redraw the input line from the saved start position and place the cursor at
+; start_col + C. With AUTFLG set (INLIN) nothing is displayed.
+inlin_render:
+                ld a,(AUTFLG)
+                or a
+                ret nz                          ; no echo for automatic input
+                push bc
+                ld a,(INLIN_START_ROW)
+                ld l,a
+                ld a,(INLIN_START_COL)
+                ld h,a
+                call posit
+                ld a,b
+                or a
+                jr z,inlin_render_clear
+                ld e,a
+                ld hl,BUFFER
+inlin_render_char:
+                ld a,(hl)
+                inc hl
+                push de
+                push hl
+                call chput
+                pop hl
+                pop de
+                dec e
+                jr nz,inlin_render_char
+inlin_render_clear:
+                ld a,(CSRX)
+                ld d,a
+                ld a,(LINLEN)
+                sub d
+                inc a
+                ld e,a
+inlin_render_space:
+                ld a,e
+                or a
+                jr z,inlin_render_pos
+                push de
+                ld a,#20
+                call chput
+                pop de
+                dec e
+                jr inlin_render_space
+inlin_render_pos:
+                ld a,(INLIN_START_COL)
+                add a,c
+                ld h,a
+                ld a,(INLIN_START_ROW)
+                ld l,a
+                pop bc
+                jp posit
 
 ; QINLIN displays "? " and then performs INLIN.
 qinlin:
@@ -2999,6 +3161,26 @@ gicini_register:
                 ld a,c
                 cp 16
                 jr nz,gicini_register
+                ; Initialize the PLAY statement work area: point QUEUES at the
+                ; queue table, mark the interpreter free, and clear the voice
+                ; static data and the three voice queues. MUSICF/PLYCNT and the
+                ; queue counters start at zero.
+                ld hl,QUETAB
+                ld (QUEUES),hl
+                ld a,#ff
+                ld (FRCNEW),a
+                ld hl,PLAY_AREA
+                xor a
+                ld (hl),a
+                ld de,PLAY_AREA+1
+                ld bc,PLAY_AREA_END-PLAY_AREA-1
+                ldir
+                ld hl,QUETAB
+                xor a
+                ld (hl),a
+                ld de,QUETAB+1
+                ld bc,QUEUE_END-QUETAB-1
+                ldir
                 ret
 
 ; Partial PSG primitives.
