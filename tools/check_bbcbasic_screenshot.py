@@ -23,9 +23,9 @@ def validate_screenshot(path: pathlib.Path) -> None:
     colors = image.getcolors(maxcolors=image.width * image.height)
     if colors is None or len(colors) < 2:
         raise ValueError("BBC BASIC screenshot is blank")
-    if not region_has_foreground(image, (40, 46, 610, 80)):
+    if not region_has_foreground(image, (40, 380, 610, 416)):
         raise ValueError("BBC BASIC banner is not visibly rendered")
-    if not region_has_foreground(image, (40, 78, 58, 98)):
+    if not region_has_foreground(image, (40, 396, 60, 414)):
         raise ValueError("BBC BASIC prompt is not visibly rendered")
 
 

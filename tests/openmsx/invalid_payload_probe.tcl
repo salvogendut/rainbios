@@ -21,7 +21,7 @@ proc inspect_invalid_discovery {} {
     set ::invalid_payload_lines {}
     record_invalid_payload [
         format "DISCOVERY=%02X,%04X,%02X%02X%02X%02X,%d" \
-            [peek 0xF393] [word_at 0xF394] \
+            [peek 0xF301] [word_at 0xF302] \
             [peek 0xF300] [peek 0xF301] [peek 0xF302] [peek 0xF303] \
             [lindex [get_selected_slot 1] 0]
     ]

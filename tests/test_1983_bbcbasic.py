@@ -14,7 +14,7 @@ from tools.run_1983_bbcbasic_tape import (
 
 
 VALID_STATE = (
-    "state frame=241 pc=07DB sp=F2F6 slot=F4 subslot=00 "
+    "state frame=241 pc=13F5 sp=F2F6 slot=F4 subslot=00 "
     "mapper=00,00,00,00 vram_nonzero=9885 vdp_r0=00 vdp_r1=F0\n"
 )
 
@@ -33,8 +33,8 @@ class Emulator1983BbcBasicTests(unittest.TestCase):
             validate_state(VALID_STATE.replace("vdp_r1=F0", "vdp_r1=E0"))
 
     def test_payload_pc_is_not_a_blocking_bios_wait(self) -> None:
-        with self.assertRaisesRegex(ValueError, "outside RainBIOS"):
-            validate_state(VALID_STATE.replace("pc=07DB", "pc=4400"))
+        with self.assertRaisesRegex(ValueError, "PC"):
+            validate_state(VALID_STATE.replace("pc=13F5", "pc=4400"))
 
     def test_graphics_program_state_is_accepted(self) -> None:
         state = (

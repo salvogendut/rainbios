@@ -42,8 +42,11 @@ def validate_report(
         sp = int(values["SP"], 16)
     except (KeyError, ValueError) as error:
         raise ValueError("missing or invalid SP") from error
-    if not 0xF300 <= sp <= 0xF380:
-        raise ValueError(f"SP {sp:04X} is outside RainBIOS main RAM")
+    # The cartridge scan runs on the extension stack (F092h), so the sample
+    # catches a non-returning INIT with SP in that region rather than the main
+    # stack top (F380h). Accept either RainBIOS page-3 stack region.
+    if not 0xF080 <= sp <= 0xF380:
+        raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
     return values
 
 
