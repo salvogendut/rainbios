@@ -536,6 +536,17 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the print
   routine and the conformance probe are original RainBIOS work
 
+## 2026-08-03 — CHPUT text control characters
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`CHPUT`) and
+  Appendix 8, which assign the 09h tab, 0Bh cursor-up, and 0Ch form-feed
+  control characters alongside the already-handled backspace, CR, and LF
+- Cross-check: the MSX Assembly Page BIOS reference for `CHPUT`
+- Purpose: define M2I's tab advance (next 8-column stop, wrap past the line
+  end), cursor-up edge behavior, and form-feed clear-and-home
+- RainBIOS use: interface and observable behavior facts only; the control
+  handlers and the conformance probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

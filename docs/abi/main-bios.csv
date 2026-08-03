@@ -51,7 +51,7 @@ address,name,kind,status,milestone,notes
 0099,STRTMS,jump,stub,M3,
 009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register
 009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending
-00A2,CHPUT,jump,partial,M2,Screen 0/1 text and Screen 2 glyph output plus BS/CR/LF/wrap/scroll; remaining control handling is pending
+00A2,CHPUT,jump,implemented,M2,Screen 0/1 text and Screen 2 glyph output plus backspace, tab, CR, LF, cursor-up, form feed, wrap, and scroll
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,
 00AB,CNVCHR,jump,stub,M3,

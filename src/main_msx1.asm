@@ -1682,6 +1682,12 @@ chput:
                 jr z,chput_line_feed
                 cp #08
                 jr z,chput_backspace
+                cp #09
+                jp z,chput_tab
+                cp #0b
+                jp z,chput_cursor_up
+                cp #0c
+                jp z,chput_form_feed
                 cp #20
                 jr c,chput_done
                 ld a,(SCRMOD)
@@ -2107,6 +2113,37 @@ nextor_keyboard_layout_probe:
                 pop bc
                 pop af
                 ret
+
+; Text control characters handled by CHPUT: tab, cursor up, and form feed.
+; They live here, after the fixed-address Nextor keyboard probe, so the probe
+; stays at 0D89h while CHPUT above keeps its short branches.
+chput_tab:
+                ld a,(CSRX)
+                and #f8
+                add a,9
+                ld (CSRX),a
+                ld a,(LINLEN)
+                inc a
+                ld b,a
+                ld a,(CSRX)
+                cp b
+                jr c,chput_tab_done
+                ld a,1
+                ld (CSRX),a
+                jp chput_advance_line
+chput_tab_done:
+                jp chput_done
+chput_cursor_up:
+                ld a,(CSRY)
+                cp 1
+                jr z,chput_cursor_up_done
+                dec a
+                ld (CSRY),a
+chput_cursor_up_done:
+                jp chput_done
+chput_form_feed:
+                call cls
+                jp chput_done
 
 ; Test whether Ctrl-STOP is held right now through the physical matrix.; $008D GRPPRT: print one character on the graphic screen at the current
 ; cursor position using the project font and FORCLR, then advance the cursor
