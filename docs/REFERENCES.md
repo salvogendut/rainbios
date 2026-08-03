@@ -165,10 +165,12 @@ implementation inputs. They remain quarantined under
 - Repository revision consulted:
   `fc85ab4e3dc23975e22b24c5e69244bd570c6aa5`
 - License: GPL-2.0 in the repository `LICENSE`
-- Tested binary self-identification: `git 58e3590` (the locally built binary
-  predates the latest source-only inspection)
+- Tested binary self-identification: `git bf78cb4` (the local checkout)
 - Tested binary SHA-256:
-  `b1686cf2b11b2f212d336568920ec2ed9a326262131757e48e2c22025d4d6cc5`
+  `e776421f670a9eb0f1d4...` (a pinned `git 58e3590` build,
+  `9baf58c8dff082a2d4bb...`, reproduces the same observable behavior, which
+  confirmed the remaining test failures are stale expectations rather than
+  emulator drift)
 - Material consulted for disk validation: the documented NMS 8250 WD2793
   memory window in `TECHNICAL.md`, controller register behavior in
   `src/wd2793.c`, raw-image geometry behavior in `src/floppy.c`, and public
@@ -594,6 +596,24 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   table-base programming, and the hidden-sprite/name-seed state
 - RainBIOS use: interface and observable behavior facts only; the routines
   and the Screen 3 probe are original RainBIOS work
+
+## 2026-08-03 — Emulator test-suite cleanup
+
+- Scope: a batch of pre-existing openMSX/1983 test failures whose earlier
+  attribution to 1983 binary drift was disproven by building the pinned
+  `58e3590` revision and observing identical behavior
+- Findings: the cartridge/tape runs on the extension stack (`F092h`) rather
+  than the main stack (`F380h`); the payload work-area variables moved from
+  `F393h`/`F394h` to `F301h`/`F302h`; `chget` and the BBC BASIC banner
+  rendering relocated; the SD storage-boot page-2 slots and the external
+  Arkano R1 settled differently as the firmware evolved
+- Purpose: document that the fixes recalibrated stale test expectations to
+  the current firmware rather than masking emulator drift, and that the
+  remaining failures (`geobench-sunrise`, base `nextor` and
+  `sd-empty-sunrise` screenshot hashes, `ide-boot`/`ide-menu` Sunrise IDE
+  divergences) are separately tracked
+- RainBIOS use: test-harness facts only; no firmware behavior was changed by
+  the cleanup
 
 ## 2026-08-02 — Dead-key and accented-character contracts
 

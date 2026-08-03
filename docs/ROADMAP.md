@@ -409,7 +409,11 @@ target.
 - close the timing-sensitive GeoBench/openMSX rendering gap and promote that
   boot-state test to the same full-desktop geometry gate used in 1983;
 - filesystem services, formatting, floppy drive B, other controllers, writable
-  media, and real-hardware timing validation remain pending.
+  media, and real-hardware timing validation remain pending;
+- restore the Sunrise IDE bootstrap 1983 gates: `test-1983-ide-boot` observes
+  the CPU reaching unused ROM padding instead of the fixture pass label, and
+  `test-1983-ide-menu` does not return the no-medium fallback to the RainBIOS
+  menu stack; the SD Mapper paths pass.
 
 “Complete” means documented compatibility for the public interfaces and boot
 behavior; it does not mean byte identity with any existing ROM.
