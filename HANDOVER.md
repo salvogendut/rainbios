@@ -228,8 +228,8 @@ now initializes the PSG hardware and the full PLAY statement work area
 queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
-Current verification on `main`: 194 host tests pass; the openMSX
-controller, keyboard, cursor, VRAM, services, and startup-audio probes pass; Sunrise Nextor
+Current verification on `main`: 200 host tests pass; the openMSX
+controller, keyboard, cursor, VRAM, screen-mode, services, and startup-audio probes pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
 and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
 render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.

@@ -187,9 +187,9 @@ CALSLT_P3_FRAME equ #f360
                 jp init32                       ; 006F INIT32
                 jp initgrp                      ; 0072 INITGRP
                 jp inimlt                       ; 0075 INIMLT
-                jp unsupported_call             ; 0078 SETTXT
-                jp unsupported_call             ; 007B SETT32
-                jp unsupported_call             ; 007E SETGRP
+                jp settxt                       ; 0078 SETTXT
+                jp sett32                       ; 007B SETT32
+                jp setgrp                       ; 007E SETGRP
                 jp setmlt                       ; 0081 SETMLT
                 jp unsupported_call             ; 0084 CALPAT
                 jp unsupported_call             ; 0087 CALATR
@@ -1594,6 +1594,69 @@ initgrp_name_loop:
                 ld (SCRMOD),a
                 ld a,(LINL32)
                 ld (LINLEN),a
+                pop af
+                ld b,a
+                ld c,1
+                jp wrtvdp
+
+; $0078 SETTXT: switch the live VDP to 40-column text (Screen 0). Unlike
+; INITXT, the name/pattern tables and the font are left as they are; only the
+; mode registers, the screen-mode work byte, the line length, and the cursor
+; change. The register block and R1 shadow formula match INITXT.
+settxt:
+                ld a,(RG1SAV)
+                and #e0
+                or #50
+                push af
+                ld hl,text40_vdp_registers
+                call write_vdp_register_block
+                xor a
+                ld (SCRMOD),a
+                ld a,(LINL40)
+                ld (LINLEN),a
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
+                pop af
+                ld b,a
+                ld c,1
+                jp wrtvdp
+
+; $007B SETT32: switch the live VDP to 32-column Screen 1.
+sett32:
+                ld a,(RG1SAV)
+                and #e0
+                or #40
+                push af
+                ld hl,text32_vdp_registers
+                call write_vdp_register_block
+                ld a,1
+                ld (SCRMOD),a
+                ld a,(LINL32)
+                ld (LINLEN),a
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
+                pop af
+                ld b,a
+                ld c,1
+                jp wrtvdp
+
+; $007E SETGRP: switch the live VDP to Graphics II (Screen 2).
+setgrp:
+                ld a,(RG1SAV)
+                and #e0
+                or #40
+                push af
+                ld hl,graphics2_vdp_registers
+                call write_vdp_register_block
+                ld a,2
+                ld (SCRMOD),a
+                ld a,(LINL32)
+                ld (LINLEN),a
+                ld a,1
+                ld (CSRY),a
+                ld (CSRX),a
                 pop af
                 ld b,a
                 ld c,1

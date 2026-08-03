@@ -37,9 +37,9 @@ address,name,kind,status,milestone,notes
 006F,INIT32,jump,partial,M2,Initializes a fixed 32x24 tile layout and the project font
 0072,INITGRP,jump,partial,M2,Initializes Graphics II registers and deterministic empty pattern/name/color tables
 0075,INIMLT,jump,partial,M2,Initializes deterministic Screen 3 tables and VDP state; broader register and timing conformance remains pending
-0078,SETTXT,jump,stub,M2,
-007B,SETT32,jump,stub,M2,
-007E,SETGRP,jump,stub,M2,
+0078,SETTXT,jump,implemented,M2,Switches the live VDP to 40-column text with the current work-area tables; updates SCRMOD/LINLEN/cursor without re-initializing the tables
+007B,SETT32,jump,implemented,M2,Switches the live VDP to 32-column Screen 1 with the current work-area tables
+007E,SETGRP,jump,implemented,M2,Switches the live VDP to Graphics II with the current work-area tables
 0081,SETMLT,jump,partial,M2,Programs Screen 3 VDP registers R0-R6 from the MLT work-area bases; broader conformance remains pending
 0084,CALPAT,jump,stub,M2,
 0087,CALATR,jump,stub,M2,
