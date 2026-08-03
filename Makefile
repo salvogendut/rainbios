@@ -50,6 +50,7 @@ OPENMSX_CONTROLLER_REPORT := $(OPENMSX_M1_REPORT_DIR)/controller.txt
 OPENMSX_CURSOR_REPORT := $(OPENMSX_M1_REPORT_DIR)/cursor.txt
 OPENMSX_VRAM_REPORT := $(OPENMSX_M1_REPORT_DIR)/vram.txt
 OPENMSX_SCREENMODES_REPORT := $(OPENMSX_M1_REPORT_DIR)/screen-modes.txt
+OPENMSX_SPRITE_REPORT := $(OPENMSX_M1_REPORT_DIR)/sprite.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
@@ -265,6 +266,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-openmsx-services test-openmsx-keyboard 	test-openmsx-cursor \
 	test-openmsx-vram \
 	test-openmsx-screen-modes \
+	test-openmsx-sprites \
 	test-openmsx-controller \
 	test-openmsx-geobench-sunrise \
 	test-openmsx-font \
@@ -721,6 +723,16 @@ test-openmsx-screen-modes: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set screend_output {$(abspath $(OPENMSX_SCREENMODES_REPORT))}" \
 		-script "$(abspath tests/openmsx/screen_modes_probe.tcl)"
 	$(PYTHON) tools/check_screen_modes_probe.py $(OPENMSX_SCREENMODES_REPORT)
+
+test-openmsx-sprites: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set sprite_output {$(abspath $(OPENMSX_SPRITE_REPORT))}" \
+		-script "$(abspath tests/openmsx/sprite_probe.tcl)"
+	$(PYTHON) tools/check_sprite_probe.py $(OPENMSX_SPRITE_REPORT)
+
 
 
 

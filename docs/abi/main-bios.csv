@@ -32,7 +32,7 @@ address,name,kind,status,milestone,notes
 005F,CHGMOD,jump,partial,M2,Dispatches modes 0-3 and provides a guarded partial Screen 7 register handoff when a live standard SUB-ROM signature is found; modes 4-6/8 remain unsupported
 0062,CHGCLR,jump,partial,M2,Updates R7 from FORCLR/BDRCLR and recolors the Screen 1 color table; broader mode and register conformance remains pending
 0066,NMI,jump,stub,M1,Safe empty NMI return only
-0069,CLRSPR,jump,stub,M2,
+0069,CLRSPR,jump,implemented,M2,Initializes all 32 sprites: pattern table cleared, attributes set to Y=209/217, X=0, plane number, and foreground color
 006C,INITXT,jump,partial,M2,Initializes a fixed 40x24 text layout and the project font
 006F,INIT32,jump,partial,M2,Initializes a fixed 32x24 tile layout and the project font
 0072,INITGRP,jump,partial,M2,Initializes Graphics II registers and deterministic empty pattern/name/color tables
@@ -41,9 +41,9 @@ address,name,kind,status,milestone,notes
 007B,SETT32,jump,implemented,M2,Switches the live VDP to 32-column Screen 1 with the current work-area tables
 007E,SETGRP,jump,implemented,M2,Switches the live VDP to Graphics II with the current work-area tables
 0081,SETMLT,jump,partial,M2,Programs Screen 3 VDP registers R0-R6 from the MLT work-area bases; broader conformance remains pending
-0084,CALPAT,jump,stub,M2,
-0087,CALATR,jump,stub,M2,
-008A,GSPSIZ,jump,stub,M2,
+0084,CALPAT,jump,implemented,M2,Returns the VRAM pattern address for a sprite: PATBAS plus A*8 (8x8) or (A&0FCh)*8 (16x16)
+0087,CALATR,jump,implemented,M2,Returns the VRAM attribute address for a sprite: ATRBAS plus A*4
+008A,GSPSIZ,jump,implemented,M2,Selects 8x8/16x16 sprites (A=0/1), updates R1 and its shadow, and returns the byte size 8 or 32 with carry set for 16x16
 008D,GRPPRT,jump,stub,M2,
 0090,GICINI,jump,implemented,M3,Initializes PSG R0-R15 and the PLAY statement work area (QUEUES points to QUETAB, FRCNEW=255, voice static data and queues cleared)
 0093,WRTPSG,jump,partial,M3,Needs register-clobber tests

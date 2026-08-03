@@ -146,6 +146,15 @@ over an already-set-up screen. The screen-mode probe verifies that each switch
 reproduces the corresponding initialize state and that a seeded VRAM byte
 survives the switch.
 
+M2G implements the sprite utilities. `CLRSPR` initializes all 32 sprites
+(pattern table cleared, each attribute set to Y = 209/217, X = 0, the plane
+number, and the foreground colour); `CALPAT` returns the pattern address
+(`PATBAS` plus `A*8`, or `(A AND 0FCh)*8` for 16x16); `CALATR` returns the
+attribute address (`ATRBAS` plus `A*4`); and `GSPSIZ` selects 8x8/16x16
+sprites, updates R1 and its shadow, and returns the byte size with carry for
+16x16. The sprite probe verifies both sizes, both address scales, and the
+cleared attribute/pattern tables.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
