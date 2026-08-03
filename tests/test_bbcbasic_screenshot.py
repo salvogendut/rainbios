@@ -18,9 +18,9 @@ class BbcBasicScreenshotTests(unittest.TestCase):
         path = pathlib.Path(temporary.name)
         image = Image.new("RGB", (640, 480), "black")
         drawing = ImageDraw.Draw(image)
-        drawing.rectangle((45, 50, 200, 60), fill="white")
+        drawing.rectangle((45, 386, 200, 394), fill="white")
         if prompt:
-            drawing.rectangle((44, 82, 50, 90), fill="white")
+            drawing.rectangle((44, 402, 50, 408), fill="white")
         image.save(path)
         self.addCleanup(path.unlink)
         return path

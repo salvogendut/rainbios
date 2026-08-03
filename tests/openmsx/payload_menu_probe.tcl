@@ -25,7 +25,7 @@ proc inspect_discovery {} {
     set ::payload_menu_lines {}
     record_payload_menu [
         format "DISCOVERY=%02X,%04X,%d" \
-            [peek 0xF393] [word_at 0xF394] \
+            [peek 0xF301] [word_at 0xF302] \
             [lindex [get_selected_slot 1] 0]
     ]
     keymatrixdown 8 0x01

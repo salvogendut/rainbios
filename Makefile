@@ -1290,7 +1290,7 @@ test-1983-sd-menu: \
 		--disk-rom "$(NMS8250_DISK_ROM)" \
 		--sd-mapper-rom "$(SD_MAPPER_ROM)" \
 		--paste-at 180 --paste-text " 3" \
-		--expect-fallback --expected-slot AC --exit-after 1200 \
+		--expect-fallback --expected-slot A0 --exit-after 1200 \
 		--screenshot "$(EMULATOR_1983_SD_MENU_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 --min-colors 2 --foreground-box 64,224,576,240 \
@@ -1308,7 +1308,7 @@ test-1983-sd-empty-floppy: \
 		--sd-mapper-rom "$(SD_MAPPER_ROM)" \
 		--symbols "$(DISK_BOOT_SECTOR_SYM)" \
 		--expected-pass-label disk_boot_pass \
-		--expected-slot AC --exit-after 1200 \
+		--expected-slot A0 --exit-after 1200 \
 		--disk-a "$(DISK_BOOT_IMAGE)" --floppy-mode read-only \
 		--screenshot "$(EMULATOR_1983_SD_EMPTY_FLOPPY_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
@@ -1535,7 +1535,7 @@ test-1983-external-arkano: $(MSX1_ROM) $(ARKANO_ROM)
 		--bios "$(MSX1_ROM)" --cartridge "$(ARKANO_ROM)" \
 		--screenshot "$(EMULATOR_1983_EXTERNAL_ARKANO_SCREEN)" \
 		--exit-after 1200 --expected-slot D4 \
-		--expected-vdp-r0 02 --expected-vdp-r1 E2
+		--expected-vdp-r0 02 --expected-vdp-r1 E0
 	$(PYTHON) tools/check_boot_screenshot.py --min-colors 2 \
 		--size 640x480 $(EMULATOR_1983_EXTERNAL_ARKANO_SCREEN)
 

@@ -30,8 +30,11 @@ def validate_state(
         raise ValueError("1983 emitted an invalid PC or SP") from error
     if not 0x0000 <= pc < 0x10000:
         raise ValueError(f"PC {pc:04X} is outside the primary slot")
-    if not 0xF300 <= sp <= 0xF380:
-        raise ValueError(f"SP {sp:04X} is outside RainBIOS main RAM")
+    # The cartridge scan runs on the extension stack (F092h), so a
+    # non-returning INIT is sampled with SP in that region rather than the
+    # main stack top (F380h). Accept either RainBIOS page-3 stack region.
+    if not 0xF080 <= sp <= 0xF380:
+        raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
     if fields.get("slot") != expected_slot:
         raise ValueError(
             f"slot: found {fields.get('slot')!r}, expected {expected_slot!r}"

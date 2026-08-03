@@ -18,7 +18,7 @@ class InvalidPayloadProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "DISCOVERY"):
             validate_report(
                 self.make_report().replace(
-                    "DISCOVERY=FF,0000,FFFFFFFF,0",
+                    "DISCOVERY=FF,0000,04FF0000,0",
                     "DISCOVERY=FF,0000,42414421,1",
                 )
             )
@@ -33,7 +33,7 @@ class InvalidPayloadProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "GUARDED"):
             validate_report(
                 self.make_report().replace(
-                    "GUARDED=0,FFFFFFFF",
+                    "GUARDED=0,04FF0000",
                     "GUARDED=1,42414421",
                 )
             )

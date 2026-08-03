@@ -26,8 +26,8 @@ def validate_state(text: str) -> dict[str, str]:
         raise ValueError(
             f"cassette probe stopped at {pc:04X}, expected success at 4400"
         )
-    if not 0xF300 <= sp <= 0xF380:
-        raise ValueError(f"SP {sp:04X} is outside RainBIOS main RAM")
+    if not 0xF080 <= sp <= 0xF380:
+        raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
     if fields.get("slot") != "F4":
         raise ValueError(
             f"slot: found {fields.get('slot')!r}, expected 'F4'"

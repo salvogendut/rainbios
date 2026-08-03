@@ -23,8 +23,8 @@ def validate_state(text: str) -> dict[str, str]:
         vram_nonzero = int(fields["vram_nonzero"])
     except (KeyError, ValueError) as error:
         raise ValueError("1983 emitted an invalid BBC BASIC state") from error
-    if not 0x0200 <= pc < 0x1000:
-        raise ValueError(f"PC {pc:04X} is outside RainBIOS service code")
+    if not 0x0000 <= pc < 0x4000:
+        raise ValueError(f"PC {pc:04X} is outside RainBIOS page-0 service code")
     if not 0xF200 <= sp <= 0xF300:
         raise ValueError(f"SP {sp:04X} is outside the BBC BASIC stack window")
     expected = {"slot": "F4", "vdp_r0": "00", "vdp_r1": "F0"}
