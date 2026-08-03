@@ -170,6 +170,14 @@ and homes the cursor; these join the existing backspace, carriage return,
 line feed, wrapping, and scrolling. The text-control probe verifies both tab
 positions, the cursor-up edge, and the cleared-and-homed form feed.
 
+M2J completes the character set. The project-owned 5x7 font now carries all 36
+MSX international characters at 0x80-0xA3: the lowercase accented vowels and y
+(which the M3 dead-key path produces, previously rendering as blanks), the
+uppercase accented forms, the cedillas and ligatures, and the currency
+symbols. The font probe dumps a sample of the accented glyphs from the live
+pattern table and the checker compares them to the built font; host tests lock
+the glyph bytes and provenance.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
