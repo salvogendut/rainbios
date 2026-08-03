@@ -194,7 +194,7 @@ CALSLT_P3_FRAME equ #f360
                 jp calpat                       ; 0084 CALPAT
                 jp calatr                       ; 0087 CALATR
                 jp gspsiz                       ; 008A GSPSIZ
-                jp unsupported_call             ; 008D GRPPRT
+                jp grpprt                       ; 008D GRPPRT
                 jp gicini                       ; 0090 GICINI
                 jp wrtpsg                       ; 0093 WRTPSG
                 jp rdpsg                        ; 0096 RDPSG
@@ -2108,7 +2108,60 @@ nextor_keyboard_layout_probe:
                 pop af
                 ret
 
-; Test whether Ctrl-STOP is held right now through the physical matrix.; $0084 CALPAT: return the VRAM address of the pattern data for sprite number
+; Test whether Ctrl-STOP is held right now through the physical matrix.; $008D GRPPRT: print one character on the graphic screen at the current
+; cursor position using the project font and FORCLR, then advance the cursor
+; by one 8-pixel cell (wrapping at LINLEN). Carriage return and line feed
+; move the cursor without printing; other control characters are ignored.
+grpprt:
+                push af
+                push bc
+                push de
+                push hl
+                ld e,a
+                cp #0d
+                jr z,grpprt_carriage_return
+                cp #0a
+                jr z,grpprt_line_feed
+                cp #20
+                jr c,grpprt_done
+                call graphics_put_character
+grpprt_advance_cursor:
+                ld a,(CSRX)
+                inc a
+                ld b,a
+                ld a,(LINLEN)
+                inc a
+                cp b
+                ld a,b
+                jr nz,grpprt_store_x
+                ld a,1
+                ld (CSRX),a
+                jr grpprt_advance_line
+grpprt_store_x:
+                ld (CSRX),a
+                jr grpprt_done
+grpprt_carriage_return:
+                ld a,1
+                ld (CSRX),a
+                jr grpprt_done
+grpprt_line_feed:
+grpprt_advance_line:
+                ld a,(CSRY)
+                inc a
+                cp 25
+                jr c,grpprt_store_y
+                call console_scroll
+                ld a,24
+grpprt_store_y:
+                ld (CSRY),a
+grpprt_done:
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+; $0084 CALPAT: return the VRAM address of the pattern data for sprite number
 ; A. The offset is A*8 bytes for 8x8 sprites and (A & 0FCh)*8 for 16x16, where
 ; the sprite pattern number must be a multiple of four and its four 8-byte
 ; quadrants are contiguous.

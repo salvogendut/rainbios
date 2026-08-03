@@ -155,6 +155,14 @@ sprites, updates R1 and its shadow, and returns the byte size with carry for
 16x16. The sprite probe verifies both sizes, both address scales, and the
 cleared attribute/pattern tables.
 
+M2H implements `GRPPRT`, the graphics-mode character printer. It renders the
+character in A at the current cursor position using the project font and the
+foreground colour (the same pattern and colour-cell path as the Screen 2
+`CHPUT` branch), then advances the cursor by one 8-pixel cell with wrapping,
+and moves the cursor for carriage return and line feed. The graphics print
+probe verifies the rendered glyph bytes, the colour cell, the advance, and
+the CR/LF cursor movement.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
