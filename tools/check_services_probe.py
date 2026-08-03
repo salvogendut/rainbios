@@ -25,6 +25,7 @@ EXPECTED = {
     "GETVC2": "1",
     "MOTOR_ON": "01,78",
     "MOTOR_STOP": "00,00,10",
+    "DISKMOTOR": "00,00",
 }
 
 

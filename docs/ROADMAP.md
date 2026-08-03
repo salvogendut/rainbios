@@ -97,9 +97,15 @@ start/activity, matching `STMOTR`'s off write. The services probe verifies the
 snapshot capture and the auto-stop; the controller probe reads directions and
 triggers from the captured state.
 
-- process broader interrupt sources (disk) in the IM 1 handler; controllers
-  and the cassette motor are covered by M1K, and the keyboard scan by
-  M3A/M3D;
+M1L completes the disk source in the IM 1 handler with a floppy motor-off
+timer. The handler counts down `DISK_MOTOR_TIMER` and, at zero, writes the
+FDC motor-off value to the drive register when `DISK_PRESENT` (set at boot
+when a disk device is selected). The `disk_motor_arm` helper and the work
+bytes let the NMS 8250 disk ROM keep the motor running briefly after an
+access and hand the stop to the interrupt instead of stopping it inline. The
+services probe verifies the armed timer clears after the timeout; the disk
+ROM adoption of the arm helper remains a follow-up.
+
 - run the original diagnostic cartridge on hardware;
 
 Exit criterion: cold boot reaches the diagnostic cartridge on representative

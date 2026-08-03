@@ -50,8 +50,8 @@ The main BIOS currently provides:
   publication of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`; the handler also captures the per-frame joystick matrix
-  snapshot for `GTSTCK`/`GTTRIG` and drives the ~2s cassette-motor auto-stop
-  timer;
+  snapshot for `GTSTCK`/`GTTRIG` and drives the ~2s cassette-motor and
+  floppy-motor auto-stop timers;
 - partial Screen 0/1/2/3 setup, a guarded register-only V9938 Screen 7 handoff,
   text and Graphics II console output, scrolling, VRAM primitives (`RDVRM`/
   `WRTVRM`/`SETRD`/`SETWRT`/`FILVRM`/`LDIRMV`/`LDIRVM`), text cursor movement
@@ -231,7 +231,7 @@ queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
 Current verification on `main`: 245 host tests pass; the openMSX
-controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control, font, VDP-state, color, Screen 3, services (including the IM 1 controller snapshot and cassette-motor auto-stop), and startup-audio probes pass; Sunrise Nextor
+controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control, font, VDP-state, color, Screen 3, services (including the IM 1 controller snapshot and the cassette/floppy motor auto-stops), and startup-audio probes pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
 and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
 render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.
@@ -411,7 +411,7 @@ is:
 | Milestone | Status | Remaining focus |
 | --- | --- | --- |
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
-| M1 reset/slots/RAM/interrupts | In progress | Disk interrupt servicing, hardware test |
+| M1 reset/slots/RAM/interrupts | In progress | Hardware cartridge test |
 | M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
