@@ -228,8 +228,8 @@ now initializes the PSG hardware and the full PLAY statement work area
 queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
-Current verification on `main`: 233 host tests pass; the openMSX
-controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control, font, VDP-state, services, and startup-audio probes pass; Sunrise Nextor
+Current verification on `main`: 239 host tests pass; the openMSX
+controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control, font, VDP-state, color, services, and startup-audio probes pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
 and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
 render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.
@@ -388,7 +388,7 @@ is:
 | --- | --- | --- |
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
 | M1 reset/slots/RAM/interrupts | In progress | Broader interrupt devices, hardware test |
-| M2 MSX1 display/console | In progress | Remaining color and boundary behavior |
+| M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Not started | Separate MSX2 ROMs, V9938, SUB-ROM calls, bitmap modes, palette, clock |

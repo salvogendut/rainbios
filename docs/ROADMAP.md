@@ -187,6 +187,13 @@ bit through the shadowed path, `WRTVDP` keeps the shadows in sync, and
 shadows and the correct table bases and mode bytes. The VDP-state probe locks
 in the boot, display-toggle, shadow-write, and per-mode states.
 
+M2L completes the color behavior. `CHGCLR` now follows the original BIOS
+per-mode convention: Screen 0 sets R7 to `(FORCLR<<4)|BAKCLR`, Screens 1-3 set
+R7 to the bare `BDRCLR`, and Screen 1 additionally fills its 32-byte color
+table with `(FORCLR<<4)|BAKCLR`, all through the shadowed `WRTVDP` path. The
+color probe verifies the boot state and each mode's R7, color table, and
+shadow.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;

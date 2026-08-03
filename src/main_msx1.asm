@@ -1309,35 +1309,6 @@ wrtvdp:
 ; $0062 CHGCLR: apply FORCLR/BAKCLR/BDRCLR to the current screen. The text
 ; color and border come from the VDP R7 register; Screen 1 additionally
 ; recolors its 32 color-table cells with (FORCLR<<4)|BAKCLR.
-chgclr:
-                ld a,(FORCLR)
-                rlca
-                rlca
-                rlca
-                rlca
-                and #f0
-                ld b,a
-                ld a,(BDRCLR)
-                or b
-                ld b,a
-                ld c,7
-                call wrtvdp
-                ld a,(SCRMOD)
-                cp 1
-                ret nz
-                ld a,(FORCLR)
-                rlca
-                rlca
-                rlca
-                rlca
-                and #f0
-                ld b,a
-                ld a,(BAKCLR)
-                or b
-                ld hl,#2000
-                ld bc,32
-                jp filvrm
-
 ; $0081 SETMLT: switch the VDP to multicolor (Screen 3) using the MLTNAM,
 ; MLTCOL, MLTCGP, MLTATR and MLTPAT base addresses. Those five RAM variables
 ; are contiguous and map one-to-one onto the R2-R6 base registers.
@@ -2115,6 +2086,51 @@ nextor_keyboard_layout_probe:
                 ret
 
 ; Text control characters handled by CHPUT: tab, cursor up, and form feed.
+chgclr:
+                ld a,(SCRMOD)
+                or a
+                jr nz,chgclr_graphics
+                ; Screen 0: R7 = (FORCLR << 4) | BAKCLR, so the text colour
+                ; sits in the TC nibble and the backdrop in the BD nibble.
+                ld a,(FORCLR)
+                rlca
+                rlca
+                rlca
+                rlca
+                and #f0
+                ld b,a
+                ld a,(BAKCLR)
+                and #0f
+                or b
+                ld b,a
+                ld c,7
+                call wrtvdp
+                ret
+chgclr_graphics:
+                ; Screen 1/2/3: R7 carries only the border colour.
+                ld a,(BDRCLR)
+                ld b,a
+                ld c,7
+                call wrtvdp
+                ld a,(SCRMOD)
+                cp 1
+                ret nz
+                ; Screen 1: fill the 32-byte color table with
+                ; (FORCLR << 4) | BAKCLR.
+                ld a,(FORCLR)
+                rlca
+                rlca
+                rlca
+                rlca
+                and #f0
+                ld b,a
+                ld a,(BAKCLR)
+                and #0f
+                or b
+                ld hl,#2000
+                ld bc,32
+                jp filvrm
+
 ; They live here, after the fixed-address Nextor keyboard probe, so the probe
 ; stays at 0D89h while CHPUT above keeps its short branches.
 chput_tab:

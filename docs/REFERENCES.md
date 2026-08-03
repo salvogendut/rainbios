@@ -570,6 +570,20 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the register
   programming and the conformance probe are original RainBIOS work
 
+## 2026-08-03 — CHGCLR color behavior
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`CHGCLR`,
+  0062h) and the original MSX BIOS disassembly (per-mode R7: `(FORCLR<<4)|
+  BAKCLR` in Screen 0, bare `BDRCLR` in Screens 1-3, and the Screen 1
+  color-table fill with `(FORCLR<<4)|BAKCLR`); the TMS9918A R7 (TC in bits
+  7-4, backdrop in bits 3-0) and Screen 1 color-table (foreground in the
+  high nibble) layouts
+- Cross-check: the MSX Assembly Page BIOS reference for `CHGCLR`; Appendix 4
+  for `FORCLR`/`BAKCLR`/`BDRCLR`
+- Purpose: define M2L's per-mode `CHGCLR` behavior and shadow update
+- RainBIOS use: interface and observable behavior facts only; the `CHGCLR`
+  routine and the color probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
