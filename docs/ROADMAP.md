@@ -314,6 +314,14 @@ entry state. The complete BBC BASIC smoke sequence passes through the menu,
 and a standard `H.TIMI` test hook drives the same path in 1983 before its
 rendered prompt is checked.
 
+Issue #60 adds the pinned payload to the upper half of the ordinary 32 KiB
+MAIN-ROM. Every build rebuilds it from the companion sources and requires a
+byte-exact result. External cartridges retain their normal first opportunity;
+storage retains priority over the internal copy; a clean storage return leads
+to a bounded Space-key window and then automatic BASIC. A compatible external
+payload remains the upgrade override. Dedicated 1983 and openMSX probes cover
+the no-cartridge automatic path.
+
 - define and test startup register and work-area state;
 - support common slot and mapper arrangements needed before cartridge code
   installs its own mapper;
@@ -340,6 +348,20 @@ emulated machine layouts and real hardware.
 
 ## M6 — Completeness and optional system components
 
+Status: in progress.
+
+The combined-ROM feasibility slice is implemented. ZX0-compressed boot/menu
+tables and the directly addressable font fit below `4000h`; the exact 16 KiB
+interpreter occupies `4000h-7FFFh`. The build asserts that boundary, validates
+the payload descriptor at runtime, and retains the companion ROM as a separate
+artifact. The initial lower-bank reserve was only 440 bytes, so a simpler
+lower-entropy logo was added; it reduced the compressed logo tables from 3,922
+bytes to 917 bytes. The current menu copy leaves a 3,416-byte reserve;
+continuing size gates are still required before substantial new page-0 work.
+Human-readable component notices are complete; public release remains gated
+on branding permission or a rename, a machine-readable component manifest,
+broader emulator regression coverage, and real hardware.
+
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
 Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
@@ -358,8 +380,9 @@ validation remain pending; M7 owns the implemented boot-sector paths.
 - close remaining main BIOS and SUB-ROM ABI gaps;
 - characterize flags, clobbered registers, timing-sensitive I/O, and error
   behavior;
-- scope independently implemented BASIC and disk firmware as separate
-  components with their own tests and provenance;
+- preserve independently testable BASIC and disk component boundaries even
+  when the BASIC payload is aggregated into the main ROM;
+- preserve the restored lower-bank reserve as firmware grows;
 - add a read-only-safe, hook-dispatching disk baseline for `PHYDIO`, `FORMAT`,
   `ISFLIO`, `OUTDLP`, `GETVCP`, and `GETVC2` before adding writable media
   support;
@@ -380,11 +403,12 @@ sector, and reaches a labelled spin; a separate probe confirms that a missing or
 non-bootable medium falls back to the interactive menu with the RainBIOS stack
 intact.
 
-The Space-key boot menu now offers three options. Option 1 starts BBC BASIC,
-option 2 re-enters the drive-A `H.RUNC` boot-sector path on demand (a valid
-payload holds back the cold-boot auto-boot so the menu is reachable), and
-option 3 boots Sunrise IDE and SD Mapper V2 cartridges through
-RainBIOS's own page-0 ATA/SPI backends. The scan recognizes the shared
+The Space-key boot menu now offers `START BASIC`, `BOOT FLOPPY`, and
+`BOOT IDE OR SD` beneath `RainBIOS (c) salvogendut 2026`. Option 1 starts the
+selected BASIC payload. Option 2 re-enters the drive-A `H.RUNC` boot-sector
+path on demand (a valid payload holds back the cold-boot auto-boot so the menu
+is reachable), and option 3 boots Sunrise IDE and SD Mapper V2 cartridges
+through RainBIOS's own page-0 ATA/SPI backends. The scan recognizes the shared
 storage-ROM header, records its slot, and follows its standard `INIT`. A disk
 kernel can install `H.RUNC` and take over cold boot; otherwise option 3 maps the
 cartridge in page 1, probes its controller type, reads sector 0 into `C000h`,

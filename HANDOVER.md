@@ -23,14 +23,17 @@ discard unrelated changes in a dirty worktree.
 
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
-| MSX1 main BIOS | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS |
+| MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with source-built 16 KiB payload in upper half |
 | NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook implemented |
-| BBC BASIC payload | Built in sibling repository | `../bbcbasic-z80-msx/build/msx-console/bbcbasic_msx_console.rom` | Integrated optional payload |
+| Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component, also embedded at `4000h-7FFFh` |
 | MSX2 main BIOS | Not yet available | Planned 32 KiB ROM | M5 pending |
 | MSX2 SUB-ROM | Not yet available | Planned 16 KiB ROM | M5 pending |
 
 The main BIOS and disk ROM remain separate components. `make all` builds only
-the main BIOS; the model-specific disk ROM is explicitly optional.
+the combined main BIOS; the model-specific disk ROM is explicitly optional.
+Every normal main-ROM build verifies and tests the pinned adjacent
+`../bbcbasic-z80-msx` checkout, rebuilds its 16 KiB payload from source, checks
+its digest, and embeds it byte-for-byte. No cached-payload fallback exists.
 
 ## Current Main BIOS Status
 
@@ -66,12 +69,50 @@ The main BIOS currently provides:
 - cassette motor, leader, framed-byte input/output, and BBC BASIC sequential
   cassette storage;
 - cartridge discovery in primary and expanded slots, RainBIOS payload
-  descriptors, and menu launch of the optional BBC BASIC payload;
+  descriptors, menu launch of external or built-in BASIC, and automatic
+  built-in fallback after clean storage returns;
+- ZX0-compressed boot/menu tables expanded one at a time through transient
+  `C000h-D7FFh` RAM, leaving the public font directly addressable and 3,416
+  bytes free below the hard `4000h` lower-bank boundary;
 - safe disk BIOS defaults, disk hook dispatch, extension `H.STKE` processing,
   and guarded `H.RUNC` disk bootstrap context.
 
 The main BIOS is not a complete MSX BIOS. `docs/abi/main-bios.csv` is the source
 of truth for which fixed entries are implemented, partial, or stubs.
+
+## Embedded BASIC Status
+
+Issue #60 implements the embedded-payload development slice. The normal 32 KiB
+image dedicates `4000h-7FFFh` to the
+exact pinned companion ROM. The simpler CC0 boot logo moves the lower-half end
+from the initial `3E47h` to `32A7h`; `32A8h-3FFFh` is now 3,416 bytes of
+guarded padding. The font stays raw for `CGTABL`, while the menu and logo
+tables are losslessly ZX0-compressed and expanded into transient RAM before
+VRAM upload.
+
+External cartridge `INIT` retains first chance. A valid external payload is
+the deliberate upgrade override; otherwise existing disk/IDE/SD paths run
+before the built-in copy. If those paths return cleanly, RainBIOS validates the
+internal `RBP1` descriptor with the ordinary complete parser, allows Space for
+180 frames, and launches the payload from the BIOS slot. Firmware cannot
+recover from arbitrary third-party code that never returns or corrupts system
+state.
+
+The Screen 1 menu title is `RainBIOS (c) salvogendut 2026`; its three actions
+are labelled `START BASIC`, `BOOT FLOPPY`, and `BOOT IDE OR SD`. Option 2 is
+the drive-A floppy disk-ROM path, while option 3 is the direct Sunrise/SD
+fallback. BASIC's startup `INITXT` clears and homes the text screen; `ERAFNK`
+now clears the function-key row directly without moving that cursor, keeping
+the sign-on banner at the top.
+
+The new no-cartridge probes pass in 1983 and openMSX, including the rendered
+prompt, simple arithmetic, page-1 slot state, header/descriptor bytes, and zero
+ROM writes. The broader internal graphics, cassette, mixed-storage, and
+hardware matrix remains to be promoted. Public release is also blocked on
+permission to use the `BBC BASIC` name or a distinct rename. Human-readable
+combined notices are present in `THIRD_PARTY_NOTICES.md` and `LICENSES/`; a
+machine-readable component manifest remains pending. See
+`docs/EMBEDDED_BASIC.md`.
 
 ## Current Floppy Status
 
@@ -230,7 +271,9 @@ now initializes the PSG hardware and the full PLAY statement work area
 queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
-Current verification on `main`: 245 host tests pass; the openMSX
+Current verification: 255 RainBIOS host tests and all 20 companion tests pass.
+The dedicated embedded no-cartridge probes pass in 1983 and openMSX, including
+the clean top-of-screen BASIC banner. The openMSX
 controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control, font, VDP-state, color, Screen 3, services (including the IM 1 controller snapshot and the cassette/floppy motor auto-stops), and startup-audio probes pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
 and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
@@ -250,12 +293,19 @@ expectations that drifted from the evolved firmware. A cleanup pass fixed the
 cartridge/tape extension-stack SP validators, the payload probe addresses and
 marker bytes, the BBC BASIC PC window and banner screenshot regions, the
 external Arkano VDP R1 expectation, and the SD storage-boot page-2 slot
-expectations, so those 1983/openMSX targets pass again. Five 1983 failures
-remain pre-existing: `test-1983-geobench-sunrise` (the documented
-timing-sensitive open gap), the base `test-1983-nextor` and
-`test-1983-sd-empty-sunrise` screenshot hashes, and the
-`test-1983-ide-boot`/`test-1983-ide-menu` Sunrise IDE boot-path divergences
-(see the validation section below).
+expectations. The former list of “five remaining failures” is stale: GeoBench
+was subsequently user-confirmed through both Sunrise and SD Mapper with
+RainBIOS, and issue #60 does not reinstate that list as current truth.
+
+The ignored local `../geobench/QA/GBMSX.IMG` present during the issue-60 audit
+has SHA-256
+`c826c90ee7eb02261ed1e8c5c3600c1c86ac356ad3cba16a7f4c78bd0e22e60`,
+not the accepted fixture digest
+`47d19058e4096a3f1de497e223d749bf0195cf3c10019c1be8b52a0b77630e8f`.
+Both an untouched `main` snapshot and the combined branch stall identically
+with that changed local image, so it is not evidence of an embedding
+regression. Re-run the storage matrix with the accepted immutable fixture (or
+review and record a deliberately updated fixture) before changing BIOS code.
 
 A follow-up isolated `Xvfb`/fluxbox run confirmed that XTest motion reaches
 openMSX's X11 event layer, but openMSX 21.0 does not forward that synthetic
@@ -332,7 +382,15 @@ See `tests/openmsx/disk_fault_probe.tcl`.
 
 ## Build And Validation
 
-Core requirements are GNU Make, Python 3.10+, Pillow 10+, and RASM 3.x.
+Core requirements are GNU Make, a C99 compiler, Python 3.10+, Pillow 10+,
+RASM 3.x, external `zmac`/`ld80`, and the pinned adjacent
+`../bbcbasic-z80-msx` checkout. Every `make` and `make test` rebuilds that
+checkout's payload from source. Override the legacy tools when they are not on
+`PATH`:
+
+```sh
+make test BBC_ZMAC=/path/to/zmac BBC_LD80=/path/to/ld80
+```
 
 Run host validation:
 
@@ -362,6 +420,7 @@ make test-1983-nextor
 make test-1983-nextor-sd
 make test-1983-geobench-sunrise
 make test-1983-geobench-sd
+make test-1983-embedded-basic
 ```
 
 The default emulator paths expect the adjacent open-source 1983 checkout:
@@ -371,15 +430,10 @@ The default emulator paths expect the adjacent open-source 1983 checkout:
 ../1983/1983-models.conf
 ```
 
-The tested 1983 revision is recorded in `docs/REFERENCES.md`. The cleanup pass
-confirmed the checkout revision is not the cause of the remaining failures:
-`test-1983-geobench-sunrise` is the documented timing-sensitive open gap;
-`test-1983-nextor` and `test-1983-sd-empty-sunrise` need their screenshot hash
-constants recalibrated (the base Sunrise Nextor renders a different boot
-layout than the SD cases); and `test-1983-ide-boot`/`test-1983-ide-menu`
-diverge in the Sunrise IDE bootstrap (the CPU can reach unused ROM padding
-instead of the fixture pass label, and the no-medium fallback does not return
-to the menu stack).
+The tested 1983 revision is recorded in `docs/REFERENCES.md`. Keep generated
+GeoBench media identities explicit: the currently present changed local image
+does not reproduce the accepted baseline and must not be used to attribute a
+new failure to issue #60.
 
 openMSX is installed as a Flatpak on the current workstation. Use:
 
@@ -387,6 +441,7 @@ openMSX is installed as a Flatpak on the current workstation. Use:
 make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
   test-openmsx-mapper test-openmsx-services test-openmsx-keyboard \
   test-openmsx-controller \
+  test-openmsx-embedded-basic \
   test-openmsx-disk-fault test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
@@ -416,20 +471,18 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Not started | Separate MSX2 ROMs, V9938, SUB-ROM calls, bitmap modes, palette, clock |
-| M6 completeness/optional components | In progress | ABI gaps, behavior characterization, releases, and broader disk functionality |
+| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
 
-The immediate test-suite cleanup is the five remaining pre-existing 1983
-failures. Recalibrate the `test-1983-nextor` and `test-1983-sd-empty-sunrise`
-screenshot hash constants to the current Sunrise Nextor boot layout (separate
-them from the SD-card shared hashes), and investigate the
-`test-1983-ide-boot`/`test-1983-ide-menu` Sunrise IDE bootstrap divergence —
-the CPU reaching unused ROM padding instead of the fixture pass label, and the
-no-medium fallback not returning to the RainBIOS menu stack. The
-`test-1983-geobench-sunrise` gap is the documented timing-sensitive GeoBench
-rendering issue and is tracked under the emulator slice below.
+The simpler boot logo has restored 3,416 bytes of page-0 headroom and passes
+the 1983 rendered-boot gate. The next issue-60 priority is to promote the
+existing external-payload graphics, cassette, scrolling, and
+editing workloads to the internal mapping, and run the complete storage
+precedence matrix using an accepted immutable GeoBench image. Add the combined
+machine-readable component manifest and resolve `BBC BASIC` branding before
+any public combined-ROM release.
 
 The GeoBench storage boot matrix is now automated. The next emulator
 compatibility slice is to close the narrower openMSX rendering gap: reproduce
@@ -475,6 +528,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | Path | Purpose |
 | --- | --- |
 | `src/main_msx1.asm` | Main BIOS, reset, slots, hooks, devices, console |
+| `src/zx0_decompress.asm` | BSD-3-Clause forward ZX0 decoder used for boot/menu tables |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
@@ -482,11 +536,14 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `docs/abi/controllers.md` | Keyboard, joystick, trigger, and mouse contracts |
 | `docs/abi/nms8250-disk-rom.md` | Disk component ABI and limitations |
 | `docs/ROADMAP.md` | Authoritative milestone plan |
+| `docs/EMBEDDED_BASIC.md` | Combined-ROM design, measured layout, boot policy, licensing, and release gates |
 | `docs/DEVELOPMENT_POLICY.md` | Source-isolation and provenance rules |
 | `docs/REFERENCES.md` | Exact implementation/test references |
 | `docs/TESTING.md` | Host, openMSX, 1983, and external-input test matrix |
 | `tools/make_test_disk.py` | Deterministic raw DSK fixture generator |
 | `tools/make_ide_image.py` | Deterministic raw IDE boot fixture generator |
+| `tools/run_1983_embedded_basic.py` | No-cartridge combined-ROM launch probe for 1983 |
+| `tests/openmsx/embedded_basic_probe.tcl` | No-cartridge combined-ROM launch and ROM-write probe for openMSX |
 | `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
 | `tools/check_controller_probe.py` | Controller and mouse report validator |
 | `tools/check_geobench.py` | GeoBench runtime, mapper, Screen 7, and rendered-output validator |

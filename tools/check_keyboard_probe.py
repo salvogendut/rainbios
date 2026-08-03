@@ -26,7 +26,7 @@ EXPECTED = {
     "BREAKX1": "1",
     "ISCNTC1": "1,00",
     "ISCNTC2": "0",
-    "ERAFNK": "00",
+    "ERAFNK": "00,07,05,20,20",
     "DSPFNK": "FF",
     "FNKSB": "FF",
     "TOTEXT": "01,FF",

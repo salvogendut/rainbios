@@ -21,14 +21,14 @@ from tools.png_to_screen2 import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src" / "logo.png"
+SOURCE = ROOT / "src" / "logo-simple.png"
 OUTPUT = ROOT / "build" / "logo"
 
 
 class LogoConversionTest(unittest.TestCase):
-    def test_source_has_exact_msx1_raster_dimensions(self):
+    def test_source_contains_an_msx1_raster(self):
         with Image.open(SOURCE) as image:
-            self.assertEqual(image.size, (256, 192))
+            self.assertEqual(image.size, (295, 192))
 
     def test_graphics_ii_output_sizes(self):
         self.assertEqual((OUTPUT / "logo_pattern.bin").stat().st_size, PATTERN_SIZE)
@@ -88,7 +88,9 @@ class LogoConversionTest(unittest.TestCase):
             manifest["source_sha256"],
             hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
         )
-        self.assertEqual(manifest["source_size"], [256, 192])
+        self.assertEqual(manifest["source_size"], [295, 192])
+        self.assertEqual(manifest["source_crop"], [0, 0, 256, 192])
+        self.assertEqual(manifest["raster_size"], [256, 192])
         self.assertGreater(manifest["source_rgb_colors"], 16)
         self.assertEqual(manifest["boot_notice"]["text"], BOOT_NOTICE)
         self.assertEqual(manifest["boot_notice"]["box"], list(BOOT_NOTICE_BOX))
@@ -121,14 +123,14 @@ class LogoConversionTest(unittest.TestCase):
 
     def test_converted_tables_are_embedded_in_the_main_rom(self):
         rom = (ROOT / "build" / "rainbios_msx1.rom").read_bytes()
+        self.assertIn((OUTPUT / "boot_font.bin").read_bytes(), rom)
         for filename in (
-            "logo_pattern.bin",
-            "logo_name.bin",
-            "logo_color.bin",
-            "boot_font.bin",
-            "options_name_ready.bin",
-            "options_name_missing.bin",
-            "options_color.bin",
+            "logo_pattern.zx0",
+            "logo_name.zx0",
+            "logo_color.zx0",
+            "options_name_ready.zx0",
+            "options_name_missing.zx0",
+            "options_color.zx0",
         ):
             with self.subTest(filename=filename):
                 self.assertIn((OUTPUT / filename).read_bytes(), rom)

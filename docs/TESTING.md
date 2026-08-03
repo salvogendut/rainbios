@@ -10,7 +10,10 @@ fixtures keep pass/failure loops and host mailboxes outside production code.
 ## Prerequisites
 
 The host suite requires the normal build dependencies listed in the README:
-GNU Make, Python 3.10+, Pillow 10+, and RASM 3.x.
+GNU Make, a C99 compiler, Python 3.10+, Pillow 10+, RASM 3.x, and externally
+supplied `zmac`/`ld80`. The sibling `../bbcbasic-z80-msx` checkout is mandatory
+because every normal main-ROM build tests and rebuilds it from source before
+embedding its exact payload.
 
 Optional integration suites require:
 
@@ -18,7 +21,6 @@ Optional integration suites require:
   `flatpak run org.openmsx.openMSX`;
 - the adjacent open-source 1983 checkout and model catalogue, defaulting to
   `../1983/1983` and `../1983/1983-models.conf`;
-- the sibling BBC BASIC checkout for payload integration targets;
 - the official open-source C-BIOS 0.29a SUB-ROM at
   `../cbios-0.29a/roms/cbios_sub.rom` for the current V9938 fixture;
 - a local GeoBench `GBMSX.IMG` at `../geobench/QA/GBMSX.IMG`;
@@ -61,7 +63,11 @@ git diff --check
 | --- | --- |
 | `make test` | ROM layout, generated assets, ABI metadata, fixture construction, and report/state parsers |
 | `make check-bbcbasic` | Pinned BBC BASIC source revision and dependency identity |
-| `make check-bbcbasic-artifact` | Builds and byte-verifies the pinned 16 KiB payload using the legacy assemblers |
+| `make check-bbcbasic-artifact` | Rebuilds and byte-verifies the pinned 16 KiB payload using the legacy assemblers |
+
+`make test` first follows the same unconditional source-build path as `make`:
+it runs the companion repository's tests and audit, rebuilds its ROM, checks
+the pinned digest, and embeds a byte-exact copy in the main ROM.
 
 ## openMSX targets
 
@@ -79,14 +85,14 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | --- | --- |
 | `test-openmsx` | Machine-definition configuration |
 | `test-openmsx-boot` | Rendered boot artwork and nonblank output |
-| `test-openmsx-options` | Space-key menu route and Screen 1 rendering |
+| `test-openmsx-options` | Space-key menu route and Screen 1 rendering; host asset tests pin the title and three action labels |
 | `test-openmsx-audio` | Non-silent startup-jingle PCM capture |
 | `test-openmsx-m1` | Primary, split, decoy, and expanded RAM discovery layouts |
 | `test-openmsx-slots` | Primary `RSLREG`, `WSLREG`, `ENASLT`, `RDSLT`, `WRSLT`, and returning `CALSLT` incl. page-0/page-3 primary targets |
 | `test-openmsx-expanded-slots` | Expanded selectors, slot tables, all pages, restoration, and returning `CALSLT` incl. page-0 and page-3 different-slot targets |
 | `test-openmsx-mapper` | Boot-time memory-mapper sizing and access to a segment beyond the fixed 64 KiB baseline |
 | `test-openmsx-services` | Interrupt, hook, VDP, mode, console, scrolling, and `CLS` services |
-| `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, blocking `CHGET`, Ctrl-STOP break, function-key display flags, text-mode forcing, auto-repeat, `INLIN`/`PINLIN`/`QINLIN`/`BEEP`, dead-key accents, and the key click |
+| `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, blocking `CHGET`, Ctrl-STOP break, function-key display flags, `ERAFNK` row clearing/cursor preservation, text-mode forcing, auto-repeat, `INLIN`/`PINLIN`/`QINLIN`/`BEEP`, dead-key accents, and the key click |
 | `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, PSG R15 preservation, and no-paddle `GTPDL` |
 | `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 without changing the isolated image copy |
 | `test-openmsx-font` | Printable project-owned font coverage |
@@ -103,6 +109,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-bbcbasic` | Complete console/editing/language/error/timing workload |
 | `test-openmsx-bbcbasic-graphics` | Graphics II drawing, readback, VRAM guards, and rendered output |
 | `test-openmsx-payload-invalid` | Claimed-but-invalid descriptor fails closed without running `INIT` |
+| `test-openmsx-embedded-basic` | No-cartridge automatic launch, internal header/descriptor, slot state, ROM write guard, arithmetic, and clean top-of-screen banner/prompt |
 
 ### Cassette and disk
 
@@ -131,6 +138,7 @@ make test-1983 \
 | `test-1983-expanded` | NMS 8250 expanded-slot RAM layout |
 | `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
 | `test-1983-bbcbasic` | BBC BASIC menu launch, banner, prompt, and runtime state |
+| `test-1983-embedded-basic` | No-cartridge automatic launch of the embedded payload and clean top-of-screen banner/prompt |
 | `test-1983-bbcbasic-graphics` | Independently rendered Graphics II workload |
 | `test-1983-tape` | Raw cassette fixture through public `TAP*` calls |
 | `test-1983-bbcbasic-tape` | BBC BASIC cassette LOAD/RUN path |

@@ -208,11 +208,21 @@ proc iscntc_break_done {} {
 
 proc iscntc_drained_done {} {
     record_keyboard [format "ISCNTC2=%d" [expr {[reg F] & 1}]]
+    poke 0xF3DD 0x07
+    poke 0xF3DC 0x05
+    set ::erafnk_first [expr {
+        [word_at 0xF922] + ([peek 0xF3B1] - 1) * [peek 0xF3B0]
+    }]
+    set ::erafnk_last [expr {$::erafnk_first + [peek 0xF3B0] - 1}]
+    debug write VRAM $::erafnk_first 0x41
+    debug write VRAM $::erafnk_last 0x5A
     invoke_bios 0x00CC erafnk_done
 }
 
 proc erafnk_done {} {
-    record_keyboard [format "ERAFNK=%02X" [peek 0xF3DE]]
+    record_keyboard [format "ERAFNK=%02X,%02X,%02X,%02X,%02X" \
+        [peek 0xF3DE] [peek 0xF3DD] [peek 0xF3DC] \
+        [debug read VRAM $::erafnk_first] [debug read VRAM $::erafnk_last]]
     invoke_bios 0x00CF dspfnk_done
 }
 

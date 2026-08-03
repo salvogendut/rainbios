@@ -4,11 +4,34 @@
 
 ## Status and conclusion
 
-This document assesses a future RainBIOS variant which contains the current
-MSX Z80 BASIC payload in the same 32 KiB MAIN-ROM image. It is a design record,
-not an implementation and not legal advice.
+This document records the design and initial implementation of a RainBIOS
+MAIN-ROM which contains the current MSX Z80 BASIC payload in the same 32 KiB
+image. It is not legal advice.
 
-Tracking issue: [#24](https://github.com/salvogendut/rainbios/issues/24).
+The original assessment was tracked in
+[#24](https://github.com/salvogendut/rainbios/issues/24). Implementation is
+tracked in [#60](https://github.com/salvogendut/rainbios/issues/60).
+
+The issue-60 implementation slice is operational:
+
+- normal `make` rebuilds the pinned adjacent `../bbcbasic-z80-msx` checkout
+  from source, runs its tests/provenance audit, checks the exact payload digest,
+  and embeds it in `build/rainbios_msx1.rom`;
+- the payload occupies `4000h-7FFFh` byte-for-byte;
+- generated menu/logo tables use ZX0 while the public 2 KiB `CGTABL` font
+  remains directly addressable in ROM;
+- external cartridges retain priority, storage is attempted next, and a clean
+  return selects the internal payload;
+- Space has a bounded three-second window to open the options menu;
+- the internal descriptor is passed through the same full `RBP1` parser used
+  for external payloads before launch;
+- automatic no-cartridge startup is verified in 1983 and openMSX.
+
+The boot menu is headed `RainBIOS (c) salvogendut 2026` and uses the generic
+action labels `START BASIC`, `BOOT FLOPPY`, and `BOOT IDE OR SD`. BASIC starts
+on a clean text screen: its existing `INITXT` call clears and homes the display,
+and RainBIOS `ERAFNK` now clears the function-key row without moving that
+cursor.
 
 The short conclusion is:
 
@@ -27,10 +50,12 @@ The short conclusion is:
   ROM under that name, or give the port a distinct name and retain factual
   provenance attribution.
 
-The recommended release model is to keep the existing separate-ROM package
-and add a second, optional combined output. Do not replace the separate
-payload workflow until the combined image has equivalent emulator and
-hardware coverage.
+The implementation follows the requested development-build policy: the normal
+RainBIOS ROM is combined and its build has an unconditional source-build
+dependency on the companion checkout. The companion project still produces a
+separately usable 16 KiB ROM, so releases may distribute both files together.
+Do not present the combined image as release-ready until the branding decision,
+full emulator matrix, and hardware validation are complete.
 
 ## Required behavior
 
@@ -51,30 +76,30 @@ In particular:
 - with a bootable Sunrise IDE or SD Mapper setup, its operating system boots;
 - when an IDE/SD bootstrap reports failure by returning, the built-in
   interpreter starts;
-- a bootable floppy should retain its existing opportunity before BASIC;
-- an external, valid RainBIOS BASIC payload may override the built-in copy if
-  the project deliberately adopts that precedence rule.
+- a bootable floppy retains its existing opportunity before BASIC;
+- an external, valid RainBIOS BASIC payload overrides the built-in copy.
 
-The last rule must be decided explicitly during implementation. Preferring an
-external payload makes upgrades possible without replacing the system ROM and
-is therefore the recommended policy.
+The external override is the implemented policy. It allows upgrades without
+replacing the system ROM and preserves the prior optional-cartridge behavior.
 
 ## Current binary and address-space facts
 
 ### RainBIOS
 
-The MAIN-ROM is already exactly 32 KiB and is mapped at `0000h-7FFFh`. In the
-currently built image:
+The MAIN-ROM is exactly 32 KiB and is mapped at `0000h-7FFFh`. In the issue-60
+build, the lower bank has this measured layout:
 
-- executable code and small tables end before `1F06h`;
-- the boot font and menu data begin at `1F06h`;
-- raw logo data continues through approximately `6025h`;
-- the rest of the image is padded with `FFh` through `7FFFh`.
+- the 68-byte ZX0 decoder begins at `2385h`;
+- the directly addressable 2 KiB `CGTABL` font begins at `2542h`;
+- compressed menu assets occupy `2D42h-2F12h`;
+- compressed logo assets occupy `2F13h-32A7h`;
+- `32A8h-3FFFh` is `FFh` padding (3,416 bytes);
+- the exact 16 KiB interpreter begins at `4000h` and ends at `7FFFh`.
 
-This leaves about 8 KiB unused at the end, which is not enough to append a
-16 KiB interpreter. More importantly, appending a third 16 KiB page would not
-produce a standard MAIN-ROM mapping. A Z80 has only the `0000h-7FFFh` BIOS
-window available for the conventional 32 KiB MAIN-ROM.
+Appending a third 16 KiB page would not produce a standard MAIN-ROM mapping.
+A Z80 has only the `0000h-7FFFh` BIOS window available for the conventional
+32 KiB MAIN-ROM. The current implementation enforces the lower-bank boundary
+with assembly assertions.
 
 The useful fact is that RainBIOS's executable code is in page 0. Most of the
 current page-1 occupation is raw boot artwork, not firmware routines. If all
@@ -107,33 +132,30 @@ tests which reject writes to that window. This is the central reason the
 combined-ROM design is practical: the upper half can contain the same tested
 payload bytes instead of a new relocated interpreter build.
 
-At the time of this assessment, the sibling checkout is at commit
+The pinned sibling checkout is at commit
 `34540d468d3f39da0d283da49c0feb2dab9a1313`. Its built ROM has SHA-256
 `82b0ff999ae85d4105875ad6e8c5a33f37662fbcde1642044c56a430de9759a6`.
-RainBIOS's dependency lock still records the earlier commit `6ddaa57...` and
-artifact digest `29691e2a...`. Reconcile and review that update before using a
-payload in a combined release.
+RainBIOS's dependency lock records both exact identities and rejects drift.
 
-## Recommended 32 KiB layout
+## Implemented 32 KiB layout
 
-The proposed combined output is:
+The combined output is:
 
 | ROM offset / CPU address | Contents | Licensing |
 | --- | --- | --- |
 | `0000h-3FFFh` | RainBIOS jump table, firmware, compressed boot assets, decompressor | BSD-3-Clause code and CC0-1.0 boot assets |
 | `4000h-7FFFh` | pinned MSX interpreter payload | Zlib core plus BSD-3-Clause MSX adapter |
 
-Suggested artifact names are:
+Artifact names are:
 
-- `rainbios_msx1.rom`: the existing BIOS-only output;
-- `rainbios_msx1_basic.rom`: the optional combined output;
-- `bbcbasic_msx_console.rom`: the independently usable payload, retained in
-  the companion project and release bundle.
+- `rainbios_msx1.rom`: the combined MAIN-ROM development output;
+- `bbcbasic_msx_console.rom`: the independently usable payload retained in the
+  companion project and copied to `build/payload/` during a RainBIOS build.
 
-The combined build should place the exact, validated 16 KiB payload at offset
-`4000h`. It should not extract selected modules from a previously built ROM or
-silently patch the payload. Build the companion project from its pinned source,
-verify its digest, then include the whole artifact.
+The combined build places the exact, validated 16 KiB payload at offset
+`4000h`. It does not extract selected modules from a previously built ROM or
+silently patch the payload: it builds the companion project from its pinned
+source, verifies its digest, and includes the whole artifact.
 
 ### Boot-asset compaction
 
@@ -146,36 +168,30 @@ Current generated boot assets total 15,872 bytes:
 - 768-byte logo name table;
 - 6,144-byte logo colour table.
 
-As a feasibility check, generic compression reduces the concatenated generated
-assets to roughly 4.8 KiB. That format is not proposed for the Z80 decoder, but
-the measurement shows ample repetition in the data. A small Z80-oriented
-decoder should stream directly from ROM to VRAM so the full uncompressed image
-never needs to occupy RAM.
+The selected ZX0 v2.2 encoding produces 1,382 bytes for the compressed menu and
+logo tables. The three simpler-logo streams total 917 bytes, down from 3,922
+bytes for the previous artwork. The 2 KiB font remains raw to preserve the
+public `CGTABL` pointer, for a total of 3,430 stored asset bytes. ZX0
+back-references require prior
+output bytes, so the 68-byte standard decoder expands one table at a time to
+the transient `C000h-D7FFh` RAM buffer before uploading it to VRAM.
 
-The implementation should evaluate at least:
-
-- a clearly licensed ZX0-style or equivalent Z80 decompressor;
-- a project-owned PackBits/RLE format specialized for pattern and colour
-  tables;
-- tile deduplication for the boot logo and menu tables.
-
-Whichever format is selected must have a host-side round-trip test and a
-rendered emulator test. Its license and exact upstream revision, if any, must
-be recorded before code is imported. The build must fail if the lower-half
-image reaches `4000h`; silently truncating or overlapping the interpreter is
+The compressor sources and decoder are vendored from official ZX0 commit
+`ecde3a2ae05061fe06469ed46df81a33b7de7d86`; its BSD-3-Clause notice is in
+`LICENSES/ZX0.txt`. Host tests round-trip every compressed table, and rendered
+logo/menu tests cover 1983 and openMSX. The build fails if the lower-half image
+reaches `4000h`; silently truncating or overlapping the interpreter is
 unacceptable.
 
-Compressing all generated boot assets is preferable to compressing only the
-logo. It leaves several KiB of page-0 growth room, whereas compressing only the
-large logo tables leaves little margin for the decompressor and unfinished
-BIOS work. Even after compaction, committing the entire upper half to BASIC
-places a permanent growth ceiling on page-0 firmware. This is the principal
-long-term technical cost of a traditional combined ROM.
+The simpler logo and current menu increase the lower-bank reserve from 440
+bytes to 3,416 bytes, providing useful development headroom. Committing the entire upper half
+to BASIC remains the principal long-term technical cost of a traditional
+combined ROM, so the assembly boundary and size reporting remain mandatory.
 
 ## Internal launch design
 
 The built-in payload occupies the MAIN-ROM's own page 1, so it need not be
-discovered as an external cartridge. The launcher can reuse the existing
+discovered as an external cartridge. The launcher reuses the existing
 version-1 entry contract:
 
 - page 0 remains mapped to the RainBIOS slot;
@@ -186,26 +202,26 @@ version-1 entry contract:
 - interrupts are enabled in IM 1;
 - control transfers to `4010h` without a return address.
 
-The implementation should still validate the internal descriptor and checksum
-at `7FF0h`. Treating an internal build error as impossible would turn a corrupt
-ROM into an uncontrolled jump. For the combined target, the internal payload
-slot is `BIOSSLT`, its entry is `4010h`, and its documented RAM limit remains
-`F300h`.
+The implementation validates the internal descriptor and checksum at `7FF0h`
+with the ordinary payload parser. Treating an internal build error as
+impossible would turn a corrupt ROM into an uncontrolled jump. The internal
+payload slot is `BIOSSLT`; the validated descriptor currently supplies entry
+`4010h` and RAM limit `F300h`.
 
-External payload discovery should remain separate from the internal fallback.
-Recommended precedence is:
+External payload discovery remains separate from the internal fallback. The
+implemented precedence is:
 
 1. valid external payload selected explicitly from the menu;
 2. valid external payload as the automatic BASIC fallback;
 3. validated internal payload;
-4. a clear fatal message if neither is valid.
+4. the options menu with BASIC unavailable if neither is valid.
 
 This allows a newer external interpreter to override the factory copy while
 ensuring a self-contained machine still reaches BASIC.
 
 ## Boot dispatcher and failure semantics
 
-### Proposed state machine
+### Implemented state machine
 
 ```text
 reset and hardware initialization
@@ -214,11 +230,7 @@ reset and hardware initialization
 show logo/jingle and scan external cartridges
           |
           +-- cartridge INIT does not return --> cartridge owns machine
-          |
-          v
-bounded Space-key window
-          |
-          +-- Space --> options menu
+          +-- valid external payload ----------> select external BASIC
           |
           v
 try installed floppy/disk bootstrap, if applicable
@@ -231,7 +243,15 @@ try IDE/SD standard hook or RainBIOS direct bootstrap
           +-- success --> operating system owns machine
           |
           v
-launch external BASIC payload if valid, otherwise built-in BASIC
+validate and select built-in BASIC
+          |
+          v
+bounded Space-key window
+          |
+          +-- Space --> options menu
+          |
+          v
+launch selected BASIC payload
 ```
 
 The exact disk-versus-IDE order should preserve the compatibility behavior
@@ -240,10 +260,10 @@ configurations. The important change is that every clean no-media or
 non-bootable return converges on the BASIC fallback instead of the indefinite
 logo wait.
 
-The current `cold_boot_valid_payload` behavior suppresses automatic storage
-boot whenever an external BASIC payload is present. That rule should be
-revisited: it conflicts with the new policy that storage gets a boot attempt
-before automatic BASIC. Menu-selected BASIC can still bypass storage.
+The current policy deliberately lets a validated external BASIC payload
+override both the internal copy and automatic storage. That preserves the
+existing upgrade-cartridge behavior. With no valid external payload, storage
+retains priority over the internal fallback.
 
 ### Meaning of “IDE boot failed”
 
@@ -431,9 +451,9 @@ tool binary in RainBIOS release archives.
 
 ## Build and dependency design
 
-Implementation should add a distinct target rather than making the ordinary
-MAIN-ROM depend unconditionally on the sibling repository. A suitable build
-pipeline is:
+At the user's direction, the ordinary MAIN-ROM target now depends
+unconditionally on the sibling repository. Every invocation of the normal
+build performs this pipeline:
 
 1. verify the pinned companion repository commit and preserved upstream tree;
 2. build the 16 KiB payload from source with the recorded toolchain;
@@ -444,13 +464,14 @@ pipeline is:
 6. concatenate/link the exact payload bytes at `4000h`;
 7. verify the resulting ROM is exactly 32,768 bytes and that its upper half is
    byte-identical to the independently built payload;
-8. emit a machine-readable component/license manifest beside the ROM.
+8. retain the checked human-readable notices in `THIRD_PARTY_NOTICES.md` and
+   `LICENSES/`, and eventually emit a machine-readable component/license
+   manifest beside the ROM (still pending).
 
-For ordinary development, the existing separate-ROM target should remain
-buildable without the companion checkout. A release builder may use a pinned
-submodule, a verified adjacent checkout, or a source archive with immutable
-hashes. Whichever mechanism is chosen must make source identity obvious and
-must not silently fall back to an old prebuilt interpreter artifact.
+The current development contract requires the verified adjacent checkout and
+externally supplied `zmac`/`ld80`. `BBC_BASIC_DIR`, `BBC_ZMAC`, and `BBC_LD80`
+remain overridable. The build never silently falls back to an old prebuilt
+interpreter artifact.
 
 ## Required tests
 
@@ -466,6 +487,11 @@ must not silently fall back to an old prebuilt interpreter artifact.
 - asset compression round-trips exactly to the generated VRAM tables.
 
 ### Automatic boot matrix in 1983 and openMSX
+
+The no-cartridge automatic prompt, bounded Space menu, exact internal header
+and descriptor visibility, page-1 ROM write guard, and a simple interpreter
+program now have committed probes. The remainder of this list is the
+regression matrix still to promote to the internal mapping:
 
 - no external cartridges: interpreter banner and prompt appear without input;
 - Space during the bounded window: options menu appears;
@@ -507,26 +533,35 @@ Before making the combined image the recommended default, test at least:
 
 ## Implementation phases
 
-1. **Resolve naming and release terms.** Obtain permission or select a new
-   product name; add complete third-party notices.
-2. **Reconcile the dependency lock.** Review and pin the intended companion
-   revision and deterministic artifact.
-3. **Compact boot assets.** Add a clearly licensed or original decoder,
-   enforce the page-0 limit, and preserve exact logo/menu rendering.
-4. **Produce the combined image.** Add the optional 32 KiB target and host
-   layout/provenance checks without changing boot policy.
-5. **Add internal descriptor launch.** Validate and launch the built-in copy
-   through the existing entry contract.
-6. **Change automatic fallback policy.** Add the bounded Space window and
-   converge clean storage failures on BASIC.
-7. **Run the full emulator matrix.** Preserve every current cartridge, Nextor,
-   GeoBench, graphics, keyboard, controller, cassette, and disk test.
-8. **Validate hardware and release packaging.** Only then consider presenting
-   the combined ROM as the default end-user image.
+1. **Partly done — resolve naming and release terms.** The combined-release
+   notice bundle is present. Obtain permission to use the `BBC BASIC` name or
+   select a new product name, and add a machine-readable component manifest.
+2. **Done — reconcile the dependency lock.** Revision `34540d4...` and payload
+   digest `82b0ff...` are pinned and checked around every source build.
+3. **Done — compact boot assets.** Vendored ZX0 is licensed and recorded, the
+   page-0 limit is enforced, and exact/rendered round trips pass.
+4. **Done — produce the combined image.** The normal 32 KiB output embeds an
+   exact source-built upper half and has host layout checks.
+5. **Done — add internal descriptor launch.** The full `RBP1` parser validates
+   and launches the built-in copy through the existing entry contract.
+6. **Done for clean returns — change automatic fallback policy.** Space is
+   bounded and clean storage returns converge on BASIC. A third-party INIT or
+   hook which never returns remains outside the guarantee.
+7. **In progress — run the full emulator matrix.** The new 1983/openMSX probes
+   pass. Broader cartridge/storage and internal graphics/cassette promotion is
+   pending. The ignored local GeoBench image currently has digest
+   `c826c90ee7eb02261ed1e8c5c3600c1c86ac356ad3cba16a7f4c78bd0e22e60`,
+   not the documented accepted
+   `47d19058e4096a3f1de497e223d749bf0195cf3c10019c1be8b52a0b77630e8f`
+   fixture, and an untouched `main` snapshot stalls identically with it; this
+   is not evidence of an embedding regression.
+8. **Pending — validate hardware and release packaging.** Only then consider
+   presenting the combined ROM as the default end-user image.
 
 ## Decision record
 
-Proceeding later is reasonable, subject to two conditions:
+Continuing from this development implementation is reasonable, subject to two
+conditions:
 
 - resolve or avoid the non-transferable `BBC BASIC` branding before release;
 - accept the page-0 growth ceiling imposed by dedicating `4000h-7FFFh` to the
@@ -544,6 +579,9 @@ single universal file but has substantially lower long-term firmware risk.
 - Local `../bbcbasic-z80-msx` checkout, including `COPYING`, `UPSTREAM.md`,
   `docs/CORE_AUDIT.md`, `docs/TOOLCHAIN.md`, the link map, and the deterministic
   16 KiB payload.
+- [Official ZX0 repository](https://github.com/einar-saukas/ZX0), commit
+  `ecde3a2ae05061fe06469ed46df81a33b7de7d86`, for the BSD-3-Clause compressor
+  and 68-byte standard Z80 decoder.
 - [Official R. T. Russell BBCZ80 repository](https://github.com/rtrussell/BBCZ80),
   including its Zlib license identification and branding notice.
 - [SPDX Zlib license entry](https://spdx.org/licenses/Zlib.html).

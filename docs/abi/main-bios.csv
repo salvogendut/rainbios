@@ -65,7 +65,7 @@ address,name,kind,status,milestone,notes
 00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
 00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking
 00C9,FNKSB,jump,partial,M2,Displays or erases the function keys according to CNSDFG
-00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line
+00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line directly without changing CSRX/CSRY
 00CF,DSPFNK,jump,partial,M2,Sets CNSDFG and renders the FNKSTR strings on the bottom line
 00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display
 00D5,GTSTCK,jump,implemented,M1,Cursor keys read live and joystick ports 1/2 return standard directions 0-8 from the per-frame interrupt snapshot

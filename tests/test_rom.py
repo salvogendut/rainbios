@@ -10,6 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 ROM_PATH = Path(
     os.environ.get("RAINBIOS_MSX1_ROM", ROOT / "build" / "rainbios_msx1.rom")
 )
+BBC_BASIC_ROM_PATH = Path(
+    os.environ.get(
+        "RAINBIOS_BBC_BASIC_ROM",
+        ROOT / "build" / "payload" / "bbcbasic_msx_console.rom",
+    )
+)
 ABI_PATH = ROOT / "docs" / "abi" / "main-bios.csv"
 
 
@@ -22,6 +28,7 @@ class MainRomLayoutTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rom = ROM_PATH.read_bytes()
+        cls.basic = BBC_BASIC_ROM_PATH.read_bytes()
         cls.abi = read_abi()
 
     def test_rom_is_exactly_32_kib(self):
@@ -37,7 +44,7 @@ class MainRomLayoutTest(unittest.TestCase):
     def test_fixed_metadata(self):
         font = int.from_bytes(self.rom[0x0004:0x0006], "little")
         self.assertGreaterEqual(font, 0x0200)
-        self.assertLessEqual(font + 2048, len(self.rom))
+        self.assertLessEqual(font + 2048, 0x4000)
         self.assertEqual(self.rom[0x0006:0x0008], bytes((0x98, 0x98)))
         self.assertEqual(self.rom[0x002B:0x0030], bytes((0x21, 0x11, 0, 0, 0)))
 
@@ -87,8 +94,11 @@ class MainRomLayoutTest(unittest.TestCase):
         self.assertLessEqual(statuses, {"stub", "partial", "implemented"})
         self.assertIn("stub", statuses)
 
-    def test_unused_rom_tail_is_erased(self):
-        self.assertEqual(self.rom[-256:], bytes((0xFF,)) * 256)
+    def test_upper_bank_is_the_exact_source_built_basic_payload(self):
+        self.assertEqual(len(self.basic), 0x4000)
+        self.assertEqual(self.rom[0x4000:], self.basic)
+        self.assertEqual(self.basic[:2], b"AB")
+        self.assertEqual(self.basic[0x3FF0:0x3FF4], b"RBP1")
 
 
 if __name__ == "__main__":

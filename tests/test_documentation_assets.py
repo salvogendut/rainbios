@@ -11,6 +11,10 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = {
+    "src/logo-simple.png": (
+        (295, 192),
+        "4487be3b3b0c5d2953668a645b5ee3796b55aac5fd121cf1977756b4eec6bd09",
+    ),
     "rainbios.png": (
         (1448, 1086),
         "781810b02af6d79b2de26347bb73ba9c7249f7c3286ec1bde644b868e4587d5e",

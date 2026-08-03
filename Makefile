@@ -1,5 +1,7 @@
 RASM ?= rasm
 PYTHON ?= python3
+HOST_CC ?= cc
+LOGO_SOURCE := src/logo-simple.png
 OPENMSX ?= openmsx
 EMULATOR_1983 ?= ../1983/1983
 MODELS_1983 ?= ../1983/1983-models.conf
@@ -155,6 +157,10 @@ OPENMSX_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
 OPENMSX_BBC_BASIC_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-smoke.txt
+OPENMSX_EMBEDDED_BASIC_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/embedded-basic.txt
+OPENMSX_EMBEDDED_BASIC_SCREEN := \
+	$(OPENMSX_ROOT)/embedded-basic.png
 OPENMSX_BBC_GRAPHICS_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-graphics.txt
 OPENMSX_BBC_GRAPHICS_SCREEN := \
@@ -205,6 +211,8 @@ EMULATOR_1983_CART_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
 EMULATOR_1983_BBC_BASIC_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-prompt.ppm
+EMULATOR_1983_EMBEDDED_BASIC_SCREEN := \
+	$(EMULATOR_1983_DIR)/embedded-basic-prompt.ppm
 EMULATOR_1983_BBC_GRAPHICS_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-graphics.ppm
 EMULATOR_1983_BBC_TAPE_SCREEN := \
@@ -263,7 +271,16 @@ EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN3_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-diagnostics-screen3.ppm
 LOGO_DIR := $(BUILD_DIR)/logo
 LOGO_STAMP := $(LOGO_DIR)/.converted
-SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
+LOGO_COMPRESSED_ASSETS := $(addprefix $(LOGO_DIR)/, \
+	options_name_ready.zx0 options_name_missing.zx0 options_color.zx0 \
+	logo_pattern.zx0 logo_name.zx0 logo_color.zx0)
+ZX0_TOOL := $(BUILD_DIR)/tools/zx0
+ZX0_TOOL_SOURCES := tools/zx0/zx0.c tools/zx0/zx0.h \
+	tools/zx0/optimize.c tools/zx0/compress.c tools/zx0/memory.c
+BBC_EMBED_DIR := $(BUILD_DIR)/payload
+BBC_EMBEDDED_ROM := $(BBC_EMBED_DIR)/bbcbasic_msx_console.rom
+SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
+	src/zx0_decompress.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
@@ -286,7 +303,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-openmsx-cartridge test-1983 \
 	test-openmsx-disk-fault \
 	test-openmsx-expanded-cartridge \
-	test-1983-expanded \
+	test-1983-expanded test-openmsx-embedded-basic \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-bbcbasic-tape-save \
@@ -306,12 +323,13 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	run-1983-ide-boot run-1983-sd-boot run-1983-nextor \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
+	test-1983-embedded-basic \
 	test-1983-cartridge test-external-cartridges \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
-	check-bbcbasic-artifact nms8250-disk-rom clean
+	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom clean
 
 all: $(MSX1_ROM)
 
@@ -320,13 +338,35 @@ nms8250-disk-rom: $(NMS8250_DISK_ROM)
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(LOGO_STAMP): src/logo.png tools/png_to_screen2.py | $(BUILD_DIR)
+$(LOGO_STAMP): $(LOGO_SOURCE) tools/png_to_screen2.py | $(BUILD_DIR)
 	mkdir -p $(LOGO_DIR)
 	$(PYTHON) tools/png_to_screen2.py $< $(LOGO_DIR)
 	touch $@
 
-$(MSX1_ROM): $(SOURCES) $(LOGO_STAMP) | $(BUILD_DIR)
-	$(RASM) $< -I$(LOGO_DIR) -ob $@ -s -os $(MSX1_SYM)
+$(ZX0_TOOL): $(ZX0_TOOL_SOURCES) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(HOST_CC) -O2 -std=c99 -Wall -Wextra -Itools/zx0 \
+		-o $@ tools/zx0/zx0.c tools/zx0/optimize.c \
+		tools/zx0/compress.c tools/zx0/memory.c
+
+$(LOGO_DIR)/%.zx0: $(LOGO_STAMP) $(ZX0_TOOL)
+	$(ZX0_TOOL) -f $(patsubst %.zx0,%.bin,$@) $@
+
+bbcbasic-payload:
+	$(PYTHON) tools/check_bbcbasic_dependency.py \
+		--repository $(BBC_BASIC_DIR) --skip-artifact
+	$(MAKE) -C $(BBC_BASIC_DIR) check
+	$(MAKE) -C $(BBC_BASIC_DIR) msx-console \
+		ZMAC="$(BBC_ZMAC)" LD80="$(BBC_LD80)"
+	$(PYTHON) tools/check_bbcbasic_dependency.py \
+		--repository $(BBC_BASIC_DIR) --require-artifact
+	mkdir -p $(BBC_EMBED_DIR)
+	cp $(BBC_BASIC_ROM) $(BBC_EMBEDDED_ROM)
+
+$(MSX1_ROM): bbcbasic-payload $(SOURCES) $(LOGO_STAMP) \
+	$(LOGO_COMPRESSED_ASSETS) | $(BUILD_DIR)
+	$(RASM) $(firstword $(SOURCES)) -Isrc -I$(LOGO_DIR) -I$(BBC_EMBED_DIR) \
+		-ob $@ -s -os $(MSX1_SYM)
 
 $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -550,6 +590,7 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
 	$(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) $(VALID_PAYLOAD_CART)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
+	RAINBIOS_BBC_BASIC_ROM=$(BBC_EMBEDDED_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
 	RAINBIOS_IDE_BOOT_SECTOR=$(IDE_BOOT_SECTOR_BIN) \
@@ -958,6 +999,18 @@ test-openmsx-bbcbasic: test-openmsx-bbcbasic-menu
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_smoke.tcl)"
 	$(PYTHON) tools/check_bbcbasic_smoke.py $(OPENMSX_BBC_BASIC_REPORT)
 
+test-openmsx-embedded-basic: $(OPENMSX_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX1 \
+		-command "set embedded_basic_output {$(abspath $(OPENMSX_EMBEDDED_BASIC_REPORT))}; set embedded_basic_screenshot {$(abspath $(OPENMSX_EMBEDDED_BASIC_SCREEN))}" \
+		-script "$(abspath tests/openmsx/embedded_basic_probe.tcl)"
+	$(PYTHON) tools/check_embedded_basic_probe.py \
+		$(OPENMSX_EMBEDDED_BASIC_REPORT)
+	$(PYTHON) tools/check_boot_screenshot.py --min-colors 2 \
+		$(OPENMSX_EMBEDDED_BASIC_SCREEN)
+
 test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
@@ -1117,6 +1170,15 @@ test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM) $(MENU_INPUT_CART)
 		--screenshot "$(EMULATOR_1983_BBC_BASIC_SCREEN)"
 	$(PYTHON) tools/check_bbcbasic_screenshot.py \
 		$(EMULATOR_1983_BBC_BASIC_SCREEN)
+
+test-1983-embedded-basic: $(MSX1_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_embedded_basic.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" \
+		--screenshot "$(EMULATOR_1983_EMBEDDED_BASIC_SCREEN)"
+	$(PYTHON) tools/check_bbcbasic_screenshot.py \
+		$(EMULATOR_1983_EMBEDDED_BASIC_SCREEN)
 
 test-1983-bbcbasic-graphics: \
 		$(MSX1_ROM) $(BBC_BASIC_ROM) $(GRAPHICS_INPUT_CART)
@@ -1573,14 +1635,7 @@ check-bbcbasic:
 		--repository $(BBC_BASIC_DIR)
 	$(MAKE) -C $(BBC_BASIC_DIR) check
 
-check-bbcbasic-artifact:
-	$(PYTHON) tools/check_bbcbasic_dependency.py \
-		--repository $(BBC_BASIC_DIR) --skip-artifact
-	$(MAKE) -C $(BBC_BASIC_DIR) check
-	$(MAKE) -C $(BBC_BASIC_DIR) msx-console \
-		ZMAC="$(BBC_ZMAC)" LD80="$(BBC_LD80)"
-	$(PYTHON) tools/check_bbcbasic_dependency.py \
-		--repository $(BBC_BASIC_DIR) --require-artifact
+check-bbcbasic-artifact: bbcbasic-payload
 
 clean:
 	rm -rf $(BUILD_DIR)

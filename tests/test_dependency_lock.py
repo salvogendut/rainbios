@@ -28,14 +28,15 @@ class BasicDependencyLockTests(unittest.TestCase):
         self.assertEqual(artifact["size"], 16_384)
         self.assertEqual(
             artifact["sha256"],
-            "29691e2ac6498988b15ef8e80687f902ae834fd886585bcc1f753a49e0434678",
+            "82b0ff999ae85d4105875ad6e8c5a33f37662fbcde1642044c56a430de9759a6",
         )
 
-    def test_boot_menu_names_the_pinned_interpreter(self) -> None:
+    def test_boot_menu_uses_the_generic_basic_label(self) -> None:
         from tools.png_to_screen2 import OPTIONS_LINES
 
-        self.assertEqual(OPTIONS_LINES[5], "1  START BBC BASIC")
-        self.assertEqual(OPTIONS_LINES[6], "2  BOOT MSX DOS")
+        self.assertEqual(OPTIONS_LINES[2], "RainBIOS (c) salvogendut 2026")
+        self.assertEqual(OPTIONS_LINES[5], "1  START BASIC")
+        self.assertEqual(OPTIONS_LINES[6], "2  BOOT FLOPPY")
         self.assertEqual(OPTIONS_LINES[7], "3  BOOT IDE OR SD")
         self.assertEqual(OPTIONS_LINES[8], "PRESS 1 2 OR 3")
 

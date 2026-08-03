@@ -795,3 +795,19 @@ boot state. This diagnosis is not used to derive RainBIOS firmware code.
   define an endpoint-compatible public BIOS test
 - RainBIOS use: calling-contract and externally visible behavior cross-check;
   no GeoBench implementation code copied
+
+## 2026-08-03 — Official ZX0 v2 compressor and Z80 decoder
+
+- Upstream: `https://github.com/einar-saukas/ZX0`
+- Revision: `ecde3a2ae05061fe06469ed46df81a33b7de7d86`
+- License: BSD-3-Clause, reproduced in `LICENSES/ZX0.txt`
+- Files imported unchanged: `src/zx0.c`, `src/zx0.h`, `src/compress.c`,
+  `src/memory.c`, and `src/optimize.c`, stored under `tools/zx0/`
+- Decoder used: upstream standard forward Z80 decoder, stored as
+  `src/zx0_decompress.asm`
+- Purpose: losslessly store the generated RainBIOS logo and menu tables below
+  the `4000h` combined-ROM boundary
+- RainBIOS use: the source-built host compressor emits `.zx0` streams; the
+  68-byte decoder expands one table at a time to transient `C000h-D7FFh` RAM
+  before the original RainBIOS VRAM upload path. Host tests decode every stream
+  independently and require an exact round trip.
