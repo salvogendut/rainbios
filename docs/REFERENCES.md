@@ -456,6 +456,24 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the line-input
   and beep routines are original RainBIOS work
 
+## 2026-08-03 — Mid-line editing and GICINI PLAY work area
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`GICINI`,
+  `PINLIN`, `INLIN`) and Appendix 4 MAIN-ROM work-area listing; Chapter 5
+  section 1 for the GICINI PSG register values and the "work area in which
+  PLAY statement of BASIC is executed" wording; Appendix 4 `QUEUES`,
+  `FRCNEW`, `PRSCNT`-`PLYCNT`, `VCBA`/`VCBB`/`VCBC`, `QUETAB`/`QUEBAK`, and
+  `VOICAQ`/`VOICBQ`/`VOICCQ` addresses (MSX1 layout, so marked in the text)
+- Cross-check: MSX Assembly Page BIOS reference for `GICINI`; MAP system-vars
+  listing for the queue-table format; the Appendix 4 errata that `MUSICF` is
+  `FB3Fh` and `PLYCNT` is `FB40h`
+- Purpose: define M3H's cursor editing (left/right/Home/insert/Backspace/
+  Delete with line redraw) and the `GICINI` PLAY statement work-area
+  initialization (QUEUES -> QUETAB, FRCNEW = 255, cleared voice static data
+  and voice queues)
+- RainBIOS use: interface and observable behavior facts only; the editing
+  and work-area initialization routines are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

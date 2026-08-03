@@ -60,8 +60,21 @@ Ctrl-STOP break. `INLIN` behaves the same and sets `AUTFLG` (`F6AAh`);
 `QINLIN` prints a question mark and a space before `INLIN`. On Return, the
 line is echoed (unless `AUTFLG` is set), terminated with CR, `HL` returns
 `BUFFER-1`, `B` holds the character count, and carry is clear. On a break,
-carry is set and the partial line is discarded. Backspace and Delete remove
-the last character; other editing keys are not yet handled.
+carry is set and the partial line is discarded.
+
+The input line supports mid-line editing. The cursor starts at the input
+start and `B` counts the characters while a separate cursor tracks the
+insertion point (kept across the `BREAKX` keyboard-matrix calls via the
+stack). Typing inserts at the cursor, Backspace removes the character
+before it, Delete removes the character under it, the cursor-left and
+cursor-right keys move the cursor, and Home moves to the start. After each
+edit the line is redrawn from its saved start position and the screen
+cursor is placed at the cursor offset. The buffer is updated in place
+regardless of `AUTFLG`; only the echo is suppressed for automatic input.
+
+The keyboard probe covers the basic line, end-of-line Backspace, and a
+mid-line sequence (insert, Backspace, Delete, Home) plus cursor-right
+append.
 
 `BEEP` emits a short tone on PSG channel A.
 
@@ -84,6 +97,18 @@ With `CLIKSW` (`F3DBh`) nonzero, each new key press drives the 1-bit click
 line (PPI port-C bit 7) high for a couple of frames. The keyboard probe
 verifies the click bit fires and returns to low.
 
+## PSG and PLAY work-area initialization (M3)
+
+`GICINI` (`0090h`) programs the PSG registers R0-R15 and then initializes
+the PLAY statement work area: `QUEUES` (`F3F3h`) is pointed at the queue
+table (`QUETAB`, `F959h`), `FRCNEW` (`F3F5h`) is set to 255, and the voice
+static data block (`FB35h`-`FB90h`, PRSCNT through VCBC) and the three
+voice queues (`F959h`-`FAF4h`, QUETAB through VOICCQ) are cleared, so
+`MUSICF` (`FB3Fh`) and `PLYCNT` (`FB40h`) start at zero. RainBIOS itself
+does not run BASIC's PLAY interpreter, but the work area matches the
+published MSX layout so a caller can install a music player or interpreter
+over a clean state.
+
 Dead-key+Shift is not yet distinguished (each accent glyph maps to one accent
-type), key click, Code lock, cursor editing inside a line, and CAPS behavior
-beyond the implemented state/LED remain future compatibility work.
+type), Code lock, and CAPS behavior beyond the implemented state/LED remain
+future compatibility work.

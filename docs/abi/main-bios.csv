@@ -45,7 +45,7 @@ address,name,kind,status,milestone,notes
 0087,CALATR,jump,stub,M2,
 008A,GSPSIZ,jump,stub,M2,
 008D,GRPPRT,jump,stub,M2,
-0090,GICINI,jump,partial,M3,Initializes PSG R0-R15 and safe controller lines; PLAY statement work-area initialization remains pending
+0090,GICINI,jump,implemented,M3,Initializes PSG R0-R15 and the PLAY statement work area (QUEUES points to QUETAB, FRCNEW=255, voice static data and queues cleared)
 0093,WRTPSG,jump,partial,M3,Needs register-clobber tests
 0096,RDPSG,jump,partial,M3,Needs register-clobber tests
 0099,STRTMS,jump,stub,M3,
@@ -55,9 +55,9 @@ address,name,kind,status,milestone,notes
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,
 00AB,CNVCHR,jump,stub,M3,
-00AE,PINLIN,jump,partial,M3,Reads keyboard input into BUFFER until Return or Ctrl-STOP; HL returns BUFFER-1 and B the count, carry set on a break
-00B1,INLIN,jump,partial,M3,PINLIN with AUTFLG set; editing covers append, backspace/delete, and break
-00B4,QINLIN,jump,partial,M3,Prints a question mark and space then performs INLIN
+00AE,PINLIN,jump,implemented,M3,Reads keyboard input into BUFFER until Return or Ctrl-STOP with mid-line editing (cursor left/right, Home, insert, backspace, delete); HL returns BUFFER-1 and B the count, carry set on a break
+00B1,INLIN,jump,implemented,M3,PINLIN with AUTFLG set; the buffer is edited the same way but nothing is echoed
+00B4,QINLIN,jump,implemented,M3,Prints a question mark and space then performs INLIN
 00B7,BREAKX,jump,implemented,M3,Tests the physical Ctrl-STOP matrix and returns carry when both keys are held with interrupts inhibited
 00BA,ISCNTC,jump,partial,M3,Consumes a latched INTFLG break; carry and a cleared buffer on a break
 00BD,CKCNTC,jump,partial,M3,Shares ISCNTC's break consumption

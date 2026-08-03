@@ -56,8 +56,9 @@ The main BIOS currently provides:
 - international keyboard scanning, auto-repeat, Ctrl-STOP break handling
   (`BREAKX`/`ISCNTC`/`CKCNTC`), function-key strings and display
   (`INIFNK`/`FNKSB`/`ERAFNK`/`DSPFNK`/`TOTEXT`), prompt/line input
-  (`INLIN`/`PINLIN`/`QINLIN`), dead-key accents, key click (`CLIKSW`), `BEEP`,
-  paddle input (`GTPDL`), and partial character-input services;
+  (`INLIN`/`PINLIN`/`QINLIN`) with mid-line cursor editing, dead-key accents,
+  key click (`CLIKSW`), `BEEP`, paddle input (`GTPDL`), PSG/PLAY work-area
+  initialization (`GICINI`), and partial character-input services;
 - cassette motor, leader, framed-byte input/output, and BBC BASIC sequential
   cassette storage;
 - cartridge discovery in primary and expanded slots, RainBIOS payload
@@ -220,10 +221,10 @@ Space, neutral triggers, both mouse request/cache groups, the openMSX
 seeded PSG R15 preservation. Mouse buttons continue through `GTTRIG`;
 touch-panel, light-pen, explicit
 trackball-detection, and paddle protocols remain outside this slice. `GICINI`
-now initializes the PSG hardware and controller baseline atomically; its public
-entry enables interrupts on return while cold boot uses a private DI body. It
-remains ABI-partial because PLAY statement work-area initialization is not part
-of this issue.
+now initializes the PSG hardware and the full PLAY statement work area
+(`QUEUES` -> queue table, `FRCNEW` = 255, cleared voice static data and voice
+queues) atomically; its public entry enables interrupts on return while cold
+boot uses a private DI body.
 
 Current verification on `main`: 148 host tests pass; the openMSX
 controller, keyboard, services, and startup-audio probes pass; Sunrise Nextor
@@ -386,7 +387,7 @@ is:
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
 | M1 reset/slots/RAM/interrupts | In progress | Broader interrupt devices, hardware test |
 | M2 MSX1 display/console | In progress | Remaining VDP, sprite, color, control-character, cursor, and boundary behavior |
-| M3 keyboard/PSG/basic devices | In progress | Cursor editing, pointing/trackball/touch-panel, printer |
+| M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Not started | Separate MSX2 ROMs, V9938, SUB-ROM calls, bitmap modes, palette, clock |
 | M6 completeness/optional components | In progress | ABI gaps, behavior characterization, releases, and broader disk functionality |
