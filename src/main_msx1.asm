@@ -182,7 +182,7 @@ CALSLT_P3_FRAME equ #f360
                 jp chgclr                       ; 0062 CHGCLR
                 defs #0066-$,#ff
                 jp nmi_handler                  ; 0066 NMI
-                jp unsupported_call             ; 0069 CLRSPR
+                jp clrspr                       ; 0069 CLRSPR
                 jp initxt                       ; 006C INITXT
                 jp init32                       ; 006F INIT32
                 jp initgrp                      ; 0072 INITGRP
@@ -191,9 +191,9 @@ CALSLT_P3_FRAME equ #f360
                 jp sett32                       ; 007B SETT32
                 jp setgrp                       ; 007E SETGRP
                 jp setmlt                       ; 0081 SETMLT
-                jp unsupported_call             ; 0084 CALPAT
-                jp unsupported_call             ; 0087 CALATR
-                jp unsupported_call             ; 008A GSPSIZ
+                jp calpat                       ; 0084 CALPAT
+                jp calatr                       ; 0087 CALATR
+                jp gspsiz                       ; 008A GSPSIZ
                 jp unsupported_call             ; 008D GRPPRT
                 jp gicini                       ; 0090 GICINI
                 jp wrtpsg                       ; 0093 WRTPSG
@@ -2108,7 +2108,108 @@ nextor_keyboard_layout_probe:
                 pop af
                 ret
 
-; Test whether Ctrl-STOP is held right now through the physical matrix.
+; Test whether Ctrl-STOP is held right now through the physical matrix.; $0084 CALPAT: return the VRAM address of the pattern data for sprite number
+; A. The offset is A*8 bytes for 8x8 sprites and (A & 0FCh)*8 for 16x16, where
+; the sprite pattern number must be a multiple of four and its four 8-byte
+; quadrants are contiguous.
+calpat:
+                ld hl,(PATBAS)
+                ld d,0
+                ld e,a
+                ld a,(RG1SAV)
+                bit 1,a
+                jr z,calpat_scale
+                ld a,e
+                and #fc
+                ld e,a
+calpat_scale:
+                ld b,3
+calpat_shift:
+                sla e
+                rl d
+                djnz calpat_shift
+                add hl,de
+                ret
+
+; $0087 CALATR: return the VRAM address of the four-byte sprite attribute
+; entry for sprite number A.
+calatr:
+                ld hl,(ATRBAS)
+                ld d,0
+                ld e,a
+                sla e
+                rl d
+                sla e
+                rl d
+                add hl,de
+                ret
+
+; $008A GSPSIZ: select the sprite size and return the pattern byte size.
+; A in 0 selects 8x8 sprites, nonzero selects 16x16; the R1 sprite-size bit and
+; its shadow are updated, and A returns 8 or 32 with carry set for 16x16.
+gspsiz:
+                push af
+                ld a,(RG1SAV)
+                and #fd
+                ld b,a
+                pop af
+                or a
+                jr z,gspsiz_small
+                set 1,b
+                ld a,32
+                scf
+                jr gspsiz_set
+gspsiz_small:
+                ld a,8
+                or a
+gspsiz_set:
+                push af
+                ld c,1
+                call wrtvdp
+                pop af
+                ret
+
+; $0069 CLRSPR: initialize all 32 sprites. The pattern table is cleared to
+; null, and each attribute is set to Y = 209 (modes 0-3) or 217 (modes 4-8),
+; X = 0, the sprite plane number, and the foreground colour.
+clrspr:
+                ld hl,(PATBAS)
+                ld bc,256
+                ld a,(RG1SAV)
+                bit 1,a
+                jr z,clrspr_pattern_size
+                ld bc,1024
+clrspr_pattern_size:
+                xor a
+                call filvrm
+                ld a,(SCRMOD)
+                cp 4
+                ld a,#d1
+                jr c,clrspr_y
+                ld a,#d9
+clrspr_y:
+                ld e,a
+                ld hl,(ATRBAS)
+                ld b,32
+clrspr_attr_loop:
+                ld a,e
+                call wrtvrm
+                inc hl
+                xor a
+                call wrtvrm
+                inc hl
+                ld a,32
+                sub b
+                call wrtvrm
+                inc hl
+                ld a,(FORCLR)
+                and #0f
+                call wrtvrm
+                inc hl
+                djnz clrspr_attr_loop
+                ret
+
+
 ; Carry is set when both keys are pressed. Interrupts are inhibited, matching
 ; the published contract.
 breakx:

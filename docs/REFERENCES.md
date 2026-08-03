@@ -512,6 +512,19 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the switch
   routines and the screen-mode probe are original RainBIOS work
 
+## 2026-08-03 — Sprite utility calls
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`CLRSPR`,
+  `CALPAT`, `CALATR`, `GSPSIZ`), which define the sprite initialization
+  (Y = 209/217, plane number, foreground colour, null pattern) and the
+  pattern/attribute address contracts; Appendix 4 for `PATBAS`/`ATRBAS`
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries and
+  the MSX1 GSPSIZ behavior of selecting the sprite size through R1
+- Purpose: define M2G's `CLRSPR` table writes, `CALPAT` (A*8, or
+  (A & 0FCh)*8 for 16x16), `CALATR` (A*4), and `GSPSIZ` size selection
+- RainBIOS use: interface and observable behavior facts only; the sprite
+  routines and the conformance probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
