@@ -23,9 +23,9 @@ discard unrelated changes in a dirty worktree.
 
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
-| MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with source-built 16 KiB payload in upper half |
+| MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with a compressed source-built payload container in the upper half |
 | NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook implemented |
-| Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component, also embedded at `4000h-7FFFh` |
+| Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | Not yet available | Planned 32 KiB ROM | M5 pending |
 | MSX2 SUB-ROM | Not yet available | Planned 16 KiB ROM | M5 pending |
 
@@ -33,7 +33,8 @@ The main BIOS and disk ROM remain separate components. `make all` builds only
 the combined main BIOS; the model-specific disk ROM is explicitly optional.
 Every normal main-ROM build verifies and tests the pinned adjacent
 `../bbcbasic-z80-msx` checkout, rebuilds its 16 KiB payload from source, checks
-its digest, and embeds it byte-for-byte. No cached-payload fallback exists.
+its digest, compresses it with ZX0, and embeds that stream in an `RBC1`
+container. No cached-payload fallback exists.
 
 ## Current Main BIOS Status
 
@@ -72,7 +73,7 @@ The main BIOS currently provides:
   descriptors, menu launch of external or built-in BASIC, and automatic
   built-in fallback after clean storage returns;
 - ZX0-compressed boot/menu tables expanded one at a time through transient
-  `C000h-D7FFh` RAM, leaving the public font directly addressable and 3,416
+  `C000h-D7FFh` RAM, leaving the public font directly addressable and 3,247
   bytes free below the hard `4000h` lower-bank boundary;
 - safe disk BIOS defaults, disk hook dispatch, extension `H.STKE` processing,
   and guarded `H.RUNC` disk bootstrap context.
@@ -83,18 +84,19 @@ of truth for which fixed entries are implemented, partial, or stubs.
 ## Embedded BASIC Status
 
 Issue #60 implements the embedded-payload development slice. The normal 32 KiB
-image dedicates `4000h-7FFFh` to the
-exact pinned companion ROM. The simpler CC0 boot logo moves the lower-half end
-from the initial `3E47h` to `32A7h`; `32A8h-3FFFh` is now 3,416 bytes of
-guarded padding. The font stays raw for `CGTABL`, while the menu and logo
-tables are losslessly ZX0-compressed and expanded into transient RAM before
-VRAM upload.
+image dedicates `4000h-7FFFh` to an `RBC1` container: the exact pinned
+companion ROM is compressed to 11,764 bytes at build time, stored from `4008h`,
+and expanded into page-1 RAM before launch. The current simpler CC0 boot logo
+leaves `3351h-3FFFh` as 3,247 bytes of guarded lower-bank padding. The font
+stays raw for `CGTABL`, while the menu and logo tables are also losslessly
+ZX0-compressed and expanded into transient RAM before VRAM upload.
 
 External cartridge `INIT` retains first chance. A valid external payload is
 the deliberate upgrade override; otherwise existing disk/IDE/SD paths run
 before the built-in copy. If those paths return cleanly, RainBIOS validates the
-internal `RBP1` descriptor with the ordinary complete parser, allows Space for
-180 frames, and launches the payload from the BIOS slot. Firmware cannot
+internal `RBC1` container, allows Space for 180 frames, maps contiguous RAM
+into page 1, expands the source-built image, checks its `AB` and `RBP1`
+markers, and launches it from the RAM slot. Firmware cannot
 recover from arbitrary third-party code that never returns or corrupts system
 state.
 
@@ -106,8 +108,9 @@ now clears the function-key row directly without moving that cursor, keeping
 the sign-on banner at the top.
 
 The new no-cartridge probes pass in 1983 and openMSX, including the rendered
-prompt, simple arithmetic, page-1 slot state, header/descriptor bytes, and zero
-ROM writes. The broader internal graphics, cassette, mixed-storage, and
+prompt, simple arithmetic, page-1 RAM slot state, decompressed
+header/descriptor bytes, and zero writes to the ROM page. The broader internal
+graphics, cassette, mixed-storage, and
 hardware matrix remains to be promoted. Public release is also blocked on
 permission to use the `BBC BASIC` name or a distinct rename. Human-readable
 combined notices are present in `THIRD_PARTY_NOTICES.md` and `LICENSES/`; a
@@ -249,6 +252,33 @@ access sites under openMSX.
   committed test does not enable that helper. Full desktop-geometry parity in
   an unmodified openMSX run remains a real follow-up, not a hidden relaxation
   of the 1983 screenshot gate.
+- **Issue #62 regression correction**: M3 keyboard work had made `BREAKX`
+  execute `DI` without restoring the caller's interrupt state and had used the
+  wrong matrix masks for STOP and Control. Nextor calls this entry immediately
+  before an interrupt-driven `HALT`, so the disabled state stalled Sunrise and
+  SD storage boot. `BREAKX` now preserves interrupt state and uses row 7 mask
+  `10h` plus row 6 mask `02h`; STOP translation and repeat filtering use the
+  same corrected matrix positions. The current local GeoBench image boots
+  through Sunrise and SD Mapper in 1983 and through Sunrise in openMSX.
+- **Embedded-page storage correction**: exposing the standalone interpreter's
+  raw upper-page bytes allowed storage firmware probes to treat data near
+  `7D00h-7FFFh`, including the `RBP1` descriptor, as ROM metadata. The combined
+  ROM now stores a compact `RBC1`/ZX0 stream at `4000h`, leaves the probe-heavy
+  upper tail erased, and reconstructs the exact verified interpreter into
+  page-1 RAM only when BASIC is selected.
+- **Ordinary cartridge correction**: a returning game/application `INIT` now
+  suppresses automatic BASIC fallback. This prevents the delayed internal
+  payload launch from replacing page 1 while cartridges such as Arkanoid keep
+  running through hooks or interrupt-driven code. The regression gate requires
+  a full gameplay board, not merely nonblank output, in both emulators.
+- **Arkanoid sprite correction**: the first issue-62 gate was insufficient: it
+  accepted R1=`E0h` and therefore missed the half-width paddle shown by the
+  user. The compatible state is R1=`E2h` (16x16 sprites). `INITXT`/`INIT32`/
+  `INITGRP` and the SET variants now preserve R1's sprite-size/magnification
+  bits; `GSPSIZ` is a non-mutating query; `CALPAT` scales by 8/32; and 16x16
+  `CLRSPR` attributes step pattern numbers by four while clearing the complete
+  2 KiB pattern table. Both emulator gates require `E2h`, and openMSX captures
+  on a completed video frame to avoid partial-raster screenshots.
 
 ### GeoBench pointer input status
 
@@ -271,10 +301,13 @@ now initializes the PSG hardware and the full PLAY statement work area
 queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
-Current verification: 255 RainBIOS host tests and all 20 companion tests pass.
+Current verification: 256 RainBIOS host tests and all 20 companion tests pass.
 The dedicated embedded no-cartridge probes pass in 1983 and openMSX, including
 the clean top-of-screen BASIC banner. The openMSX
-controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control, font, VDP-state, color, Screen 3, services (including the IM 1 controller snapshot and the cassette/floppy motor auto-stops), and startup-audio probes pass; Sunrise Nextor
+controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control,
+font, VDP-state, color, Screen 3, services (including the IM 1 controller
+snapshot and the cassette/floppy motor auto-stops), and startup-audio probes
+pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
 and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
 render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.
@@ -297,15 +330,12 @@ expectations. The former list of “five remaining failures” is stale: GeoBenc
 was subsequently user-confirmed through both Sunrise and SD Mapper with
 RainBIOS, and issue #60 does not reinstate that list as current truth.
 
-The ignored local `../geobench/QA/GBMSX.IMG` present during the issue-60 audit
-has SHA-256
-`c826c90ee7eb02261ed1e8c5c3600c1c86ac356ad3cba16a7f4c78bd0e22e60`,
-not the accepted fixture digest
-`47d19058e4096a3f1de497e223d749bf0195cf3c10019c1be8b52a0b77630e8f`.
-Both an untouched `main` snapshot and the combined branch stall identically
-with that changed local image, so it is not evidence of an embedding
-regression. Re-run the storage matrix with the accepted immutable fixture (or
-review and record a deliberately updated fixture) before changing BIOS code.
+The current local `../geobench/QA/GBMSX.IMG` has SHA-256
+`c826c90ee7eb02261ed1e8fa5c3600c1c86ac356ad3cba16a7f4c78bd0e22e60`.
+Earlier handover text blamed this image for a storage stall; issue #62
+disproved that explanation by booting the same bytes with a known-good
+RainBIOS revision and bisecting the failure to `BREAKX`. Do not reinstate the
+old `47d19058...` fixture claim without a separate provenance decision.
 
 A follow-up isolated `Xvfb`/fluxbox run confirmed that XTest motion reaches
 openMSX's X11 event layer, but openMSX 21.0 does not forward that synthetic
@@ -476,13 +506,15 @@ is:
 
 ## Recommended Next Work
 
-The simpler boot logo has restored 3,416 bytes of page-0 headroom and passes
-the 1983 rendered-boot gate. The next issue-60 priority is to promote the
-existing external-payload graphics, cassette, scrolling, and
-editing workloads to the internal mapping, and run the complete storage
-precedence matrix using an accepted immutable GeoBench image. Add the combined
-machine-readable component manifest and resolve `BBC BASIC` branding before
-any public combined-ROM release.
+The simpler boot logo leaves 3,247 bytes of page-0 headroom and passes the 1983
+rendered-boot gate. Issue #62 now covers the Arkanoid application-cartridge
+gate, corrected keyboard/`BREAKX` semantics, compressed internal payload, and
+GeoBench through 1983 Sunrise/SD plus openMSX Sunrise. The next embedded-payload
+priority is to promote the existing external-payload graphics, cassette,
+scrolling, and editing workloads to the internal mapping, then run the wider
+storage-precedence matrix. Add the combined machine-readable component
+manifest and resolve `BBC BASIC` branding before any public combined-ROM
+release.
 
 The GeoBench storage boot matrix is now automated. The next emulator
 compatibility slice is to close the narrower openMSX rendering gap: reproduce

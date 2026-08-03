@@ -80,9 +80,11 @@ M1G recognizes a version-1 RainBIOS payload descriptor at `7FF0h` in normal
 16 KiB page-1 cartridges. It validates the checksum, type, required-service
 mask, entry, and RAM requirements before recording the first compatible slot
 payload. A ROM which claims `RBP1` but fails validation is not
-entered through its ordinary cartridge `INIT`. The built-in payload occupies
-the MAIN-ROM's own page 1 and passes through the same complete validator before
-launch; a corrupt internal descriptor therefore fails closed to the menu.
+entered through its ordinary cartridge `INIT`. The built-in form is an `RBC1`
+container in the MAIN-ROM's page 1. RainBIOS validates the container, copies
+its ZX0 stream to high RAM, maps the contiguous RAM slot into page 1, expands
+the exact standalone image there, and checks its `AB`/`RBP1` markers before
+launch.
 
 M1H performs a stackless pre-RAM expansion probe without changing the
 reset-selected page-0/page-1 subslots. Once RAM is live it publishes
@@ -184,24 +186,28 @@ The generated logo and menu tables are stored as ZX0 streams and expanded one
 at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB
 font remains uncompressed because `CGTABL` points directly at it. The simpler
 CC0 boot logo reduces its three compressed tables from 3,922 bytes to 917
-bytes. The lower bank currently ends at `32A7h`, leaving 3,416 bytes before the
+bytes. The lower bank currently ends at `3350h`, leaving 3,247 bytes before the
 hard `4000h` boundary.
 
 ## Embedded BASIC payload
 
 Every normal RainBIOS build verifies the pinned companion checkout, runs its
 tests and provenance audit, builds the 16 KiB payload from source, verifies its
-digest, and includes it byte-for-byte at `4000h-7FFFh`. The same artifact
-remains usable as a standalone cartridge ROM. The imported interpreter source
-retains its Zlib notice, while the independently written MSX platform code is
+digest, compresses it with ZX0, and stores the stream in an `RBC1` container at
+`4000h`. The remainder of the upper bank is erased padding so storage firmware
+does not interpret interpreter data as another ROM header. At BASIC launch the
+exact image is reconstructed in page-1 RAM. The source-built artifact remains
+usable as a standalone cartridge ROM. The imported interpreter source retains
+its Zlib notice, while the independently written MSX platform code is
 BSD-3-Clause.
 
 The current port profile keeps the language core at `4400h-74C1h`, Graphics II
 and platform services at `74C2h-7B75h`, and sequential cassette services at
 `7B76h-7D19h`. Aligned state occupies `8000h-8339h`, and user memory begins at
-`833Ah`. The descriptor remains at `7FF0h-7FFFh`. Guarded openMSX tests record
-zero ROM writes; 1983 independently renders the prompt, multicolour graphics
-frame, and cassette-loaded program. Combined-image release packaging must
+`833Ah`. In the expanded RAM image its descriptor remains at `7FF0h-7FFFh`.
+Guarded openMSX tests record zero writes to the ROM bank and verify the exact
+header/descriptor after expansion; 1983 independently renders the prompt,
+multicolour graphics frame, and cassette-loaded program. Combined-image release packaging must
 preserve all component notices, and the non-transferable `BBC BASIC` branding
 permission must be resolved by permission or rename. See
 `docs/BASIC_PAYLOAD.md` and `docs/EMBEDDED_BASIC.md`.

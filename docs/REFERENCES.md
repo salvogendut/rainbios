@@ -521,11 +521,14 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   (Y = 209/217, plane number, foreground colour, null pattern) and the
   pattern/attribute address contracts; Appendix 4 for `PATBAS`/`ATRBAS`
 - Cross-check: the MSX Assembly Page BIOS reference for the same entries and
-  the MSX1 GSPSIZ behavior of selecting the sprite size through R1
-- Purpose: define M2G's `CLRSPR` table writes, `CALPAT` (A*8, or
-  (A & 0FCh)*8 for 16x16), `CALATR` (A*4), and `GSPSIZ` size selection
-- RainBIOS use: interface and observable behavior facts only; the sprite
-  routines and the conformance probe are original RainBIOS work
+  the open-source C-BIOS 0.29a `src/video.asm` implementation: `GSPSIZ` is a
+  non-mutating R1 query, `CALPAT` scales by 8/32, and 16x16 `CLRSPR` attributes
+  advance pattern numbers by four while clearing the complete pattern table
+- Purpose: correct M2G's `CLRSPR` table writes, `CALPAT` address scaling,
+  `CALATR` (A*4), `GSPSIZ` query semantics, and preservation of R1 sprite bits
+  across screen-mode initialization/switching
+- RainBIOS use: public interface and observable behavior only; the RainBIOS
+  implementation and expanded conformance probe remain original project work
 
 ## 2026-08-03 — GRPPRT graphics character print
 

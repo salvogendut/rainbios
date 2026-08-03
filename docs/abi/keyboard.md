@@ -29,10 +29,12 @@ exercises interactive editing through these calls.
 The STOP key latches `INTFLG` (`FC9Bh`): Ctrl-STOP writes `03h`, STOP alone
 writes `04h`, and both clear the key buffer so a break discards pending input.
 `BREAKX` tests the physical Ctrl-STOP matrix directly and returns carry while
-both keys are held, with interrupts inhibited. `ISCNTC` and `CKCNTC` consume a
-latched `INTFLG` event and return carry on a break; a subsequent call returns
-clear until another STOP edge arrives. Disk kernels and Nextor use this to
-abort I/O.
+both keys are held without changing the caller's interrupt state. A released
+STOP returns `A=10h`; a released Control key after held STOP returns `A=02h`,
+matching the open C-BIOS convention used by some software. `ISCNTC` and
+`CKCNTC` consume a latched `INTFLG` event and return carry on a break; a
+subsequent call returns clear until another STOP edge arrives. Disk kernels
+and Nextor use this to abort I/O.
 
 ## Auto-repeat (M3D)
 

@@ -106,6 +106,7 @@ TAPE_SYNC       equ #f308
 IDE_SLOT        equ #f309
 SD_FLAGS        equ #f30a
 SD_INIT_TRIES   equ #f30b
+APP_CART_PRESENT equ #f30c
 RAMAD0          equ #f341
 MAPPER_SEGMENTS equ #f345
 H_PHYD          equ #ffa7
@@ -585,6 +586,7 @@ bootstrap_empty_hook:
                 ld (CONTROLLER_PORT2),a
                 xor a
                 ld (SD_FLAGS),a
+                ld (APP_CART_PRESENT),a
                 ld (CAS_MOTOR),a
                 ld (CAS_MOTOR_TIMER),a
                 ld (DISK_MOTOR),a
@@ -632,6 +634,19 @@ bootstrap_empty_hook:
 
 ; Expand the compressed logo tables in scratch RAM and upload them to VRAM.
                 call cold_boot_render_logo
+
+; The decoder workspace overlaps application RAM used by storage kernels.
+; Restore the reset-time zero fill before cartridge discovery so embedding
+; compressed artwork is observationally equivalent to the former ROM-direct
+; upload path.
+                xor a
+                ld hl,ASSET_BUFFER
+                ld (hl),a
+                ld de,ASSET_BUFFER+1
+                ld bc,#17ff
+                ldir
+                ld a,#5a
+                ld (ASSET_BUFFER),a            ; mapper segment-0 probe marker
 
 ; Enable the display and VBlank interrupt source. The CPU stays under DI until
 ; cartridge discovery has a stable page-0 BIOS and page-3 stack.
@@ -693,10 +708,15 @@ cold_boot_jingle_gap:
                 jr c,cold_boot_payload_ready
                 call cold_boot_select_internal_payload
                 jr c,cold_boot_payload_ready
-                jp cold_boot_options
+                ld a,(APP_CART_PRESENT)
+                or a
+                jp z,cold_boot_options
 cold_boot_payload_ready:
                 ld sp,STACK_TOP
                 ei
+                ld a,(APP_CART_PRESENT)
+                or a
+                jr nz,cold_boot_cartridge_wait
                 ld b,180                      ; about three seconds at 60 Hz
                 jr cold_boot_wait
 
@@ -721,6 +741,22 @@ cold_boot_wait_read:
                 jr z,cold_boot_options
                 djnz cold_boot_wait
                 jr cold_boot_launch_payload
+
+; A conventional cartridge whose INIT returns may continue through hooks or
+; interrupt-driven code.  Keep the pre-payload unbounded wait in that case so
+; the embedded BASIC cannot later replace page 1 underneath the cartridge.
+; Space remains available to enter the boot menu explicitly.
+cold_boot_cartridge_wait:
+                call chsns
+                jr nz,cold_boot_cartridge_wait_read
+                ei
+                halt
+                jr cold_boot_cartridge_wait
+cold_boot_cartridge_wait_read:
+                call chget
+                cp #20
+                jr z,cold_boot_options
+                jr cold_boot_cartridge_wait
 
 ; Space opens a compact Screen 1 menu. The name table selected below reports
 ; whether a validated BASIC payload was discovered.
@@ -789,8 +825,15 @@ cold_boot_launch_payload:
                 cp #ff
                 jr z,cold_boot_options_wait
                 di
+                ld b,a
+                ld a,(BIOSSLT)
+                cp b
+                jp z,cold_boot_expand_internal_payload
+                ld a,b
                 ld h,#40
                 call enaslt
+                jr cold_boot_payload_mapped
+cold_boot_payload_mapped:
                 ld sp,STACK_TOP
                 ld hl,(PAYLOAD_ENTRY)
                 push hl
@@ -880,6 +923,20 @@ cold_boot_read_cartridge_init:
                 ld d,a
                 pop af
                 ld e,a
+
+; Sunrise IDE and SD Mapper use the public 40F6h INIT convention and are
+; storage boot providers: when their boot path returns, embedded BASIC is the
+; intended fallback.  Every other ordinary AB cartridge suppresses automatic
+; BASIC, including header-only cartridges with a null INIT pointer.
+                ld a,d
+                cp #40
+                jr nz,cold_boot_mark_app_cartridge
+                ld a,e
+                cp #f6
+                jr z,cold_boot_check_ide
+cold_boot_mark_app_cartridge:
+                ld a,1
+                ld (APP_CART_PRESENT),a
                 ld a,d
                 or e
                 ret z
@@ -1044,16 +1101,12 @@ cold_boot_payload_expect:
                 ret
 
 ; Select the payload physically embedded in the main ROM after all external
-; cartridge and storage boot paths have had priority. Reuse the full external
-; RBP1 parser so a corrupt internal descriptor fails closed instead of jumping
-; to constants which only the build was able to validate.
+; cartridge and storage boot paths have had priority. The exact standalone
+; payload is stored as an RBC1 compressed container so addresses probed by
+; storage kernels remain erased. Validate the container marker and pinned
+; entry before publishing the internal payload contract.
 cold_boot_select_internal_payload:
-                ld a,#ff
-                ld (PAYLOAD_SLOT),a
-                ld a,(BIOSSLT)
-                ld (CART_SCAN_SLOT),a
-                call cold_boot_try_payload
-                jp cold_boot_valid_payload
+                jp cold_boot_select_internal_payload_impl
 
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
 ; not an assertion about compatible error behavior.
@@ -1386,7 +1439,7 @@ write_vdp_register_block_loop:
 ; SCREEN 0: 40x24 text, name table at 0000h and font at 0800h.
 initxt:
                 ld a,(RG1SAV)
-                and #e0
+                and #e7                         ; preserve sprite size/magnify
                 or #50                         ; M1 selects text, display on
                 push af
                 ld hl,text40_vdp_registers
@@ -1422,7 +1475,7 @@ initxt:
 ; clears the name and color tables, and hides sprites.
 init32:
                 ld a,(RG1SAV)
-                and #e0
+                and #e7                         ; preserve sprite size/magnify
                 or #40                         ; display on
                 push af
                 ld hl,text32_vdp_registers
@@ -1467,7 +1520,7 @@ init32:
 ; eight-pixel colour cell so callers begin with deterministic graphics VRAM.
 initgrp:
                 ld a,(RG1SAV)
-                and #e0
+                and #e7                         ; preserve sprite size/magnify
                 or #40                         ; display on
                 push af
                 ld hl,graphics2_vdp_registers
@@ -1517,7 +1570,7 @@ initgrp_name_loop:
 ; change. The register block and R1 shadow formula match INITXT.
 settxt:
                 ld a,(RG1SAV)
-                and #e0
+                and #e7                         ; preserve sprite size/magnify
                 or #50
                 push af
                 ld hl,text40_vdp_registers
@@ -1537,7 +1590,7 @@ settxt:
 ; $007B SETT32: switch the live VDP to 32-column Screen 1.
 sett32:
                 ld a,(RG1SAV)
-                and #e0
+                and #e7                         ; preserve sprite size/magnify
                 or #40
                 push af
                 ld hl,text32_vdp_registers
@@ -1557,7 +1610,7 @@ sett32:
 ; $007E SETGRP: switch the live VDP to Graphics II (Screen 2).
 setgrp:
                 ld a,(RG1SAV)
-                and #e0
+                and #e7                         ; preserve sprite size/magnify
                 or #40
                 push af
                 ld hl,graphics2_vdp_registers
@@ -2154,6 +2207,105 @@ cold_boot_render_options_name_block:
                 out (VDP_CONTROL),a
                 ret
 
+cold_boot_select_internal_payload_impl:
+                ld a,#ff
+                ld (PAYLOAD_SLOT),a
+                ld a,(BIOSSLT)
+                ld (CART_SCAN_SLOT),a
+                ld hl,#4000
+                call rdslt
+                cp 'R'
+                jr nz,cold_boot_internal_payload_invalid
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp 'B'
+                jr nz,cold_boot_internal_payload_invalid
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp 'C'
+                jr nz,cold_boot_internal_payload_invalid
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp '1'
+                jr nz,cold_boot_internal_payload_invalid
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp #10
+                jr nz,cold_boot_internal_payload_invalid
+                inc hl
+                ld a,(CART_SCAN_SLOT)
+                call rdslt
+                cp #40
+                jr nz,cold_boot_internal_payload_invalid
+                ld a,(CART_SCAN_SLOT)
+                ld (PAYLOAD_SLOT),a
+                ld hl,#4010
+                ld (PAYLOAD_ENTRY),hl
+                ld hl,#f300
+                ld (PAYLOAD_RAM_END),hl
+                scf
+                ret
+cold_boot_internal_payload_invalid:
+                or a
+                ret
+
+cold_boot_expand_internal_payload:
+; Copy the compressed internal bank while the main ROM owns page 1, then map
+; the contiguous RAM slot there and expand the exact standalone payload. This
+; keeps the main-ROM addresses probed by storage kernels inert without making
+; the BASIC implementation itself depend on a transformed binary.
+                ld a,(BIOSSLT)
+                ld h,#40
+                call enaslt
+                ld hl,embedded_basic_payload_zx0
+                ld de,ASSET_BUFFER
+                ld bc,embedded_basic_payload_zx0_end-embedded_basic_payload_zx0
+                ldir
+                ld a,(RAMAD0)
+                ld h,#40
+                call enaslt
+                ld hl,ASSET_BUFFER
+                ld de,#4000
+                call dzx0_standard
+; Fail closed if either the decompressed standalone header or descriptor is
+; not the source-built RBP1 payload validated by the host build.
+                ld hl,#4000
+                ld a,(hl)
+                cp 'A'
+                jr nz,cold_boot_internal_expand_failed
+                inc hl
+                ld a,(hl)
+                cp 'B'
+                jr nz,cold_boot_internal_expand_failed
+                ld hl,#7ff0
+                ld a,(hl)
+                cp 'R'
+                jr nz,cold_boot_internal_expand_failed
+                inc hl
+                ld a,(hl)
+                cp 'B'
+                jr nz,cold_boot_internal_expand_failed
+                inc hl
+                ld a,(hl)
+                cp 'P'
+                jr nz,cold_boot_internal_expand_failed
+                inc hl
+                ld a,(hl)
+                cp '1'
+                jr nz,cold_boot_internal_expand_failed
+                jp cold_boot_payload_mapped
+cold_boot_internal_expand_failed:
+                ld a,(BIOSSLT)
+                ld h,#40
+                call enaslt
+                ld a,#ff
+                ld (PAYLOAD_SLOT),a
+                jp cold_boot_options
+
 ; Text control characters handled by CHPUT: tab, cursor up, and form feed.
 chgclr:
                 ld a,(SCRMOD)
@@ -2284,25 +2436,19 @@ grpprt_done:
                 ret
 
 ; $0084 CALPAT: return the VRAM address of the pattern data for sprite number
-; A. The offset is A*8 bytes for 8x8 sprites and (A & 0FCh)*8 for 16x16, where
-; the sprite pattern number must be a multiple of four and its four 8-byte
-; quadrants are contiguous.
+; A. The offset is A*8 bytes for 8x8 sprites and A*32 for 16x16 sprites.
 calpat:
-                ld hl,(PATBAS)
-                ld d,0
-                ld e,a
-                ld a,(RG1SAV)
-                bit 1,a
-                jr z,calpat_scale
-                ld a,e
-                and #fc
-                ld e,a
-calpat_scale:
-                ld b,3
-calpat_shift:
-                sla e
-                rl d
-                djnz calpat_shift
+                ld h,0
+                ld l,a
+                add hl,hl
+                add hl,hl
+                add hl,hl
+                call gspsiz
+                jr nc,calpat_add_base
+                add hl,hl
+                add hl,hl
+calpat_add_base:
+                ld de,(PATBAS)
                 add hl,de
                 ret
 
@@ -2319,88 +2465,80 @@ calatr:
                 add hl,de
                 ret
 
-; $008A GSPSIZ: select the sprite size and return the pattern byte size.
-; A in 0 selects 8x8 sprites, nonzero selects 16x16; the R1 sprite-size bit and
-; its shadow are updated, and A returns 8 or 32 with carry set for 16x16.
+; $008A GSPSIZ: report the current sprite pattern size from the R1 shadow.
+; A returns 8 for 8x8 sprites with carry clear or 32 for 16x16 sprites with
+; carry set. The call is a query and must not change the live VDP or RG1SAV.
 gspsiz:
-                push af
                 ld a,(RG1SAV)
-                and #fd
-                ld b,a
-                pop af
-                or a
-                jr z,gspsiz_small
-                set 1,b
+                and #02                         ; also clears carry
+                ld a,8
+                ret z
                 ld a,32
                 scf
-                jr gspsiz_set
-gspsiz_small:
-                ld a,8
-                or a
-gspsiz_set:
-                push af
-                ld c,1
-                call wrtvdp
-                pop af
                 ret
 
-; $0069 CLRSPR: initialize all 32 sprites. The pattern table is cleared to
-; null, and each attribute is set to Y = 209 (modes 0-3) or 217 (modes 4-8),
-; X = 0, the sprite plane number, and the foreground colour.
+; $0069 CLRSPR: initialize all 32 sprites. Screen 0 has no sprites and returns.
+; Otherwise the complete 2 KiB pattern table is cleared and every attribute is
+; assigned Y = 209 (sprite mode 1) or 217 (sprite mode 2), X = 0, the next
+; valid pattern number (step 1 for 8x8, step 4 for 16x16), and FORCLR.
 clrspr:
-                ld hl,(PATBAS)
-                ld bc,256
-                ld a,(RG1SAV)
-                bit 1,a
-                jr z,clrspr_pattern_size
-                ld bc,1024
-clrspr_pattern_size:
-                xor a
-                call filvrm
                 ld a,(SCRMOD)
+                or a
+                ret z
                 cp 4
                 ld a,#d1
                 jr c,clrspr_y
                 ld a,#d9
 clrspr_y:
-                ld e,a
+                ld d,a
+                ld e,1
+                ld a,(RG1SAV)
+                bit 1,a
+                jr z,clrspr_step_ready
+                ld e,4
+clrspr_step_ready:
                 ld hl,(ATRBAS)
                 ld b,32
+                ld c,0
 clrspr_attr_loop:
-                ld a,e
+                ld a,d
                 call wrtvrm
                 inc hl
                 xor a
                 call wrtvrm
                 inc hl
-                ld a,32
-                sub b
+                ld a,c
                 call wrtvrm
                 inc hl
                 ld a,(FORCLR)
                 and #0f
                 call wrtvrm
                 inc hl
+                ld a,c
+                add a,e
+                ld c,a
                 djnz clrspr_attr_loop
+                ld hl,(PATBAS)
+                ld bc,#0800
+                xor a
+                call filvrm
                 ret
 
 
-; Carry is set when both keys are pressed. Interrupts are inhibited, matching
-; the published contract.
+; Carry is set when both keys are pressed. Preserve the caller's interrupt
+; state: storage kernels call BREAKX immediately before interrupt-driven waits.
+; The masked return values match the open C-BIOS behavior used by software
+; which observes A in addition to carry.
 breakx:
-                di
                 ld a,7
                 call snsmat
-                bit 3,a                         ; STOP (active-low)
-                jr nz,breakx_released
+                and #10                         ; STOP (active-low), clears carry
+                ret nz                          ; return A=10h when released
                 ld a,6
                 call snsmat
-                bit 7,a                         ; CTRL (active-low)
-                jr nz,breakx_released
+                and #02                         ; CTRL (active-low), clears carry
+                ret nz                          ; return A=02h when released
                 scf
-                ret
-breakx_released:
-                or a
                 ret
 
 ; Consume a latched STOP/break event from INTFLG. Carry is set on a break so
@@ -3039,12 +3177,12 @@ keyboard_deadkey_clear_ctrl:
                 ld a,c
                 ret
 keyboard_translate_row7:
-                ; bit 3 is STOP: latch a break instead of enqueuing. Ctrl-STOP
+                ; bit 4 is STOP: latch a break instead of enqueuing. Ctrl-STOP
                 ; sets INTFLG = 3; STOP alone sets INTFLG = 4.
                 ld a,e
-                cp 3
+                cp 4
                 jr nz,keyboard_translate_row7_key
-                bit 7,d                         ; CTRL held? (active-low)
+                bit 1,d                         ; CTRL held? (active-low)
                 ld a,3
                 jr z,keyboard_translate_stop
                 ld a,4
@@ -3148,7 +3286,7 @@ keyboard_repeat_bit:
                 cp 7
                 jr nz,keyboard_repeat_translate
                 ld a,e
-                cp 3
+                cp 4
                 jr z,keyboard_repeat_next_bit   ; STOP does not repeat
 keyboard_repeat_translate:
                 push bc
@@ -5653,6 +5791,12 @@ logo_color_zx0:
                 assert $<=#4000
                 defs #4000-$,#ff
 embedded_basic_payload:
-                incbin "bbcbasic_msx_console.rom"
+                db "RBC1"
+                dw #4010
+                dw embedded_basic_payload_zx0_end-embedded_basic_payload_zx0
+embedded_basic_payload_zx0:
+                incbin "bbcbasic_msx_console.zx0"
+embedded_basic_payload_zx0_end:
+                defs #8000-$,#ff
 embedded_basic_payload_end:
                 assert $==#8000

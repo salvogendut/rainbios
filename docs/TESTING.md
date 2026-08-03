@@ -13,7 +13,7 @@ The host suite requires the normal build dependencies listed in the README:
 GNU Make, a C99 compiler, Python 3.10+, Pillow 10+, RASM 3.x, and externally
 supplied `zmac`/`ld80`. The sibling `../bbcbasic-z80-msx` checkout is mandatory
 because every normal main-ROM build tests and rebuilds it from source before
-embedding its exact payload.
+compressing and embedding its exact payload.
 
 Optional integration suites require:
 
@@ -67,7 +67,8 @@ git diff --check
 
 `make test` first follows the same unconditional source-build path as `make`:
 it runs the companion repository's tests and audit, rebuilds its ROM, checks
-the pinned digest, and embeds a byte-exact copy in the main ROM.
+the pinned digest, and embeds a ZX0 stream from that exact copy in the main
+ROM. Runtime probes verify the decompressed page-1 image.
 
 ## openMSX targets
 
@@ -248,10 +249,10 @@ gate, while the two 1983 targets are desktop-render gates.
 
 | Target | Coverage |
 | --- | --- |
-| `test-openmsx-external-arkano` | Arkanoid startup/render state in openMSX |
+| `test-openmsx-external-arkano` | Arkanoid startup/render state in openMSX, including 16x16 R1=`E2h` and a completed-frame visual capture |
 | `test-openmsx-external-diagnostics` | Diagnostics menu state and screenshot gate in openMSX |
 | `test-openmsx-external-cartridges` | Both openMSX external fixtures |
-| `test-1983-external-arkano` | Arkanoid startup/render state in 1983 |
+| `test-1983-external-arkano` | Arkanoid startup/render state in 1983, including 16x16 R1=`E2h` and full-width paddle rendering |
 | `test-1983-external-diagnostics` | Diagnostics menu in 1983 |
 | `test-1983-external-diagnostics-screen3` | Keyboard-driven diagnostics Screen 3 path in 1983 |
 | `test-1983-external-cartridges` | All three 1983 external paths |

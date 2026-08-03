@@ -32,18 +32,18 @@ address,name,kind,status,milestone,notes
 005F,CHGMOD,jump,partial,M2,Dispatches modes 0-3 and provides a guarded partial Screen 7 register handoff when a live standard SUB-ROM signature is found; modes 4-6/8 remain unsupported
 0062,CHGCLR,jump,implemented,M2,Screen 0 sets R7 to (FORCLR<<4)|BAKCLR; Screens 1-3 set R7 to BDRCLR; Screen 1 also fills its 32-byte color table with (FORCLR<<4)|BAKCLR; the shadow is updated
 0066,NMI,jump,stub,M1,Safe empty NMI return only
-0069,CLRSPR,jump,implemented,M2,Initializes all 32 sprites: pattern table cleared, attributes set to Y=209/217, X=0, plane number, and foreground color
-006C,INITXT,jump,implemented,M2,Programs the TMS9918 for 40x24 text, publishes table bases and shadows, clears the name table, and loads the project font
-006F,INIT32,jump,implemented,M2,Programs the TMS9918 for 32x24 Screen 1, publishes table bases and shadows, clears the tables, and loads the project font
-0072,INITGRP,jump,implemented,M2,Programs the TMS9918 for Graphics II, publishes table bases and shadows, and initializes deterministic empty pattern/name/color tables
+0069,CLRSPR,jump,implemented,M2,Returns in Screen 0; otherwise clears the complete 2 KiB sprite pattern table and initializes 32 attributes with Y=209/217 X=0 pattern step 1/4 for 8x8/16x16 and foreground color
+006C,INITXT,jump,implemented,M2,Programs the TMS9918 for 40x24 text while preserving R1 sprite bits, publishes table bases and shadows, clears the name table, and loads the project font
+006F,INIT32,jump,implemented,M2,Programs the TMS9918 for 32x24 Screen 1 while preserving R1 sprite bits, publishes table bases and shadows, clears the tables, and loads the project font
+0072,INITGRP,jump,implemented,M2,Programs the TMS9918 for Graphics II while preserving R1 sprite bits, publishes table bases and shadows, and initializes deterministic empty pattern/name/color tables
 0075,INIMLT,jump,implemented,M2,Programs the TMS9918 for Screen 3 multicolor, publishes the MLT table bases, hides sprites, seeds the name table, and clears the pattern plane
-0078,SETTXT,jump,implemented,M2,Switches the live VDP to 40-column text with the current work-area tables; updates SCRMOD/LINLEN/cursor without re-initializing the tables
-007B,SETT32,jump,implemented,M2,Switches the live VDP to 32-column Screen 1 with the current work-area tables
-007E,SETGRP,jump,implemented,M2,Switches the live VDP to Graphics II with the current work-area tables
+0078,SETTXT,jump,implemented,M2,Switches the live VDP to 40-column text with the current work-area tables while preserving R1 sprite bits; updates SCRMOD/LINLEN/cursor without re-initializing the tables
+007B,SETT32,jump,implemented,M2,Switches the live VDP to 32-column Screen 1 with the current work-area tables while preserving R1 sprite bits
+007E,SETGRP,jump,implemented,M2,Switches the live VDP to Graphics II with the current work-area tables while preserving R1 sprite bits
 0081,SETMLT,jump,implemented,M2,Programs Screen 3 VDP registers R0-R6 from the MLT work-area bases
-0084,CALPAT,jump,implemented,M2,Returns the VRAM pattern address for a sprite: PATBAS plus A*8 (8x8) or (A&0FCh)*8 (16x16)
+0084,CALPAT,jump,implemented,M2,Returns the VRAM pattern address for a sprite: PATBAS plus A*8 (8x8) or A*32 (16x16)
 0087,CALATR,jump,implemented,M2,Returns the VRAM attribute address for a sprite: ATRBAS plus A*4
-008A,GSPSIZ,jump,implemented,M2,Selects 8x8/16x16 sprites (A=0/1), updates R1 and its shadow, and returns the byte size 8 or 32 with carry set for 16x16
+008A,GSPSIZ,jump,implemented,M2,Queries R1 without changing it and returns the current sprite-pattern size: A=8/carry clear for 8x8 or A=32/carry set for 16x16
 008D,GRPPRT,jump,implemented,M2,Prints the character in A on the graphic screen at the cursor using the project font and FORCLR, then advances the cursor by one 8-pixel cell; CR/LF move the cursor
 0090,GICINI,jump,implemented,M3,Initializes PSG R0-R15 and the PLAY statement work area (QUEUES points to QUETAB, FRCNEW=255, voice static data and queues cleared)
 0093,WRTPSG,jump,partial,M3,Needs register-clobber tests
@@ -58,7 +58,7 @@ address,name,kind,status,milestone,notes
 00AE,PINLIN,jump,implemented,M3,Reads keyboard input into BUFFER until Return or Ctrl-STOP with mid-line editing (cursor left/right, Home, insert, backspace, delete); HL returns BUFFER-1 and B the count, carry set on a break
 00B1,INLIN,jump,implemented,M3,PINLIN with AUTFLG set; the buffer is edited the same way but nothing is echoed
 00B4,QINLIN,jump,implemented,M3,Prints a question mark and space then performs INLIN
-00B7,BREAKX,jump,implemented,M3,Tests the physical Ctrl-STOP matrix and returns carry when both keys are held with interrupts inhibited
+00B7,BREAKX,jump,implemented,M3,Tests the physical Ctrl-STOP matrix and returns carry when both keys are held without changing interrupt state
 00BA,ISCNTC,jump,partial,M3,Consumes a latched INTFLG break; carry and a cleared buffer on a break
 00BD,CKCNTC,jump,partial,M3,Shares ISCNTC's break consumption
 00C0,BEEP,jump,implemented,M3,Short PSG channel-A tone

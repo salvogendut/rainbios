@@ -12,7 +12,7 @@ import re
 def validate_report(text: str) -> None:
     required = (
         "ROM_WRITES=0",
-        "SLOT=F0",
+        "SLOT=FC",
         "HEADER=41,42",
         "DESCRIPTOR=52,42,50,31",
         "BBC BASIC (Z80) Version 3.00+1",

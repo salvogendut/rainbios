@@ -94,10 +94,21 @@ class MainRomLayoutTest(unittest.TestCase):
         self.assertLessEqual(statuses, {"stub", "partial", "implemented"})
         self.assertIn("stub", statuses)
 
-    def test_upper_bank_is_the_exact_source_built_basic_payload(self):
+    def test_upper_bank_is_the_source_built_internal_basic_container(self):
         self.assertEqual(len(self.basic), 0x4000)
-        self.assertEqual(self.rom[0x4000:], self.basic)
         self.assertEqual(self.basic[:2], b"AB")
+        self.assertEqual(self.rom[0x4000:0x4004], b"RBC1")
+        self.assertEqual(self.rom[0x4004:0x4006], b"\x10\x40")
+        compressed_size = int.from_bytes(self.rom[0x4006:0x4008], "little")
+        self.assertGreater(compressed_size, 0)
+        self.assertLessEqual(compressed_size, 0x37F8)
+        self.assertNotEqual(
+            self.rom[0x4008 : 0x4008 + compressed_size], b"\xFF" * compressed_size
+        )
+        self.assertEqual(
+            self.rom[0x4008 + compressed_size :],
+            b"\xFF" * (0x3FF8 - compressed_size),
+        )
         self.assertEqual(self.basic[0x3FF0:0x3FF4], b"RBP1")
 
 

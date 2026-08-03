@@ -34,9 +34,10 @@ BSD-3-Clause. RainBIOS itself is BSD-3-Clause.
 
 This combination permits a RainBIOS release bundle to contain both artifacts,
 provided the interpreter notice and all BSD notices are retained. The payload
-remains a distinct source-built 16 KiB artifact, and RainBIOS now also embeds
-those exact bytes in the upper half of its 32 KiB MAIN-ROM. The standalone
-payload can still be used with another compatible firmware launcher.
+remains a distinct source-built 16 KiB artifact. RainBIOS verifies those exact
+bytes, compresses them into the upper half of its 32 KiB MAIN-ROM, and restores
+them in page-1 RAM at launch. The standalone payload can still be used with
+another compatible firmware launcher.
 
 No proprietary MSX BIOS or BASIC source, ROM data, or disassembly may be
 copied into either project.
@@ -46,8 +47,10 @@ copied into either project.
 The development build produces `rainbios_msx1.rom` as a combined MAIN-ROM and
 also preserves `bbcbasic_msx_console.rom` as an independently built/tested
 artifact in the companion checkout. Every normal RainBIOS rebuild rebuilds,
-validates, and copies the pinned payload before assembly; the combined upper
-half must match it byte-for-byte. A release archive may distribute both ROMs
+validates, and copies the pinned payload before assembly; host tests require
+the combined upper half to contain a well-formed `RBC1` stream with an erased
+tail, and runtime probes require the reconstructed page-1 image to expose the
+expected `AB`/`RBP1` markers. A release archive may distribute both ROMs
 with both projects' notices, but the branding and hardware gates below still
 prevent treating that archive as release-ready.
 

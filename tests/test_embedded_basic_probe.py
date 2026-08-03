@@ -10,7 +10,7 @@ from tools.run_1983_embedded_basic import validate_state
 
 OPENMSX_REPORT = """\
 ROM_WRITES=0
-SLOT=F0
+SLOT=FC
 HEADER=41,42
 DESCRIPTOR=52,42,50,31
 BBC BASIC (Z80) Version 3.00+1
@@ -19,7 +19,7 @@ BBC BASIC (Z80) Version 3.00+1
 """
 
 EMULATOR_1983_STATE = (
-    "state frame=421 pc=14DA sp=F2F6 slot=F0 subslot=00 "
+    "state frame=421 pc=14DA sp=F2F6 slot=FC subslot=00 "
     "mapper=00,00,00,00 vram_nonzero=9885 vdp_r0=00 vdp_r1=F0\n"
 )
 
@@ -33,11 +33,11 @@ class EmbeddedBasicProbeTests(unittest.TestCase):
             validate_report(OPENMSX_REPORT.replace("ROM_WRITES=0", "ROM_WRITES=1"))
 
     def test_1983_internal_slot_state_is_accepted(self) -> None:
-        self.assertEqual(validate_state(EMULATOR_1983_STATE)["slot"], "F0")
+        self.assertEqual(validate_state(EMULATOR_1983_STATE)["slot"], "FC")
 
     def test_1983_external_slot_state_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "slot"):
-            validate_state(EMULATOR_1983_STATE.replace("slot=F0", "slot=F4"))
+            validate_state(EMULATOR_1983_STATE.replace("slot=FC", "slot=F4"))
 
 
 if __name__ == "__main__":
