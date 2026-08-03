@@ -47,6 +47,7 @@ REPCNT          equ #f3f7
 PUTPNT          equ #f3f8
 GETPNT          equ #f3fa
 CLIKSW          equ #f3db
+CLICKCNT        equ #f559
 CNSDFG          equ #f3de
 BUFFER          equ #f55e
 INLIN_START_COL equ #f55c
@@ -1240,6 +1241,7 @@ keyint:
                 jr z,keyint_done
                 push af
                 call keyboard_scan
+                call keyboard_click_update
                 call HOOKBASE+5                  ; H.TIMI
                 pop af
                 ld (STATFL),a
@@ -2258,6 +2260,11 @@ keyboard_enqueue_edge:
                 call nz,keyboard_buffer_put
                 pop de
                 pop bc
+                ld a,(CLIKSW)
+                or a
+                jr z,keyboard_enqueue_next
+                ld a,2                          ; click for a couple of frames
+                ld (CLICKCNT),a
 keyboard_enqueue_next:
                 inc e
                 ld a,e
@@ -2531,6 +2538,24 @@ keyboard_repeat_next_bit:
                 cp 8
                 jr nz,keyboard_repeat_bit
                 jr keyboard_repeat_next_row
+
+; Drive the 1-bit click line for a few frames after a key press when CLIKSW is
+; on. The PPI port-C bit 7 feeds the speaker through the same MIX as the PSG.
+keyboard_click_update:
+                ld a,(CLICKCNT)
+                or a
+                jr z,keyboard_click_off
+                dec a
+                ld (CLICKCNT),a
+                in a,(PPI_CONTROL_C)
+                or #80
+                out (PPI_CONTROL_C),a           ; click high
+                ret
+keyboard_click_off:
+                in a,(PPI_CONTROL_C)
+                and #7f
+                out (PPI_CONTROL_C),a           ; click low
+                ret
 
 ; Return Z when the keyboard buffer is empty and NZ when input is ready.
 ; Only AF is changed, matching the public entry contract.
@@ -4564,10 +4589,83 @@ gtpad_done:
                 ei
                 ret
 
-; Paddle timing is not part of the current controller slice.
+; GTPDL: read a paddle (1-8) as 0-255. The documented paddle is a one-shot
+; multivibrator: firing the pin-8 trigger makes the input line go low for a
+; pulse whose width is set by the variable resistor. Measure the low pulse on
+; the PSG port-A pin with a bounded loop. Without a paddle the line stays high
+; and the result is 0. Paddles 9-12 are unsupported and return 0.
 gtpdl:
+                di
+                dec a                           ; paddle 1-8 -> 0-7
+                cp 8
+                jr nc,gtpdl_zero
+                ld c,a                          ; C = paddle index
+                ; select the interface: R15 bit 6 (0 = port 1, 1 = port 2)
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                push af                         ; save the original R15
+                ld b,a
+                bit 2,c
+                jr z,gtpdl_iface1
+                or #40
+                jr gtpdl_iface_done
+gtpdl_iface1:
+                and #bf
+gtpdl_iface_done:
+                ld b,a                          ; B = R15, interface selected
+                out (PSG_WRITE),a
+                ; trigger mask: port 1 = bit 4, port 2 = bit 5
+                bit 2,c
+                ld a,#10
+                jr z,gtpdl_trigger_mask
+                ld a,#20
+gtpdl_trigger_mask:
+                ld d,a                          ; D = trigger mask
+                ; fire the one-shot: trigger low, then high
+                ld a,b
+                cpl
+                or d
+                cpl                             ; clear the trigger bit only
+                out (PSG_WRITE),a
+                nop
+                ld a,b
+                or d                            ; arm the trigger
+                out (PSG_WRITE),a
+                ; pin mask = 1 << (paddle & 3)
+                ld a,c
+                and #03
+                ld b,a
+                inc b                           ; 1..4 shifts
+                ld a,1
+gtpdl_pin_shift:
+                dec b
+                jr z,gtpdl_pin_mask
+                add a,a
+                jr gtpdl_pin_shift
+gtpdl_pin_mask:
+                ld e,a                          ; E = pin mask
+                ; measure the low pulse on the port-A pin
+                ld a,PSG_PORT_A
+                out (PSG_ADDRESS),a
+                ld b,0                          ; counter
+gtpdl_measure:
+                in a,(PSG_READ)
+                and e
+                jr nz,gtpdl_done                ; line high: pulse ended
+                inc b
+                jr nz,gtpdl_measure             ; stop at 255
+gtpdl_done:
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                pop af                          ; A = original R15
+                out (PSG_WRITE),a               ; restore R15
+                ld a,b                          ; paddle result
                 ei
+                ret
+gtpdl_zero:
                 xor a
+                ei
                 ret
 
 ; Read the active-low six input lines from connector A=0/1. R15 is modified

@@ -468,6 +468,17 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and externally observable behavior facts only; the
   latch, combination table, and scan integration are original RainBIOS work
 
+## 2026-08-02 — Key click and paddle contracts
+
+- Primary specifications: MSX2 Technical Handbook Ch. 5 §3.2 `CLIKSW`
+  (`F3DBh`, 0 = off, else on; click output on PPI port-C bit 7 through the
+  speaker MIX) and §5.3 paddle use (`GTPDL`, paddle 1-12 returning 0-255; the
+  paddle is a one-shot multivibrator whose pulse width is measured after
+  firing the pin-8 trigger)
+- Purpose: define M3G's click line drive and the no-paddle GTPDL neutral result
+- RainBIOS use: interface and observable behavior facts only; the click
+  counter and paddle measurement are original RainBIOS work
+
 ## 2026-08-02 — GeoBench MSX2 source compatibility cross-check
 
 - Adjacent open-source repository revision:

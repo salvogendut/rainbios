@@ -37,6 +37,8 @@ EXPECTED = {
     "PINLINBRK": "00,1",
     "BEEP": "OK",
     "DEADKEY": "85,82,62,79",
+    "CLICK1": "F8",
+    "CLICK2": "78",
 }
 
 

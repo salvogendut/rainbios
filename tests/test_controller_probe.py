@@ -41,6 +41,12 @@ class ControllerProbeTests(unittest.TestCase):
                 )
             )
 
+    def test_paddle_with_no_device_returns_zero(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PADDLE"):
+            validate_report(
+                self.make_report().replace("PADDLE=00,00,00", "PADDLE=00,40,00")
+            )
+
     def test_psg_connector_state_is_checked(self) -> None:
         with self.assertRaisesRegex(ValueError, "PSG_PORT_B"):
             validate_report(

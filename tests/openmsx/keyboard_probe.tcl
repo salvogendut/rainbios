@@ -321,6 +321,23 @@ proc beep_done {} {
 proc deadkey_done {} {
     record_keyboard [format "DEADKEY=%02X,%02X,%02X,%02X" \
         [peek 0xFBF0] [peek 0xFBF1] [peek 0xFBF2] [peek 0xFBF3]]
+    # M3 key click: with CLIKSW on, a key press drives the PPI click bit high
+    # for a few frames, then low.
+    poke 0xF3DB 1
+    keymatrixdown 2 0x40
+    after time 0.01 click_high
+}
+
+proc click_high {} {
+    record_keyboard [format "CLICK1=%02X" \
+        [expr {[debug read "ioports" 0xAA] & 0xFF}]]
+    after time 0.05 click_low
+}
+
+proc click_low {} {
+    keymatrixup 2 0x40
+    record_keyboard [format "CLICK2=%02X" \
+        [expr {[debug read "ioports" 0xAA] & 0xFF}]]
     exit
 }
 

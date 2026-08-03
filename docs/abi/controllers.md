@@ -73,12 +73,18 @@ produces the common `01h,01h` empty-port coordinate signature. Software should
 not infer device presence from the request return alone.
 
 Touch panels, light pens, explicit mouse-versus-trackball detection, and
-selectors outside 12-19 currently return `00h`. `GTPDL` (`00DEh`) remains a
-neutral `00h` stub; paddle pulse timing is not implemented.
+selectors outside 12-19 currently return `00h`.
+
+`GTPDL` (`00DEh`) reads paddles 1-8: it selects the interface, fires the pin-8
+trigger, and measures the one-shot low pulse width on the PSG port-A pin with a
+bounded loop, returning 0-255. With no paddle the line stays high and the
+result is 0; paddles 9-12 are unsupported and return 0. R15 is restored before
+returning.
 
 ## Validation
 
 `make test-openmsx-controller` calls only public BIOS entries and covers all
 eight cursor directions, active and neutral connector reads, Space and trigger
 register preservation, both mouse request/cache groups, empty and idle mouse
-results, button lines, strict PSG port directions, and seeded R15 preservation.
+results, button lines, strict PSG port directions, seeded R15 preservation,
+and the no-paddle GTPDL neutral result.
