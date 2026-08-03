@@ -131,6 +131,18 @@ class KeyboardProbeTests(unittest.TestCase):
                                            "DEADKEY=85,82,63,79")
             )
 
+    def test_click_high_bit_must_fire(self) -> None:
+        with self.assertRaisesRegex(ValueError, "CLICK1"):
+            validate_report(
+                self.make_report().replace("CLICK1=F8", "CLICK1=78")
+            )
+
+    def test_click_must_return_to_low(self) -> None:
+        with self.assertRaisesRegex(ValueError, "CLICK2"):
+            validate_report(
+                self.make_report().replace("CLICK2=78", "CLICK2=F8")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

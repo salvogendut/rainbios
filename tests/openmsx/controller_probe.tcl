@@ -200,6 +200,22 @@ proc mouse_port2_y {} {
 proc mouse_button_neutral {} {
     record_controller [format "MOUSE_BUTTON=%02X,%02X" \
         [reg A] [debug read ioports 0xA2]]
+    invoke_controller 0x00DE 1 gtpdl1_done
+}
+
+proc gtpdl1_done {} {
+    lappend ::gtpdl [reg A]
+    invoke_controller 0x00DE 5 gtpdl5_done
+}
+
+proc gtpdl5_done {} {
+    lappend ::gtpdl [reg A]
+    invoke_controller 0x00DE 9 gtpdl9_done
+}
+
+proc gtpdl9_done {} {
+    lappend ::gtpdl [reg A]
+    record_controller [format "PADDLE=%02X,%02X,%02X" {*}$::gtpdl]
     invoke_controller 0x0096 15 psg_final
 }
 

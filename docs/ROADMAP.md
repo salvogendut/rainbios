@@ -182,9 +182,16 @@ into the standard MSX accented characters, while non-combinable keys fall back
 to the plain character and clear the latch. The keyboard probe covers
 combining and fallback cases; the accented font glyphs remain M2 charset work.
 
-- complete key click and the remaining editing-key behavior;
+M3G adds the audible key click and the paddle call. With `CLIKSW` nonzero a new
+key press drives the 1-bit click line for a couple of frames. `GTPDL` reads
+paddles 1-8 by firing the pin-8 trigger and measuring the one-shot low pulse on
+the PSG port-A pin (0 with no paddle), restoring R15. The keyboard probe
+checks the click bit, and the controller probe checks the no-paddle neutral
+result.
+
+- complete the remaining editing-key behavior (mid-line cursor editing);
 - complete `GICINI` PLAY statement work-area initialization;
-- implement touch-panel, light-pen, trackball-detection, and paddle calls;
+- implement touch-panel, light-pen, and trackball-detection calls;
 - implement or explicitly classify printer and remaining basic-device calls;
 - make interrupt frequency and locale selectable build properties.
 

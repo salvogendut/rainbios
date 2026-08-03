@@ -80,6 +80,10 @@ codes are part of the M2 character-set work.
 The keyboard probe covers grave+`a`, acute+`e`, a non-combinable letter, and
 a letter with no accented form.
 
+With `CLIKSW` (`F3DBh`) nonzero, each new key press drives the 1-bit click
+line (PPI port-C bit 7) high for a couple of frames. The keyboard probe
+verifies the click bit fires and returns to low.
+
 Dead-key+Shift is not yet distinguished (each accent glyph maps to one accent
 type), key click, Code lock, cursor editing inside a line, and CAPS behavior
 beyond the implemented state/LED remain future compatibility work.
