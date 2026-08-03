@@ -130,6 +130,14 @@ on the boundary row, reusing the Screen 0/1/2 layouts of the `CHPUT` wrap
 scroll. The cursor probe covers every move, both edges, and both scroll
 directions against the seeded name table.
 
+M2E completes and verifies the base VRAM transfer path. `RDVRM`/`WRTVRM`
+read and write a byte through the data port after `SETRD`/`SETWRT` set the
+14-bit pointer with the control-port pair interrupt-atomic; `FILVRM` fills a
+block, `LDIRMV` copies VRAM to RAM, and `LDIRVM` copies RAM to VRAM. The VRAM
+probe verifies the write/read round trip, the 14-bit address wrap at `4000h`,
+the top boundary, a 256-byte fill, both block-copy directions, and that the
+VDP registers remain readable after the data-port traffic.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
