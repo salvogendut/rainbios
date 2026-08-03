@@ -241,6 +241,20 @@ and observed `GTPAD` request/X/Y bytes `FFh,28h,ECh`, exactly matching the
 pluggable's 2:1 host scaling and RainBIOS's positive-right/positive-down BIOS
 sign convention.
 
+The earlier "1983 binary drift" explanation for a batch of failing tests was
+tested and disproven: building the pinned `58e3590` revision reproduces the
+same behavior as the local checkout, so the failures were stale test
+expectations that drifted from the evolved firmware. A cleanup pass fixed the
+cartridge/tape extension-stack SP validators, the payload probe addresses and
+marker bytes, the BBC BASIC PC window and banner screenshot regions, the
+external Arkano VDP R1 expectation, and the SD storage-boot page-2 slot
+expectations, so those 1983/openMSX targets pass again. Five 1983 failures
+remain pre-existing: `test-1983-geobench-sunrise` (the documented
+timing-sensitive open gap), the base `test-1983-nextor` and
+`test-1983-sd-empty-sunrise` screenshot hashes, and the
+`test-1983-ide-boot`/`test-1983-ide-menu` Sunrise IDE boot-path divergences
+(see the validation section below).
+
 A follow-up isolated `Xvfb`/fluxbox run confirmed that XTest motion reaches
 openMSX's X11 event layer, but openMSX 21.0 does not forward that synthetic
 motion into the emulated mouse accumulator in this setup: `GTPAD` remains
@@ -355,7 +369,15 @@ The default emulator paths expect the adjacent open-source 1983 checkout:
 ../1983/1983-models.conf
 ```
 
-The tested 1983 revision is recorded in `docs/REFERENCES.md`.
+The tested 1983 revision is recorded in `docs/REFERENCES.md`. The cleanup pass
+confirmed the checkout revision is not the cause of the remaining failures:
+`test-1983-geobench-sunrise` is the documented timing-sensitive open gap;
+`test-1983-nextor` and `test-1983-sd-empty-sunrise` need their screenshot hash
+constants recalibrated (the base Sunrise Nextor renders a different boot
+layout than the SD cases); and `test-1983-ide-boot`/`test-1983-ide-menu`
+diverge in the Sunrise IDE bootstrap (the CPU can reach unused ROM padding
+instead of the fixture pass label, and the no-medium fallback does not return
+to the menu stack).
 
 openMSX is installed as a Flatpak on the current workstation. Use:
 
@@ -396,6 +418,16 @@ is:
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
+
+The immediate test-suite cleanup is the five remaining pre-existing 1983
+failures. Recalibrate the `test-1983-nextor` and `test-1983-sd-empty-sunrise`
+screenshot hash constants to the current Sunrise Nextor boot layout (separate
+them from the SD-card shared hashes), and investigate the
+`test-1983-ide-boot`/`test-1983-ide-menu` Sunrise IDE bootstrap divergence —
+the CPU reaching unused ROM padding instead of the fixture pass label, and the
+no-medium fallback not returning to the RainBIOS menu stack. The
+`test-1983-geobench-sunrise` gap is the documented timing-sensitive GeoBench
+rendering issue and is tracked under the emulator slice below.
 
 The GeoBench storage boot matrix is now automated. The next emulator
 compatibility slice is to close the narrower openMSX rendering gap: reproduce
