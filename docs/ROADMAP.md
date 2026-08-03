@@ -122,6 +122,14 @@ name and pattern planes, and applies the selected colors. A keyboard-driven
 1983 diagnostics check verifies the resulting multicolor VDP state and a
 nonblank rendered frame.
 
+M2D implements the six text cursor-movement entries. `RIGHTC`/`LEFTC` move
+`CSRX` within the current `LINLEN` (stopping at either edge), `UPC`/`DOWNC`
+move `CSRY` within `CRTCNT` (stopping at the top and bottom rows), and
+`TUPC`/`TDOWNC` scroll the text one row down or up when the cursor is already
+on the boundary row, reusing the Screen 0/1/2 layouts of the `CHPUT` wrap
+scroll. The cursor probe covers every move, both edges, and both scroll
+directions against the seeded name table.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;

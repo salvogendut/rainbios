@@ -231,12 +231,12 @@ CALSLT_P3_FRAME equ #f360
                 jp stmotr                       ; 00F3 STMOTR
                 jp unsupported_call             ; 00F6 LFTQ
                 jp unsupported_call             ; 00F9 PUTQ
-                jp unsupported_call             ; 00FC RIGHTC
-                jp unsupported_call             ; 00FF LEFTC
-                jp unsupported_call             ; 0102 UPC
-                jp unsupported_call             ; 0105 TUPC
-                jp unsupported_call             ; 0108 DOWNC
-                jp unsupported_call             ; 010B TDOWNC
+                jp rightc                       ; 00FC RIGHTC
+                jp leftc                        ; 00FF LEFTC
+                jp upc                          ; 0102 UPC
+                jp tupc                         ; 0105 TUPC
+                jp downc                        ; 0108 DOWNC
+                jp tdownc                       ; 010B TDOWNC
                 jp unsupported_call             ; 010E SCALXY
                 jp unsupported_call             ; 0111 MAPXY
                 jp unsupported_call             ; 0114 FETCHC
@@ -1865,6 +1865,131 @@ posit:
                 ld (CSRX),a
                 ld a,l
                 ld (CSRY),a
+                ret
+
+; Cursor movement within the current text width and row count. The plain
+; variants stop at the edges; the scrolling variants (TUPC/TDOWNC) move the
+; text when the cursor is already on the boundary row. Only the cursor
+; work-area variables and AF change.
+rightc:
+                ld a,(LINLEN)
+                ld b,a
+                ld a,(CSRX)
+                cp b
+                ret nc                          ; already at the right edge
+                inc a
+                ld (CSRX),a
+                ret
+leftc:
+                ld a,(CSRX)
+                cp 1
+                ret z                           ; already at the left edge
+                dec a
+                ld (CSRX),a
+                ret
+upc:
+                ld a,(CSRY)
+                cp 1
+                ret z                           ; already at the top
+                dec a
+                ld (CSRY),a
+                ret
+downc:
+                ld a,(CRTCNT)
+                ld b,a
+                ld a,(CSRY)
+                cp b
+                ret nc                          ; already at the bottom
+                inc a
+                ld (CSRY),a
+                ret
+tupc:
+                ld a,(CSRY)
+                cp 1
+                jr z,tupc_scroll
+                dec a
+                ld (CSRY),a
+                ret
+tupc_scroll:
+                jp console_scroll_down
+tdownc:
+                ld a,(CRTCNT)
+                ld b,a
+                ld a,(CSRY)
+                cp b
+                jr z,tdownc_scroll
+                inc a
+                ld (CSRY),a
+                ret
+tdownc_scroll:
+                jp console_scroll
+
+; Move the text one row downward for TUPC at the top row: rows 1..N-1 copy to
+; 2..N (from the last row first, so the overlap is safe), then row 1 blanks.
+; Mirrors console_scroll for each Screen 0/1/2 layout.
+console_scroll_down:
+                ld a,(SCRMOD)
+                cp 2
+                jr z,console_scroll_down_screen2
+                cp 1
+                jr z,console_scroll_down_screen1
+                ld hl,#0397                    ; Screen 0 row 23 end
+                ld de,#03bf                    ; Screen 0 row 24 end
+                ld bc,920                      ; 23 rows * 40 columns
+                call console_scroll_copy_back
+                ld hl,#0000                    ; Screen 0 row 1
+                ld bc,40
+                jr console_scroll_down_clear_text
+console_scroll_down_screen1:
+                ld hl,#1adf                    ; Screen 1 row 23 end
+                ld de,#1aff                    ; Screen 1 row 24 end
+                ld bc,736                      ; 23 rows * 32 columns
+                call console_scroll_copy_back
+                ld hl,#1800                    ; Screen 1 row 1
+                ld bc,32
+console_scroll_down_clear_text:
+                ld a,#20
+                jp filvrm
+console_scroll_down_screen2:
+                ld hl,#16ff                    ; pattern row 23 end
+                ld de,#17ff                    ; pattern row 24 end
+                ld bc,#1700                    ; 23 pattern rows
+                call console_scroll_copy_back
+                ld hl,#36ff                    ; colour row 23 end
+                ld de,#37ff                    ; colour row 24 end
+                ld bc,#1700                    ; 23 colour rows
+                call console_scroll_copy_back
+                ld hl,#0000                    ; blank pattern row 1
+                ld bc,#0100
+                xor a
+                call filvrm
+                ld hl,#2000                    ; reset its colour row
+                ld bc,#0100
+                ld a,(FORCLR)
+                and #0f
+                rlca
+                rlca
+                rlca
+                rlca
+                ld d,a
+                ld a,(BAKCLR)
+                and #0f
+                or d
+                jp filvrm
+
+; Copy BC bytes from the source at (HL - BC + 1) to the destination at
+; (DE - BC + 1), walking backward so a downward scroll can overlap safely.
+console_scroll_copy_back:
+                call rdvrm
+                ex de,hl
+                call wrtvrm
+                ex de,hl
+                dec hl
+                dec de
+                dec bc
+                ld a,b
+                or c
+                jr nz,console_scroll_copy_back
                 ret
 
 setrd:

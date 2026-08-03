@@ -81,12 +81,12 @@ address,name,kind,status,milestone,notes
 00F3,STMOTR,jump,implemented,M3,
 00F6,LFTQ,jump,stub,M3,
 00F9,PUTQ,jump,stub,M3,
-00FC,RIGHTC,jump,stub,M2,
-00FF,LEFTC,jump,stub,M2,
-0102,UPC,jump,stub,M2,
-0105,TUPC,jump,stub,M2,
-0108,DOWNC,jump,stub,M2,
-010B,TDOWNC,jump,stub,M2,
+00FC,RIGHTC,jump,implemented,M2,Moves the cursor right; at the line end (LINLEN) it does not move
+00FF,LEFTC,jump,implemented,M2,Moves the cursor left; at column one it does not move
+0102,UPC,jump,implemented,M2,Moves the cursor up; at the top row it does not move
+0105,TUPC,jump,implemented,M2,Moves the cursor up; at the top row the text scrolls down one row
+0108,DOWNC,jump,implemented,M2,Moves the cursor down; at the bottom row (CRTCNT) it does not move
+010B,TDOWNC,jump,implemented,M2,Moves the cursor down; at the bottom row the text scrolls up one row
 010E,SCALXY,jump,stub,M2,
 0111,MAPXY,jump,stub,M2,
 0114,FETCHC,jump,stub,M2,
