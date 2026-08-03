@@ -51,8 +51,9 @@ The main BIOS currently provides:
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`;
 - partial Screen 0/1/2/3 setup, a guarded register-only V9938 Screen 7 handoff,
-  text and Graphics II console output, scrolling, VRAM primitives, text cursor
-  movement (`RIGHTC`/`LEFTC`/`UPC`/`TUPC`/`DOWNC`/`TDOWNC`), and project-owned
+  text and Graphics II console output, scrolling, VRAM primitives (`RDVRM`/
+  `WRTVRM`/`SETRD`/`SETWRT`/`FILVRM`/`LDIRMV`/`LDIRVM`), text cursor movement
+  (`RIGHTC`/`LEFTC`/`UPC`/`TUPC`/`DOWNC`/`TDOWNC`), and project-owned
   printable glyphs;
 - international keyboard scanning, auto-repeat, Ctrl-STOP break handling
   (`BREAKX`/`ISCNTC`/`CKCNTC`), function-key strings and display
@@ -227,8 +228,8 @@ now initializes the PSG hardware and the full PLAY statement work area
 queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
-Current verification on `main`: 186 host tests pass; the openMSX
-controller, keyboard, cursor, services, and startup-audio probes pass; Sunrise Nextor
+Current verification on `main`: 194 host tests pass; the openMSX
+controller, keyboard, cursor, VRAM, services, and startup-audio probes pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
 and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
 render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.

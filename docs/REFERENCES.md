@@ -487,6 +487,18 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the cursor
   updates and the Screen 0/1/2 scroll-down helper are original RainBIOS work
 
+## 2026-08-03 — VRAM transfer calls
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`RDVRM`,
+  `WRTVRM`, `SETRD`, `SETWRT`, `FILVRM`, `LDIRMV`, `LDIRVM`) register
+  contracts and the 14-bit TMS9918 VRAM address model
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries
+- Purpose: define M2E's data-port behavior (read vs write pointer through the
+  control port, address masking to 14 bits, block counts) and the boundary
+  cases the VRAM probe asserts
+- RainBIOS use: interface and observable behavior facts only; the transfer
+  routines and the conformance probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

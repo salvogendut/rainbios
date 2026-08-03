@@ -22,13 +22,13 @@ address,name,kind,status,milestone,notes
 0041,DISSCR,jump,partial,M2,Updates TMS9918 register 1 through the shadowed WRTVDP path
 0044,ENASCR,jump,partial,M2,Updates TMS9918 register 1 through the shadowed WRTVDP path
 0047,WRTVDP,jump,partial,M2,Accepts B=data and C=register; updates MSX1 register shadows 0 through 7 atomically
-004A,RDVRM,jump,partial,M2,Needs VDP timing tests
-004D,WRTVRM,jump,partial,M2,Needs VDP timing tests
-0050,SETRD,jump,partial,M2,14-bit VRAM address only
-0053,SETWRT,jump,partial,M2,14-bit VRAM address only
-0056,FILVRM,jump,partial,M2,Needs count and timing conformance tests
-0059,LDIRMV,jump,partial,M2,Needs count and timing conformance tests
-005C,LDIRVM,jump,partial,M2,Needs count and timing conformance tests
+004A,RDVRM,jump,implemented,M2,Reads the VRAM byte at HL through the data port after setting the 14-bit read pointer
+004D,WRTVRM,jump,implemented,M2,Writes A to VRAM at HL through the data port after setting the 14-bit write pointer
+0050,SETRD,jump,implemented,M2,Sets the 14-bit VRAM read pointer from HL with the control-port pair interrupt-atomic
+0053,SETWRT,jump,implemented,M2,Sets the 14-bit VRAM write pointer from HL with the control-port pair interrupt-atomic
+0056,FILVRM,jump,implemented,M2,Fills BC bytes at HL in VRAM with A; count and boundary behavior covered by the VRAM probe
+0059,LDIRMV,jump,implemented,M2,Copies BC bytes from VRAM at HL to RAM at DE
+005C,LDIRVM,jump,implemented,M2,Copies BC bytes from RAM at HL to VRAM at DE
 005F,CHGMOD,jump,partial,M2,Dispatches modes 0-3 and provides a guarded partial Screen 7 register handoff when a live standard SUB-ROM signature is found; modes 4-6/8 remain unsupported
 0062,CHGCLR,jump,partial,M2,Updates R7 from FORCLR/BDRCLR and recolors the Screen 1 color table; broader mode and register conformance remains pending
 0066,NMI,jump,stub,M1,Safe empty NMI return only
