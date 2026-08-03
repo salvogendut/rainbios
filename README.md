@@ -8,7 +8,8 @@ proprietary source code, ROM data, disassembly, fonts, logos, or extracted
 assets.
 
 The repository currently builds a deliberately incomplete 32 KiB MSX1 main
-ROM whose upper 16 KiB contains a source-built Z80 BASIC payload. It is
+ROM whose upper 16 KiB contains a compressed, source-built Z80 BASIC payload.
+RainBIOS expands the verified 16 KiB image into page-1 RAM before launch. It is
 suitable for compatibility development and controlled tests, not as a
 complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 [ABI status table](docs/abi/main-bios.csv) for exact implementation status.
@@ -60,10 +61,12 @@ make test
 ```
 
 Every normal build verifies the companion checkout, runs its tests, rebuilds
-its 16 KiB ROM from source, and embeds those exact bytes at `4000h-7FFFh`.
-It never falls back to an old prebuilt payload. The main output is
-`build/rainbios_msx1.rom`; the independently usable payload is copied to
-`build/payload/bbcbasic_msx_console.rom`. Override tools or the sibling path
+its exact 16 KiB ROM from source, checks its pinned digest, compresses it with
+ZX0, and embeds the compressed stream in an inert `RBC1` container. It never
+falls back to an old prebuilt payload. The main output is
+`build/rainbios_msx1.rom`; the independently usable exact payload and its
+compressed stream are copied to `build/payload/bbcbasic_msx_console.rom` and
+`build/payload/bbcbasic_msx_console.zx0`. Override tools or the sibling path
 when needed:
 
 ```sh

@@ -278,7 +278,8 @@ ZX0_TOOL := $(BUILD_DIR)/tools/zx0
 ZX0_TOOL_SOURCES := tools/zx0/zx0.c tools/zx0/zx0.h \
 	tools/zx0/optimize.c tools/zx0/compress.c tools/zx0/memory.c
 BBC_EMBED_DIR := $(BUILD_DIR)/payload
-BBC_EMBEDDED_ROM := $(BBC_EMBED_DIR)/bbcbasic_msx_console.rom
+BBC_PAYLOAD_ROM := $(BBC_EMBED_DIR)/bbcbasic_msx_console.rom
+BBC_EMBEDDED_ROM := $(BBC_EMBED_DIR)/bbcbasic_msx_console.zx0
 SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	src/zx0_decompress.asm
 
@@ -361,7 +362,8 @@ bbcbasic-payload:
 	$(PYTHON) tools/check_bbcbasic_dependency.py \
 		--repository $(BBC_BASIC_DIR) --require-artifact
 	mkdir -p $(BBC_EMBED_DIR)
-	cp $(BBC_BASIC_ROM) $(BBC_EMBEDDED_ROM)
+	cp $(BBC_BASIC_ROM) $(BBC_PAYLOAD_ROM)
+	$(ZX0_TOOL) -f $(BBC_PAYLOAD_ROM) $(BBC_EMBEDDED_ROM)
 
 $(MSX1_ROM): bbcbasic-payload $(SOURCES) $(LOGO_STAMP) \
 	$(LOGO_COMPRESSED_ASSETS) | $(BUILD_DIR)
@@ -590,7 +592,7 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
 	$(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) $(VALID_PAYLOAD_CART)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
-	RAINBIOS_BBC_BASIC_ROM=$(BBC_EMBEDDED_ROM) \
+	RAINBIOS_BBC_BASIC_ROM=$(BBC_PAYLOAD_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
 	RAINBIOS_IDE_BOOT_SECTOR=$(IDE_BOOT_SECTOR_BIN) \
@@ -1119,7 +1121,8 @@ test-openmsx-external-arkano: $(OPENMSX_EXTERNAL_ARKANO_MACHINE)
 	$(PYTHON) tools/check_external_cartridge_probe.py \
 		--vdp-r0 02 --vdp-r1 E2 $(OPENMSX_EXTERNAL_ARKANO_REPORT)
 	$(PYTHON) tools/check_boot_screenshot.py \
-		--min-colors 2 $(OPENMSX_EXTERNAL_ARKANO_SCREEN)
+		--min-colors 8 --foreground-box 160,70,225,200 \
+		$(OPENMSX_EXTERNAL_ARKANO_SCREEN)
 
 test-openmsx-external-diagnostics: \
 		$(OPENMSX_EXTERNAL_DIAGNOSTICS_MACHINE)
@@ -1596,9 +1599,10 @@ test-1983-external-arkano: $(MSX1_ROM) $(ARKANO_ROM)
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(ARKANO_ROM)" \
 		--screenshot "$(EMULATOR_1983_EXTERNAL_ARKANO_SCREEN)" \
-		--exit-after 1200 --expected-slot D4 \
-		--expected-vdp-r0 02 --expected-vdp-r1 E0
-	$(PYTHON) tools/check_boot_screenshot.py --min-colors 2 \
+		--exit-after 1300 --expected-slot D4 \
+		--expected-vdp-r0 02 --expected-vdp-r1 E2
+	$(PYTHON) tools/check_boot_screenshot.py --min-colors 8 \
+		--foreground-box 320,140,450,400 \
 		--size 640x480 $(EMULATOR_1983_EXTERNAL_ARKANO_SCREEN)
 
 test-1983-external-diagnostics: $(MSX1_ROM) $(MSX_DIAGNOSTICS_ROM)

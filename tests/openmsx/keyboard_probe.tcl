@@ -168,12 +168,14 @@ proc caps_off_read {} {
     record_keyboard [format "FNK=%02X,%02X,%02X" \
         [peek 0xF87F] [peek 0xF880] [peek 0xF881]]
     record_keyboard [format "CNSDFG=%02X" [peek 0xF3DE]]
+    reg IFF 1
     reg F 0
     invoke_bios 0x00B7 breakx_clear_done
 }
 
 proc breakx_clear_done {} {
-    record_keyboard [format "BREAKX0=%d" [expr {[reg F] & 1}]]
+    record_keyboard [format "BREAKX0=%d,%d" \
+        [expr {[reg F] & 1}] [expr {([reg IFF] & 1) != 0}]]
     reg F 0
     invoke_bios 0x00BA iscntc_clear_done
 }
@@ -181,20 +183,22 @@ proc breakx_clear_done {} {
 proc iscntc_clear_done {} {
     record_keyboard [format "ISCNTC0=%d" [expr {[reg F] & 1}]]
     # hold CTRL+STOP so KEYINT latches a break
-    keymatrixdown 6 0x80
-    keymatrixdown 7 0x08
+    keymatrixdown 6 0x02
+    keymatrixdown 7 0x10
     after time 0.05 breakx_pressed
 }
 
 proc breakx_pressed {} {
+    reg IFF 1
     reg F 0
     invoke_bios 0x00B7 breakx_pressed_done
 }
 
 proc breakx_pressed_done {} {
-    record_keyboard [format "BREAKX1=%d" [expr {[reg F] & 1}]]
-    keymatrixup 6 0x80
-    keymatrixup 7 0x08
+    record_keyboard [format "BREAKX1=%d,%d" \
+        [expr {[reg F] & 1}] [expr {([reg IFF] & 1) != 0}]]
+    keymatrixup 6 0x02
+    keymatrixup 7 0x10
     reg F 0
     invoke_bios 0x00BA iscntc_break_done
 }
@@ -292,10 +296,10 @@ proc qinlin_done {} {
         [peek 0xF55E] [peek 0xF55F] [peek 0xF560] [peek 0xF6AA]]
     # PINLIN ends with carry set on a Ctrl-STOP break
     seed_buffer {}
-    keymatrixdown 6 0x80
-    keymatrixdown 7 0x08
+    keymatrixdown 6 0x02
+    keymatrixdown 7 0x10
     invoke_bios 0x00AE pinlin_break_done
-    after time 0.10 {keymatrixup 6 0x80; keymatrixup 7 0x08}
+    after time 0.10 {keymatrixup 6 0x02; keymatrixup 7 0x10}
 }
 
 proc pinlin_break_done {} {

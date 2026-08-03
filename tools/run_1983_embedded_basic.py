@@ -27,7 +27,7 @@ def validate_state(text: str) -> dict[str, str]:
         raise ValueError(f"PC {pc:04X} is outside RainBIOS page-0 services")
     if not 0xF200 <= sp <= 0xF300:
         raise ValueError(f"SP {sp:04X} is outside the BASIC stack window")
-    expected = {"slot": "F0", "vdp_r0": "00", "vdp_r1": "F0"}
+    expected = {"slot": "FC", "vdp_r0": "00", "vdp_r1": "F0"}
     for key, value in expected.items():
         if fields.get(key) != value:
             raise ValueError(f"{key}: found {fields.get(key)!r}, expected {value!r}")

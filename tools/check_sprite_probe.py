@@ -12,10 +12,10 @@ EXPECTED = {
     "BASES": "3800,1B00,0F",
     "GSPSIZ0": "08,0,E0",
     "GSPSIZ1": "20,1,E2",
-    "CALPAT16": "3820",
+    "CALPAT16": "38A0",
     "CALPAT8": "3828",
     "CALATR7": "1B1C",
-    "ATR0": "D1,00,00,0F,D1,00,1F,0F",
+    "ATR0": "D1,00,00,0F,D1,00,7C,0F",
     "PAT": "00,00",
 }
 

@@ -43,14 +43,27 @@ proc start_probe {} {
 proc initgrp_done {} {
     lappend ::sprite_lines [format "BASES=%04X,%04X,%02X" \
         [word_at 0xF926] [word_at 0xF928] [peek 0xF3E9]]
-    reg A 0
+    reg A 0xA5
     invoke_bios 0x008A gspsiz_small_done
 }
 
 proc gspsiz_small_done {} {
     lappend ::sprite_lines [format "GSPSIZ0=%02X,%d,%02X" \
         [reg A] [expr {[reg F] & 1}] [peek 0xF3E0]]
-    reg A 1
+    reg B 0xE2
+    reg C 1
+    invoke_bios 0x0047 gspsiz_big_mode_set
+}
+
+proc gspsiz_big_mode_set {} {
+    # Mode initialization must preserve R1's sprite-size/magnification bits.
+    invoke_bios 0x0072 gspsiz_big_ready
+}
+
+proc gspsiz_big_ready {} {
+    # A deliberately remains zero: GSPSIZ must query the E2 shadow rather than
+    # interpreting its input as a request to switch back to 8x8 sprites.
+    reg A 0
     invoke_bios 0x008A gspsiz_big_done
 }
 
@@ -63,7 +76,13 @@ proc gspsiz_big_done {} {
 
 proc calpat_big_done {} {
     lappend ::sprite_lines [format "CALPAT16=%04X" [reg HL]]
-    reg A 0
+    reg B 0xE0
+    reg C 1
+    invoke_bios 0x0047 gspsiz_small_ready
+}
+
+proc gspsiz_small_ready {} {
+    reg A 0xA5
     invoke_bios 0x008A gspsiz_small2_done
 }
 
@@ -80,6 +99,13 @@ proc calpat_small_done {} {
 
 proc calatr_done {} {
     lappend ::sprite_lines [format "CALATR7=%04X" [reg HL]]
+    reg B 0xE2
+    reg C 1
+    invoke_bios 0x0047 clrspr_big_ready
+}
+
+proc clrspr_big_ready {} {
+    debug write VRAM 0x3FFF 0x55
     invoke_bios 0x0069 clrspr_done
 }
 
@@ -90,7 +116,7 @@ proc clrspr_done {} {
         [debug read VRAM 0x1B7C] [debug read VRAM 0x1B7D] \
         [debug read VRAM 0x1B7E] [debug read VRAM 0x1B7F]]
     lappend ::sprite_lines [format "PAT=%02X,%02X" \
-        [debug read VRAM 0x3800] [debug read VRAM 0x38FF]]
+        [debug read VRAM 0x3800] [debug read VRAM 0x3FFF]]
     record_sprite [join $::sprite_lines "\n"]
     exit
 }

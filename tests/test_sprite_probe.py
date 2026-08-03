@@ -20,7 +20,7 @@ class SpriteProbeTests(unittest.TestCase):
                 self.make_report().replace("GSPSIZ0=08,0,E0", "GSPSIZ0=08,1,E0")
             )
 
-    def test_gspsiz_big_must_set_carry_and_r1(self) -> None:
+    def test_gspsiz_big_must_report_carry_without_changing_r1(self) -> None:
         with self.assertRaisesRegex(ValueError, "GSPSIZ1"):
             validate_report(
                 self.make_report().replace("GSPSIZ1=20,1,E2", "GSPSIZ1=20,0,E2")
@@ -32,10 +32,10 @@ class SpriteProbeTests(unittest.TestCase):
                 self.make_report().replace("CALPAT8=3828", "CALPAT8=382D")
             )
 
-    def test_calpat_16x16_must_mask_to_a_quadrant(self) -> None:
+    def test_calpat_16x16_must_scale_by_thirty_two(self) -> None:
         with self.assertRaisesRegex(ValueError, "CALPAT16"):
             validate_report(
-                self.make_report().replace("CALPAT16=3820", "CALPAT16=3828")
+                self.make_report().replace("CALPAT16=38A0", "CALPAT16=3820")
             )
 
     def test_calatr_must_scale_by_four(self) -> None:
@@ -47,8 +47,8 @@ class SpriteProbeTests(unittest.TestCase):
     def test_clrspr_must_set_plane_and_color(self) -> None:
         with self.assertRaisesRegex(ValueError, "ATR0"):
             validate_report(
-                self.make_report().replace("ATR0=D1,00,00,0F,D1,00,1F,0F",
-                                           "ATR0=D1,00,00,00,D1,00,1F,0F")
+                self.make_report().replace("ATR0=D1,00,00,0F,D1,00,7C,0F",
+                                           "ATR0=D1,00,00,00,D1,00,7C,0F")
             )
 
     def test_clrspr_must_clear_the_pattern_table(self) -> None:

@@ -20,11 +20,11 @@ debug watchpoint create \
     -condition {[lindex [get_selected_slot 1] 0] == 0} \
     -command record_embedded_rom_write
 
-after time 4.00 {
+after time 8.00 {
     type_via_keybuf "PRINT 2+2\r"
 }
 
-after time 6.00 {
+after time 10.00 {
     set handle [open $::embedded_basic_output w]
     puts $handle "ROM_WRITES=$::rom_writes"
     puts $handle [format "SLOT=%02X" [expr {[debug read ioports 0xA8] & 0xFF}]]

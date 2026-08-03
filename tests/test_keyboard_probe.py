@@ -56,7 +56,13 @@ class KeyboardProbeTests(unittest.TestCase):
     def test_ctrl_stop_must_set_breakx_carry(self) -> None:
         with self.assertRaisesRegex(ValueError, "BREAKX1"):
             validate_report(
-                self.make_report().replace("BREAKX1=1", "BREAKX1=0")
+                self.make_report().replace("BREAKX1=1,1", "BREAKX1=0,1")
+            )
+
+    def test_breakx_must_preserve_interrupt_state(self) -> None:
+        with self.assertRaisesRegex(ValueError, "BREAKX0"):
+            validate_report(
+                self.make_report().replace("BREAKX0=0,1", "BREAKX0=0,0")
             )
 
     def test_iscntc_must_consume_the_break(self) -> None:

@@ -19,11 +19,12 @@ proc finish_external_probe {} {
     puts $handle [format "VDP_R0=%02X" [debug read "VDP regs" 0]]
     puts $handle [format "VDP_R1=%02X" [debug read "VDP regs" 1]]
     close $handle
-    set throttle on
-    after time 0.25 {
-        screenshot -raw -size 320 $::external_screenshot
-        exit
-    }
+    after frame capture_external_frame
+}
+
+proc capture_external_frame {} {
+    screenshot -raw -size 320 $::external_screenshot
+    exit
 }
 
 # Emulated-time delays keep the probe point deterministic regardless of host

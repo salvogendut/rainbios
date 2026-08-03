@@ -163,13 +163,15 @@ reproduces the corresponding initialize state and that a seeded VRAM byte
 survives the switch.
 
 M2G implements the sprite utilities. `CLRSPR` initializes all 32 sprites
-(pattern table cleared, each attribute set to Y = 209/217, X = 0, the plane
-number, and the foreground colour); `CALPAT` returns the pattern address
-(`PATBAS` plus `A*8`, or `(A AND 0FCh)*8` for 16x16); `CALATR` returns the
-attribute address (`ATRBAS` plus `A*4`); and `GSPSIZ` selects 8x8/16x16
-sprites, updates R1 and its shadow, and returns the byte size with carry for
-16x16. The sprite probe verifies both sizes, both address scales, and the
-cleared attribute/pattern tables.
+(complete 2 KiB pattern table cleared, each attribute set to Y = 209/217,
+X = 0, a pattern number stepping by 1/4 for 8x8/16x16, and the foreground
+colour); `CALPAT` returns `PATBAS + A*8` or `PATBAS + A*32`; `CALATR` returns
+`ATRBAS + A*4`; and `GSPSIZ` queries the current R1 sprite-size bit without
+changing it, returning 8/carry-clear or 32/carry-set. Screen initialization
+and switching preserve R1's sprite-size/magnification bits. The sprite probe
+verifies both sizes, both address scales, mode preservation, and the complete
+attribute/pattern clear. Arkanoid independently gates the 16x16 state in both
+emulators.
 
 M2H implements `GRPPRT`, the graphics-mode character printer. It renders the
 character in A at the current cursor position using the project font and the
@@ -315,10 +317,13 @@ and a standard `H.TIMI` test hook drives the same path in 1983 before its
 rendered prompt is checked.
 
 Issue #60 adds the pinned payload to the upper half of the ordinary 32 KiB
-MAIN-ROM. Every build rebuilds it from the companion sources and requires a
-byte-exact result. External cartridges retain their normal first opportunity;
-storage retains priority over the internal copy; a clean storage return leads
-to a bounded Space-key window and then automatic BASIC. A compatible external
+MAIN-ROM. Every build rebuilds the exact companion artifact, verifies its
+digest, and embeds a ZX0-compressed `RBC1` container. RainBIOS reconstructs the
+payload in page-1 RAM at launch. External cartridges retain their normal first
+opportunity; storage retains priority over the internal copy; a clean storage
+return leads to a bounded Space-key window and then automatic BASIC. A
+returning ordinary game/application `INIT` suppresses that automatic fallback
+because such cartridges may continue through hooks. A compatible external
 payload remains the upgrade override. Dedicated 1983 and openMSX probes cover
 the no-cartridge automatic path.
 
@@ -351,12 +356,13 @@ emulated machine layouts and real hardware.
 Status: in progress.
 
 The combined-ROM feasibility slice is implemented. ZX0-compressed boot/menu
-tables and the directly addressable font fit below `4000h`; the exact 16 KiB
-interpreter occupies `4000h-7FFFh`. The build asserts that boundary, validates
-the payload descriptor at runtime, and retains the companion ROM as a separate
-artifact. The initial lower-bank reserve was only 440 bytes, so a simpler
+tables and the directly addressable font fit below `4000h`; the upper bank
+holds an `RBC1` stream generated from the exact 16 KiB interpreter and expands
+it into page-1 RAM at launch. The build asserts the boundary, validates the
+container and reconstructed markers, and retains the companion ROM as a
+separate artifact. The initial lower-bank reserve was only 440 bytes, so a simpler
 lower-entropy logo was added; it reduced the compressed logo tables from 3,922
-bytes to 917 bytes. The current menu copy leaves a 3,416-byte reserve;
+bytes to 917 bytes. The current menu copy leaves a 3,247-byte reserve;
 continuing size gates are still required before substantial new page-0 work.
 Human-readable component notices are complete; public release remains gated
 on branding permission or a rename, a machine-readable component manifest,
