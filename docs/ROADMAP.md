@@ -138,6 +138,14 @@ probe verifies the write/read round trip, the 14-bit address wrap at `4000h`,
 the top boundary, a 256-byte fill, both block-copy directions, and that the
 VDP registers remain readable after the data-port traffic.
 
+M2F implements the three screen-mode switch entries. `SETTXT`, `SETT32`, and
+`SETGRP` program the live VDP with the same registers and R1 shadow formula as
+`INITXT`/`INIT32`/`INITGRP` and update `SCRMOD`/`LINLEN`/cursor, but leave the
+name, pattern, colour, and sprite tables alone so a caller can switch modes
+over an already-set-up screen. The screen-mode probe verifies that each switch
+reproduces the corresponding initialize state and that a seeded VRAM byte
+survives the switch.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;

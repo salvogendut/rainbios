@@ -49,6 +49,7 @@ OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
 OPENMSX_CONTROLLER_REPORT := $(OPENMSX_M1_REPORT_DIR)/controller.txt
 OPENMSX_CURSOR_REPORT := $(OPENMSX_M1_REPORT_DIR)/cursor.txt
 OPENMSX_VRAM_REPORT := $(OPENMSX_M1_REPORT_DIR)/vram.txt
+OPENMSX_SCREENMODES_REPORT := $(OPENMSX_M1_REPORT_DIR)/screen-modes.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
@@ -261,8 +262,9 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots test-openmsx-mapper \
-	test-openmsx-services test-openmsx-keyboard test-openmsx-cursor \
+	test-openmsx-services test-openmsx-keyboard 	test-openmsx-cursor \
 	test-openmsx-vram \
+	test-openmsx-screen-modes \
 	test-openmsx-controller \
 	test-openmsx-geobench-sunrise \
 	test-openmsx-font \
@@ -710,6 +712,16 @@ test-openmsx-vram: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set vram_output {$(abspath $(OPENMSX_VRAM_REPORT))}" \
 		-script "$(abspath tests/openmsx/vram_probe.tcl)"
 	$(PYTHON) tools/check_vram_probe.py $(OPENMSX_VRAM_REPORT)
+
+test-openmsx-screen-modes: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set screend_output {$(abspath $(OPENMSX_SCREENMODES_REPORT))}" \
+		-script "$(abspath tests/openmsx/screen_modes_probe.tcl)"
+	$(PYTHON) tools/check_screen_modes_probe.py $(OPENMSX_SCREENMODES_REPORT)
+
 
 
 

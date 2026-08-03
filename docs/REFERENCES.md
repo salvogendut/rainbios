@@ -499,6 +499,19 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the transfer
   routines and the conformance probe are original RainBIOS work
 
+## 2026-08-03 — Screen-mode switch calls
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`SETTXT`,
+  `SETT32`, `SETGRP`), which describe switching the VDP to each screen mode
+  using the mode work-area table addresses without re-initializing them
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries;
+  the RainBIOS `INITXT`/`INIT32`/`INITGRP` register states as the reference
+  for each mode's VDP programming
+- Purpose: define M2F's mode-switch behavior (same registers as the
+  initialize calls, `SCRMOD`/`LINLEN`/cursor updates, tables untouched)
+- RainBIOS use: interface and observable behavior facts only; the switch
+  routines and the screen-mode probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
