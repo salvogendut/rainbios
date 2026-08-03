@@ -14,7 +14,7 @@ address,name,kind,status,milestone,notes
 0028,GETYPR,jump,stub,M6,
 002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
 002C,IDBYT2,data,partial,M0,International keyboard and BASIC identifiers
-002D,VERSION,data,partial,M0,MSX1 generation identifier
+002D,VERSION,data,partial,M0,MSX1 generation identifier; the MSX2 build stores 01 here
 0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs; page-0/page-3 targets follow the CALSLT paths
 0038,KEYINT,jump,partial,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY
 003B,INITIO,jump,stub,M1,
