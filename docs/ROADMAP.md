@@ -163,6 +163,13 @@ and moves the cursor for carriage return and line feed. The graphics print
 probe verifies the rendered glyph bytes, the colour cell, the advance, and
 the CR/LF cursor movement.
 
+M2I completes the text control characters in `CHPUT`. Tab advances to the
+next 8-column tab stop (wrapping to the next row past the line end), cursor
+up moves one row without passing the top, and form feed clears the screen
+and homes the cursor; these join the existing backspace, carriage return,
+line feed, wrapping, and scrolling. The text-control probe verifies both tab
+positions, the cursor-up edge, and the cleared-and-homed form feed.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
