@@ -53,6 +53,7 @@ OPENMSX_SCREENMODES_REPORT := $(OPENMSX_M1_REPORT_DIR)/screen-modes.txt
 OPENMSX_SPRITE_REPORT := $(OPENMSX_M1_REPORT_DIR)/sprite.txt
 OPENMSX_GRPPRT_REPORT := $(OPENMSX_M1_REPORT_DIR)/grpprt.txt
 OPENMSX_TEXTCTL_REPORT := $(OPENMSX_M1_REPORT_DIR)/textctl.txt
+OPENMSX_VDPSTATE_REPORT := $(OPENMSX_M1_REPORT_DIR)/vdpstate.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
@@ -271,6 +272,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-openmsx-sprites \
 	test-openmsx-grpprt \
 	test-openmsx-textctl \
+	test-openmsx-vdpstate \
 	test-openmsx-controller \
 	test-openmsx-geobench-sunrise \
 	test-openmsx-font \
@@ -754,6 +756,16 @@ test-openmsx-textctl: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set textctl_output {$(abspath $(OPENMSX_TEXTCTL_REPORT))}" \
 		-script "$(abspath tests/openmsx/textctl_probe.tcl)"
 	$(PYTHON) tools/check_textctl_probe.py $(OPENMSX_TEXTCTL_REPORT)
+
+test-openmsx-vdpstate: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set vdpstate_output {$(abspath $(OPENMSX_VDPSTATE_REPORT))}" \
+		-script "$(abspath tests/openmsx/vdpstate_probe.tcl)"
+	$(PYTHON) tools/check_vdpstate_probe.py $(OPENMSX_VDPSTATE_REPORT)
+
 
 
 
