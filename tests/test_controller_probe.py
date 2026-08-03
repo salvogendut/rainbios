@@ -51,7 +51,7 @@ class ControllerProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "PSG_PORT_B"):
             validate_report(
                 self.make_report().replace(
-                    "PSG_PORT_B=AF,DF,CF", "PSG_PORT_B=00,00,00"
+                    "PSG_PORT_B=BC,93,CF", "PSG_PORT_B=00,00,00"
                 )
             )
 

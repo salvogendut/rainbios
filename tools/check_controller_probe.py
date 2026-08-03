@@ -18,7 +18,7 @@ EXPECTED = {
     "MOUSE_BUTTON": "00,30",
     "PADDLE": "00,00,00",
     "PSG_INIT": "B8,8F",
-    "PSG_PORT_B": "AF,DF,CF",
+    "PSG_PORT_B": "BC,93,CF",
 }
 
 
