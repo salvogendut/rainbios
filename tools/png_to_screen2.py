@@ -167,9 +167,9 @@ GLYPHS_5X7 = {
 }
 
 OPTIONS_LINES = {
-    2: "RAINBIOS BOOT MENU",
-    5: "1  START BBC BASIC",
-    6: "2  BOOT MSX DOS",
+    2: "RainBIOS (c) salvogendut 2026",
+    5: "1  START BASIC",
+    6: "2  BOOT FLOPPY",
     7: "3  BOOT IDE OR SD",
     8: "PRESS 1 2 OR 3",
     10: "BBC BASIC PAYLOAD READY",
@@ -426,6 +426,20 @@ def encode_screen2(
     return bytes(pattern), bytes(color), name, preview, total_error
 
 
+def prepare_source(image: Image.Image) -> tuple[Image.Image, list[int] | None]:
+    """Return the MSX raster, cropping only unused right-side canvas."""
+
+    if image.size == (WIDTH, HEIGHT):
+        return image.convert("RGB"), None
+    if image.height == HEIGHT and image.width > WIDTH:
+        crop = [0, 0, WIDTH, HEIGHT]
+        return image.crop(tuple(crop)).convert("RGB"), crop
+    raise ValueError(
+        f"expected a {WIDTH}x{HEIGHT} image or wider {HEIGHT}-pixel canvas, "
+        f"got {image.width}x{image.height}"
+    )
+
+
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -433,8 +447,10 @@ def sha256(data: bytes) -> str:
 def convert(source: Path, output_dir: Path) -> None:
     source_bytes = source.read_bytes()
     with Image.open(source) as image:
-        source_color_count = len(set(rgb_pixels(image)))
-        boot_image = add_boot_notice(image)
+        source_size = list(image.size)
+        raster_image, source_crop = prepare_source(image)
+        source_color_count = len(set(rgb_pixels(raster_image)))
+        boot_image = add_boot_notice(raster_image)
         pattern, color, name, preview, total_error = encode_screen2(boot_image)
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -455,7 +471,9 @@ def convert(source: Path, output_dir: Path) -> None:
         "format": "TMS9918 Graphics II",
         "source": source.name,
         "source_sha256": sha256(source_bytes),
-        "source_size": [WIDTH, HEIGHT],
+        "source_size": source_size,
+        "source_crop": source_crop,
+        "raster_size": [WIDTH, HEIGHT],
         "source_rgb_colors": source_color_count,
         "boot_notice": {
             "text": BOOT_NOTICE,
@@ -479,7 +497,11 @@ def convert(source: Path, output_dir: Path) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", type=Path, help="256x192 source PNG")
+    parser.add_argument(
+        "source",
+        type=Path,
+        help="256x192 source PNG, or a wider 192-pixel canvas cropped from left",
+    )
     parser.add_argument("output_dir", type=Path, help="generated-data directory")
     return parser.parse_args()
 

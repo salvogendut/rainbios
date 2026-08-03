@@ -7,7 +7,7 @@ that missing behavior is visible and testable.
 
 | Artifact | Address range | Size | Purpose |
 | --- | ---: | ---: | --- |
-| MSX1 main ROM | `0000h-7FFFh` | 32 KiB | Reset, slots, devices, BIOS ABI, cartridge startup |
+| MSX1 main ROM | `0000h-7FFFh` | 32 KiB | Lower-bank firmware/assets plus source-built page-1 BASIC payload |
 | MSX2 main ROM | `0000h-7FFFh` | 32 KiB | MSX1 ABI plus MSX2 dispatch and initialization |
 | MSX2 SUB-ROM | normally page 1 | 16 KiB | Extended VDP, clock, palette, and graphics ABI |
 | NMS 8250 disk ROM | `4000h-7FFFh` | 16 KiB | Optional read-only WD2793 PHYDIO + DSKCHG/GETDPB extension |
@@ -80,7 +80,9 @@ M1G recognizes a version-1 RainBIOS payload descriptor at `7FF0h` in normal
 16 KiB page-1 cartridges. It validates the checksum, type, required-service
 mask, entry, and RAM requirements before recording the first compatible slot
 payload. A ROM which claims `RBP1` but fails validation is not
-entered through its ordinary cartridge `INIT`.
+entered through its ordinary cartridge `INIT`. The built-in payload occupies
+the MAIN-ROM's own page 1 and passes through the same complete validator before
+launch; a corrupt internal descriptor therefore fails closed to the menu.
 
 M1H performs a stackless pre-RAM expansion probe without changing the
 reset-selected page-0/page-1 subslots. Once RAM is live it publishes
@@ -163,33 +165,46 @@ mounted card returns to the RainBIOS boot-wait/menu path.
 The original-BIOS keyboard decoder entry at `0D89h`, used directly by Nextor
 2.1, reports the international layout without exposing that implementation as
 a public BIOS contract.
-Space switches to a Screen 1 menu which reports whether BBC BASIC is ready.
-When it is, option 1 maps the payload in page 1 and transfers to its descriptor
-entry under the contract in `docs/abi/payload-v1.md`. Option 2 invokes the
-optional disk ROM's `H.RUNC` boot-sector hook. Option 3 maps a detected storage
-cartridge, distinguishes Sunrise ATA from SD Mapper SPI registers, and applies
-the same `C000h`/`C01Eh` loader contract when no standard cartridge boot path
-has taken control.
+Space switches to a Screen 1 menu headed `RainBIOS (c) salvogendut 2026`, which
+reports whether the built-in payload is ready. `START BASIC` maps the payload
+in page 1 and transfers to its descriptor entry under the contract in
+`docs/abi/payload-v1.md`. `BOOT FLOPPY` invokes the optional disk ROM's drive-A
+`H.RUNC` boot-sector hook. `BOOT IDE OR SD` maps a detected storage cartridge,
+distinguishes Sunrise ATA from SD Mapper SPI registers, and applies the same
+`C000h`/`C01Eh` loader contract when no standard cartridge boot path has taken
+control.
 
-The 13,056-byte logo payload is temporarily embedded in the main ROM. It will
-move to a compressed or separate, independently discoverable ROM before
-main-BIOS space becomes constrained.
+If no external payload has been selected and each applicable storage path
+returns cleanly, RainBIOS selects the built-in payload. Space has a bounded
+180-frame window to enter the menu before automatic launch. A non-returning or
+state-corrupting third-party cartridge remains outside this fallback
+guarantee.
 
-## Optional BASIC payload
+The generated logo and menu tables are stored as ZX0 streams and expanded one
+at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB
+font remains uncompressed because `CGTABL` points directly at it. The simpler
+CC0 boot logo reduces its three compressed tables from 3,922 bytes to 917
+bytes. The lower bank currently ends at `32A7h`, leaving 3,416 bytes before the
+hard `4000h` boundary.
 
-The boot menu launches a separately built BBC BASIC for Z80 payload. The
-imported interpreter source retains its permissive upstream notice, while new
-MSX platform code is BSD-3-Clause. RainBIOS discovers and enters the payload
-only through the versioned descriptor in
-`docs/abi/payload-v1.md`. Keeping the payload outside the 32 KiB main BIOS
-also preserves ROM space and allows either project to be released
-independently. The current port profile keeps the 12,492-byte language core
-and independently written Graphics II and sequential cassette adapters in a
-16 KiB page-1 payload ROM. The cassette adapter ends at `794Eh`, aligned
-state occupies `8000h-8321h`, and user memory begins at `8322h`. Guarded
-openMSX tests record zero cartridge writes for the console and graphics
-programs; 1983 independently renders the prompt, multicolour graphics frame,
-and cassette-loaded program. See `docs/BASIC_PAYLOAD.md`.
+## Embedded BASIC payload
+
+Every normal RainBIOS build verifies the pinned companion checkout, runs its
+tests and provenance audit, builds the 16 KiB payload from source, verifies its
+digest, and includes it byte-for-byte at `4000h-7FFFh`. The same artifact
+remains usable as a standalone cartridge ROM. The imported interpreter source
+retains its Zlib notice, while the independently written MSX platform code is
+BSD-3-Clause.
+
+The current port profile keeps the language core at `4400h-74C1h`, Graphics II
+and platform services at `74C2h-7B75h`, and sequential cassette services at
+`7B76h-7D19h`. Aligned state occupies `8000h-8339h`, and user memory begins at
+`833Ah`. The descriptor remains at `7FF0h-7FFFh`. Guarded openMSX tests record
+zero ROM writes; 1983 independently renders the prompt, multicolour graphics
+frame, and cassette-loaded program. Combined-image release packaging must
+preserve all component notices, and the non-transferable `BBC BASIC` branding
+permission must be resolved by permission or rename. See
+`docs/BASIC_PAYLOAD.md` and `docs/EMBEDDED_BASIC.md`.
 
 ## Failure behavior during bring-up
 
@@ -218,9 +233,11 @@ The runnable target matrix and emulator setup are maintained in
   record the sampled PC and require the expected slot/video state plus a
   rendered frame in both openMSX and 1983.
 - A physical-matrix keyboard probe checks translation and blocking input. The
-  pinned BBC BASIC payload supplies the end-to-end console/keyboard/timing
-  workload, guarded against writes to its ROM; 1983 separately requires its
-  banner and prompt to be visibly rendered.
+  pinned BASIC payload supplies the end-to-end console/keyboard/timing
+  workload, guarded against writes to its ROM. Dedicated openMSX and 1983
+  probes also require the embedded no-cartridge path to reach its prompt and
+  preserve the exact internal header, descriptor, slot map, and ROM write
+  guard.
 - The BBC BASIC graphics workload checks Graphics II mode registers, VRAM
   reference pixels and colours, cursor state, `POINT()` readback, zero ROM
   writes, and a separately rendered 1983 frame.

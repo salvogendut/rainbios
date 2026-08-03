@@ -71,6 +71,15 @@ class KeyboardProbeTests(unittest.TestCase):
                 self.make_report().replace("DSPFNK=FF", "DSPFNK=00")
             )
 
+    def test_erafnk_must_clear_the_row_without_moving_the_cursor(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ERAFNK"):
+            validate_report(
+                self.make_report().replace(
+                    "ERAFNK=00,07,05,20,20",
+                    "ERAFNK=00,28,18,20,20",
+                )
+            )
+
     def test_totext_must_stay_in_text_mode(self) -> None:
         with self.assertRaisesRegex(ValueError, "TOTEXT"):
             validate_report(

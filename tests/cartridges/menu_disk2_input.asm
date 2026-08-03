@@ -3,7 +3,7 @@
 ; Test-only primary-slot cartridge. Its INIT installs a standard five-byte
 ; H.TIMI hook in slot 2. The hook injects Space and "2" through the published
 ; key buffer at separated VBlanks so 1983 can reach the boot menu and select
-; option 2 (boot MSX DOS from the disk).
+; option 2 (boot from the floppy disk).
 
 PUTPNT          equ #f3f8
 HOOK_TIMI       equ #fd9f

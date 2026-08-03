@@ -1,6 +1,6 @@
 # BASIC payload integration
 
-RainBIOS offers `START BBC BASIC` as a boot-menu entry. The MSX
+RainBIOS offers `START BASIC` as a boot-menu entry. The MSX
 payload works both as a standalone cartridge on compatible firmware and
 through RainBIOS's descriptor-aware menu. RainBIOS establishes slot RAM,
 validates the payload and its required services, and performs a dedicated
@@ -33,27 +33,23 @@ The imported BBC BASIC sources retain the permissive notice in their
 BSD-3-Clause. RainBIOS itself is BSD-3-Clause.
 
 This combination permits a RainBIOS release bundle to contain both artifacts,
-provided the BBC BASIC notice and all BSD notices are retained. BBC BASIC
-will still be built as a distinct payload rather than consuming space in the
-32 KiB main BIOS. A standalone payload release can also be used with another
-compatible firmware launcher.
+provided the interpreter notice and all BSD notices are retained. The payload
+remains a distinct source-built 16 KiB artifact, and RainBIOS now also embeds
+those exact bytes in the upper half of its 32 KiB MAIN-ROM. The standalone
+payload can still be used with another compatible firmware launcher.
 
 No proprietary MSX BIOS or BASIC source, ROM data, or disassembly may be
 copied into either project.
 
 ## Release packaging
 
-The primary release model keeps `rainbios_msx1.rom` and
-`bbcbasic_msx_console.rom` as separately built ROMs and distributes them in
-the same release archive with both projects' license notices. Users can
-install RainBIOS without BASIC, and either component can be updated and tested
-independently.
-
-An optional combined 32 KiB MAIN-ROM remains feasible and matches the
-traditional MSX organization of BIOS and BASIC in one address space. RainBIOS
-currently lets raw logo tables extend slightly into the upper 16 KiB, so that
-variant first requires compacting or relocating the boot assets. It will be
-an additional output, not a replacement for the separate artifacts.
+The development build produces `rainbios_msx1.rom` as a combined MAIN-ROM and
+also preserves `bbcbasic_msx_console.rom` as an independently built/tested
+artifact in the companion checkout. Every normal RainBIOS rebuild rebuilds,
+validates, and copies the pinned payload before assembly; the combined upper
+half must match it byte-for-byte. A release archive may distribute both ROMs
+with both projects' notices, but the branding and hardware gates below still
+prevent treating that archive as release-ready.
 
 The detailed technical design, boot-fallback semantics, test matrix, and
 multi-license release requirements are in
@@ -80,12 +76,13 @@ reserved storage, or interrupt-control opcodes. All 21 direct symbolic writes
 target the separate 768-byte RAM module. This makes a 16 KiB page-1 ROM
 payload with interpreter state at `8000h` plausible.
 
-The P1 build places its cartridge veneer at `4000h`, independently written
-console adapter at `4013h-423Ah`, unchanged core at `4400h-74C1h`, Graphics II
-adapter at `74C2h-77AAh`, cassette adapter at `77ABh-794Eh`, fixed state at
-`8000h-8321h`, and user memory from `8322h`. Its deterministic 16 KiB ROM
-ends with payload descriptor v1 at `7FF0h-7FFFh` and has SHA-256
-`29691e2ac6498988b15ef8e80687f902ae834fd886585bcc1f753a49e0434678`.
+The current build places its cartridge veneer at `4000h`, independently written
+console adapter at `4013h-423Ah`, unchanged core at `4400h-74C1h`, graphics
+adapter at `74C2h-7B75h`, cassette adapter at `7B76h-7D19h`, fixed state at
+`8000h-8339h`, and user memory from `833Ah`. Its deterministic 16 KiB ROM ends
+with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
+`34540d468d3f39da0d283da49c0feb2dab9a1313`, and has SHA-256
+`82b0ff999ae85d4105875ad6e8c5a33f37662fbcde1642044c56a430de9759a6`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983

@@ -137,6 +137,7 @@ INITIAL_STKTOP  equ #f0a0
 EXTENSION_STACK equ #f092
 STACK_TOP       equ #f380
 CALSLT_P3_FRAME equ #f360
+ASSET_BUFFER    equ #c000
 
                 org #0000
 
@@ -629,45 +630,8 @@ bootstrap_empty_hook:
                 ld a,#87
                 out (VDP_CONTROL),a             ; R7: black backdrop
 
-; Upload the 6K pattern table at 0000h.
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#40
-                out (VDP_CONTROL),a
-                ld hl,logo_pattern
-                ld d,24
-                ld c,VDP_DATA
-cold_boot_pattern_block:
-                ld b,0
-                otir
-                dec d
-                jr nz,cold_boot_pattern_block
-
-; The VDP address is now 1800h; upload the 768-byte name table.
-                ld hl,logo_name
-                ld d,3
-cold_boot_name_block:
-                ld b,0
-                otir
-                dec d
-                jr nz,cold_boot_name_block
-
-; The VDP address is now 1B00h. A terminator hides all sprites.
-                ld a,#d0
-                out (VDP_DATA),a
-
-; Upload the 6K color table at 2000h.
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#60
-                out (VDP_CONTROL),a
-                ld hl,logo_color
-                ld d,24
-cold_boot_color_block:
-                ld b,0
-                otir
-                dec d
-                jr nz,cold_boot_color_block
+; Expand the compressed logo tables in scratch RAM and upload them to VRAM.
+                call cold_boot_render_logo
 
 ; Enable the display and VBlank interrupt source. The CPU stays under DI until
 ; cartridge discovery has a stable page-0 BIOS and page-3 stack.
@@ -725,8 +689,15 @@ cold_boot_jingle_gap:
                 call cold_boot_scan_cartridges
                 call H_STKE
                 call cold_boot_init_disk
+                call cold_boot_valid_payload
+                jr c,cold_boot_payload_ready
+                call cold_boot_select_internal_payload
+                jr c,cold_boot_payload_ready
+                jp cold_boot_options
+cold_boot_payload_ready:
                 ld sp,STACK_TOP
                 ei
+                ld b,180                      ; about three seconds at 60 Hz
                 jr cold_boot_wait
 
 ; Match the C-BIOS start-up sequence: initialize disk context and invoke the
@@ -735,88 +706,26 @@ cold_boot_jingle_gap:
 cold_boot_init_disk:
                 jp cold_boot_init_disk_impl
 
-; Wait for the translated Space character through the standard input path.
+; Give Space a bounded window to open the options menu. If no external
+; cartridge or storage loader kept control, launch the selected BASIC payload.
 cold_boot_wait:
                 call chsns
                 jr nz,cold_boot_wait_read
                 ei
                 halt
-                jr cold_boot_wait
+                djnz cold_boot_wait
+                jr cold_boot_launch_payload
 cold_boot_wait_read:
                 call chget
                 cp #20
-                jr nz,cold_boot_wait
+                jr z,cold_boot_options
+                djnz cold_boot_wait
+                jr cold_boot_launch_payload
 
 ; Space opens a compact Screen 1 menu. The name table selected below reports
 ; whether a validated BASIC payload was discovered.
 cold_boot_options:
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#80
-                out (VDP_CONTROL),a             ; R0: Screen 1
-                ld a,#80
-                out (VDP_CONTROL),a
-                ld a,#81
-                out (VDP_CONTROL),a             ; display off
-                ld a,#06
-                out (VDP_CONTROL),a
-                ld a,#82
-                out (VDP_CONTROL),a             ; name table at 1800h
-                ld a,#80
-                out (VDP_CONTROL),a
-                ld a,#83
-                out (VDP_CONTROL),a             ; color table at 2000h
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#84
-                out (VDP_CONTROL),a             ; patterns at 0000h
-                ld a,#04
-                out (VDP_CONTROL),a
-                ld a,#87
-                out (VDP_CONTROL),a             ; dark-blue backdrop
-
-; Upload the 2K font, then the 768-byte name table.
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#40
-                out (VDP_CONTROL),a
-                ld hl,boot_font
-                ld d,8
-                ld c,VDP_DATA
-cold_boot_font_block:
-                ld b,0
-                otir
-                dec d
-                jr nz,cold_boot_font_block
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#58
-                out (VDP_CONTROL),a
-                ld a,(PAYLOAD_SLOT)
-                cp #ff
-                ld hl,options_name_ready
-                jr nz,cold_boot_options_name_selected
-                ld hl,options_name_missing
-cold_boot_options_name_selected:
-                ld d,3
-cold_boot_options_name_block:
-                ld b,0
-                otir
-                dec d
-                jr nz,cold_boot_options_name_block
-
-; Upload the 32-byte Screen 1 color table and enable the display.
-                xor a
-                out (VDP_CONTROL),a
-                ld a,#60
-                out (VDP_CONTROL),a
-                ld hl,options_color
-                ld b,32
-                otir
-                ld a,#e0
-                out (VDP_CONTROL),a
-                ld a,#81
-                out (VDP_CONTROL),a
+                call cold_boot_render_options
                 xor a
                 ld (R0SAV),a
                 ld a,#e0
@@ -836,7 +745,7 @@ cold_boot_options_wait:
                 jr z,cold_boot_options_ide
                 jr cold_boot_options_wait
 
-; Boot MSX DOS from drive A through the disk-ROM bootstrap hook. The disk driver
+; Boot drive A through the floppy disk-ROM bootstrap hook. The disk driver
 ; installs H_RUNC and publishes H_PHYD during cartridge discovery; the probe
 ; below keeps an absent disk ROM from turning the key into a stray hook call.
 ; disk_boot transfers control to the loader at C000h+1Eh when a bootable medium
@@ -1133,6 +1042,18 @@ cold_boot_payload_expect:
                 call rdslt
                 cp e
                 ret
+
+; Select the payload physically embedded in the main ROM after all external
+; cartridge and storage boot paths have had priority. Reuse the full external
+; RBP1 parser so a corrupt internal descriptor fails closed instead of jumping
+; to constants which only the build was able to validate.
+cold_boot_select_internal_payload:
+                ld a,#ff
+                ld (PAYLOAD_SLOT),a
+                ld a,(BIOSSLT)
+                ld (CART_SCAN_SLOT),a
+                call cold_boot_try_payload
+                jp cold_boot_valid_payload
 
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
 ; not an assertion about compatible error behavior.
@@ -2105,6 +2026,134 @@ nextor_keyboard_layout_probe:
                 pop af
                 ret
 
+; Renderers live after the fixed Nextor 0D89h compatibility entry so changes
+; to visual asset handling cannot move that published address. ZX0 expansion
+; uses C000h-D7FFh as transient storage; cartridge and disk boot paths may
+; overwrite the buffer after the startup/menu upload has completed.
+cold_boot_render_logo:
+                ld hl,logo_pattern_zx0
+                ld de,ASSET_BUFFER
+                call dzx0_standard
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#40
+                out (VDP_CONTROL),a
+                ld hl,ASSET_BUFFER
+                ld d,24
+                ld c,VDP_DATA
+cold_boot_render_logo_pattern_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_render_logo_pattern_block
+
+                ld hl,logo_name_zx0
+                ld de,ASSET_BUFFER
+                call dzx0_standard
+                ld hl,ASSET_BUFFER
+                ld d,3
+                ld c,VDP_DATA
+cold_boot_render_logo_name_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_render_logo_name_block
+                ld a,#d0                      ; hide all sprites at 1B00h
+                out (VDP_DATA),a
+
+                ld hl,logo_color_zx0
+                ld de,ASSET_BUFFER
+                call dzx0_standard
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#60
+                out (VDP_CONTROL),a
+                ld hl,ASSET_BUFFER
+                ld d,24
+                ld c,VDP_DATA
+cold_boot_render_logo_color_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_render_logo_color_block
+                ret
+
+cold_boot_render_options:
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#80
+                out (VDP_CONTROL),a             ; R0: Screen 1
+                ld a,#80
+                out (VDP_CONTROL),a
+                ld a,#81
+                out (VDP_CONTROL),a             ; display off
+                ld a,#06
+                out (VDP_CONTROL),a
+                ld a,#82
+                out (VDP_CONTROL),a             ; name table at 1800h
+                ld a,#80
+                out (VDP_CONTROL),a
+                ld a,#83
+                out (VDP_CONTROL),a             ; color table at 2000h
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#84
+                out (VDP_CONTROL),a             ; patterns at 0000h
+                ld a,#04
+                out (VDP_CONTROL),a
+                ld a,#87
+                out (VDP_CONTROL),a             ; dark-blue backdrop
+
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#40
+                out (VDP_CONTROL),a
+                ld hl,boot_font
+                ld d,8
+                ld c,VDP_DATA
+cold_boot_render_options_font_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_render_options_font_block
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#58
+                out (VDP_CONTROL),a
+                ld a,(PAYLOAD_SLOT)
+                cp #ff
+                ld hl,options_name_ready_zx0
+                jr nz,cold_boot_render_options_name_selected
+                ld hl,options_name_missing_zx0
+cold_boot_render_options_name_selected:
+                ld de,ASSET_BUFFER
+                call dzx0_standard
+                ld hl,ASSET_BUFFER
+                ld d,3
+                ld c,VDP_DATA
+cold_boot_render_options_name_block:
+                ld b,0
+                otir
+                dec d
+                jr nz,cold_boot_render_options_name_block
+
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#60
+                out (VDP_CONTROL),a
+                ld hl,options_color_zx0
+                ld de,ASSET_BUFFER
+                call dzx0_standard
+                ld hl,ASSET_BUFFER
+                ld b,32
+                ld c,VDP_DATA
+                otir
+                ld a,#e0
+                out (VDP_CONTROL),a
+                ld a,#81
+                out (VDP_CONTROL),a
+                ret
+
 ; Text control characters handled by CHPUT: tab, cursor up, and form feed.
 chgclr:
                 ld a,(SCRMOD)
@@ -2669,27 +2718,28 @@ fnksb:
                 jp nz,dspfnk
                 jp erafnk
 
-; Erase the function-key display and clear the display flag.
+; Erase the function-key display and clear the display flag.  Write the last
+; name-table row directly: routing the fill through CHPUT would move the
+; caller's cursor to the bottom of the screen and scroll after the final
+; space.  Programs such as BBC BASIC call ERAFNK immediately after INITXT and
+; expect the homed cursor to remain intact for their sign-on banner.
 erafnk:
                 xor a
                 ld (CNSDFG),a
+                ld hl,(NAMBAS)
                 ld a,(CRTCNT)
                 dec a
-                ld l,a
-                xor a
-                ld h,a                          ; last row, column 0
                 ld b,a
-                call posit
                 ld a,(LINLEN)
-                ld c,a
+                ld e,a
+                ld d,0
+erafnk_row_offset:
+                add hl,de
+                djnz erafnk_row_offset
+                ld b,0
+                ld c,e
                 ld a,#20
-erafnk_clear:
-                push bc
-                call chput
-                pop bc
-                dec c
-                jr nz,erafnk_clear
-                ret
+                jp filvrm
 
 ; Display the function-key strings on the bottom line and set the display flag.
 dspfnk:
@@ -5510,6 +5560,7 @@ slot_helper_jump:
 slot_helpers_image_end:
 
                 include "ide_nms8250_driver.asm"
+                include "zx0_decompress.asm"
 
 cold_boot_vdp_registers:
                 db #02,#e0,#06,#ff,#03,#36,#07,#01
@@ -5585,18 +5636,23 @@ storage_boot_failed_message:
 
 boot_font:
                 incbin "boot_font.bin"
-options_name_ready:
-                incbin "options_name_ready.bin"
-options_name_missing:
-                incbin "options_name_missing.bin"
-options_color:
-                incbin "options_color.bin"
+options_name_ready_zx0:
+                incbin "options_name_ready.zx0"
+options_name_missing_zx0:
+                incbin "options_name_missing.zx0"
+options_color_zx0:
+                incbin "options_color.zx0"
 
-logo_pattern:
-                incbin "logo_pattern.bin"
-logo_name:
-                incbin "logo_name.bin"
-logo_color:
-                incbin "logo_color.bin"
+logo_pattern_zx0:
+                incbin "logo_pattern.zx0"
+logo_name_zx0:
+                incbin "logo_name.zx0"
+logo_color_zx0:
+                incbin "logo_color.zx0"
 
-                defs #8000-$,#ff
+                assert $<=#4000
+                defs #4000-$,#ff
+embedded_basic_payload:
+                incbin "bbcbasic_msx_console.rom"
+embedded_basic_payload_end:
+                assert $==#8000

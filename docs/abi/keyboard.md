@@ -45,13 +45,14 @@ STOP never repeat.
 
 `INIFNK` fills `FNKSTR` (`F87Fh`, ten 16-byte strings) with the default
 BASIC-oriented strings. `FNKSB` shows or hides the keys according to
-`CNSDFG` (`F3DEh`); `ERAFNK` clears the flag and the bottom text line;
+`CNSDFG` (`F3DEh`); `ERAFNK` clears the flag and bottom text line directly in
+VRAM without changing the caller's cursor position;
 `DSPFNK` sets the flag and renders the strings; `TOTEXT` forces the current
 text width and refreshes the display.
 
 The openMSX keyboard probe now covers the break latch and consumption, both
-STOP variants, buffer clearing, the `CNSDFG` transitions, text-mode forcing,
-and auto-repeat.
+STOP variants, buffer clearing, the `CNSDFG` transitions, `ERAFNK` cursor
+preservation and full-row clearing, text-mode forcing, and auto-repeat.
 
 ## Line input (M3E)
 
