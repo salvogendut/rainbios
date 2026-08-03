@@ -584,6 +584,17 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and observable behavior facts only; the `CHGCLR`
   routine and the color probe are original RainBIOS work
 
+## 2026-08-03 — RDVDP and Screen 3 multicolor
+
+- Primary specification: MSX2 Technical Handbook Appendix 1 (`RDVDP`,
+  `INIMLT`, `SETMLT`) and Appendix 4 for `STATFL`, the MLT work-area bases,
+  and the `SCRMOD`/`LINLEN` mode bytes
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries
+- Purpose: define M2M's status-register mirror, the Screen 3 register and
+  table-base programming, and the hidden-sprite/name-seed state
+- RainBIOS use: interface and observable behavior facts only; the routines
+  and the Screen 3 probe are original RainBIOS work
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`

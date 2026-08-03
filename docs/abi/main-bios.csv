@@ -36,11 +36,11 @@ address,name,kind,status,milestone,notes
 006C,INITXT,jump,implemented,M2,Programs the TMS9918 for 40x24 text, publishes table bases and shadows, clears the name table, and loads the project font
 006F,INIT32,jump,implemented,M2,Programs the TMS9918 for 32x24 Screen 1, publishes table bases and shadows, clears the tables, and loads the project font
 0072,INITGRP,jump,implemented,M2,Programs the TMS9918 for Graphics II, publishes table bases and shadows, and initializes deterministic empty pattern/name/color tables
-0075,INIMLT,jump,partial,M2,Initializes deterministic Screen 3 tables and VDP state; broader register and timing conformance remains pending
+0075,INIMLT,jump,implemented,M2,Programs the TMS9918 for Screen 3 multicolor, publishes the MLT table bases, hides sprites, seeds the name table, and clears the pattern plane
 0078,SETTXT,jump,implemented,M2,Switches the live VDP to 40-column text with the current work-area tables; updates SCRMOD/LINLEN/cursor without re-initializing the tables
 007B,SETT32,jump,implemented,M2,Switches the live VDP to 32-column Screen 1 with the current work-area tables
 007E,SETGRP,jump,implemented,M2,Switches the live VDP to Graphics II with the current work-area tables
-0081,SETMLT,jump,partial,M2,Programs Screen 3 VDP registers R0-R6 from the MLT work-area bases; broader conformance remains pending
+0081,SETMLT,jump,implemented,M2,Programs Screen 3 VDP registers R0-R6 from the MLT work-area bases
 0084,CALPAT,jump,implemented,M2,Returns the VRAM pattern address for a sprite: PATBAS plus A*8 (8x8) or (A&0FCh)*8 (16x16)
 0087,CALATR,jump,implemented,M2,Returns the VRAM attribute address for a sprite: ATRBAS plus A*4
 008A,GSPSIZ,jump,implemented,M2,Selects 8x8/16x16 sprites (A=0/1), updates R1 and its shadow, and returns the byte size 8 or 32 with carry set for 16x16
@@ -103,7 +103,7 @@ address,name,kind,status,milestone,notes
 0135,CHGSND,jump,stub,M3,
 0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
 013B,WSLREG,jump,implemented,M1,Writes the primary-slot register while preserving all registers
-013E,RDVDP,jump,partial,M2,Reads and mirrors status register zero
+013E,RDVDP,jump,implemented,M2,Reads the VDP status register zero and mirrors it in STATFL
 0141,SNSMAT,jump,partial,M3,Reads active-low matrix rows through the PPI and changes AF/C; broader hardware tests remain
 0144,PHYDIO,jump,partial,M6,Calls the H_PHYD hook when present; read-only-safe default reports no backend
 0147,FORMAT,jump,partial,M6,Calls the H_FORM hook when present; read-only-safe default reports no backend

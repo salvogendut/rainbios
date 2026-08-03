@@ -194,6 +194,14 @@ table with `(FORCLR<<4)|BAKCLR`, all through the shadowed `WRTVDP` path. The
 color probe verifies the boot state and each mode's R7, color table, and
 shadow.
 
+M2M verifies the last M2 partials. `RDVDP` reads VDP status register zero and
+mirrors it in `STATFL`; `INIMLT` programs the TMS9918 for Screen 3 multicolor
+(publishing the MLT table bases, hiding sprites, seeding the six-band name
+table, and clearing the pattern plane to the background); and `SETMLT`
+re-programs the same R0-R6 state from the work-area bases. The Screen 3 probe
+locks in the status mirror, the mode bytes and register programming, the
+published bases, and the hidden-sprite state.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;

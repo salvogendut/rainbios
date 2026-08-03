@@ -55,6 +55,7 @@ OPENMSX_GRPPRT_REPORT := $(OPENMSX_M1_REPORT_DIR)/grpprt.txt
 OPENMSX_TEXTCTL_REPORT := $(OPENMSX_M1_REPORT_DIR)/textctl.txt
 OPENMSX_VDPSTATE_REPORT := $(OPENMSX_M1_REPORT_DIR)/vdpstate.txt
 OPENMSX_COLOR_REPORT := $(OPENMSX_M1_REPORT_DIR)/color.txt
+OPENMSX_SCREEN3_REPORT := $(OPENMSX_M1_REPORT_DIR)/screen3.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
@@ -275,6 +276,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm
 	test-openmsx-textctl \
 	test-openmsx-vdpstate \
 	test-openmsx-color \
+	test-openmsx-screen3 \
 	test-openmsx-controller \
 	test-openmsx-geobench-sunrise \
 	test-openmsx-font \
@@ -776,6 +778,16 @@ test-openmsx-color: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 		-command "set color_output {$(abspath $(OPENMSX_COLOR_REPORT))}" \
 		-script "$(abspath tests/openmsx/color_probe.tcl)"
 	$(PYTHON) tools/check_color_probe.py $(OPENMSX_COLOR_REPORT)
+
+test-openmsx-screen3: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_RAM3 \
+		-command "set s3_output {$(abspath $(OPENMSX_SCREEN3_REPORT))}" \
+		-script "$(abspath tests/openmsx/screen3_probe.tcl)"
+	$(PYTHON) tools/check_screen3_probe.py $(OPENMSX_SCREEN3_REPORT)
+
 
 
 
