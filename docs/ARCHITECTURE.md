@@ -117,18 +117,27 @@ no media, partial record-not-found, write rejection on writable host media,
 and `DSKCHG`/`GETDPB` behavior with and without a mounted image.
 See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
-M2A publishes the eight TMS9918 register shadows and current screen/table work
-variables. VDP register and address command pairs are protected from interrupt
-interleaving. Screen 0, Screen 1, and Screen 2 initialization use original
-RainBIOS tables and the project-owned font. A live standard `CD` SUB-ROM
-signature scan gates a narrow Screen 7 register handoff for compatibility
-testing on MSX2 hardware without publishing `EXBRSA`; that path alone also
-maintains the standardized V9938 R8-R23 shadows. This is not general SUB-ROM
-dispatch or a substitute for the M5 ROMs. The first console slice
-supports one-based cursor positioning, text name-table output, carriage
-return, line feed, wrapping, clearing, and scrolling in text and Graphics II
-modes; the complete control-character and cursor-presentation behavior remains
-pending.
+ M2A publishes the eight TMS9918 register shadows and current screen/table work
+ variables. VDP register and address command pairs are protected from interrupt
+ interleaving. Screen 0, Screen 1, and Screen 2 initialization use original
+ RainBIOS tables and the project-owned font. A live standard `CD` SUB-ROM
+ signature scan gates a narrow Screen 7 register handoff for compatibility
+ testing on MSX2 hardware without publishing `EXBRSA`; that path alone also
+ maintains the standardized V9938 R8-R23 shadows. This is not general SUB-ROM
+ dispatch or a substitute for the M5 ROMs. The first console slice
+ supports one-based cursor positioning, text name-table output, carriage
+ return, line feed, wrapping, clearing, and scrolling in text and Graphics II
+ modes; the complete control-character and cursor-presentation behavior remains
+ pending.
+
+The M5 first slice adds a distinct MSX2 main-ROM build (`rainbios_msx2.rom`)
+assembled from the same `main_msx1.asm` source with `-DMSX2=1`. It sets the
+`002Dh` generation byte to `01`, detects a live V9938 with the standard `CD`
+SUB-ROM scan, publishes the discovered slot in `EXBRSA` (`FAF8h`), and loads a
+V9938 R8-R23 shadow baseline. On that build the public `WRTVDP` dispatches
+registers 8-23 through the extended-register shadow path in addition to the
+TMS9918 R0-R7 contract. General SUB-ROM dispatch, bitmap modes, palette, VDP
+commands, clock, and extended VRAM remain pending M5 work.
 
 M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated

@@ -22,6 +22,8 @@ OPENMSX_GEOBENCH_CAPTURE_TIME ?= 15
 BUILD_DIR := build
 MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
 MSX1_SYM := $(BUILD_DIR)/rainbios_msx1.sym
+MSX2_ROM := $(BUILD_DIR)/rainbios_msx2.rom
+MSX2_SYM := $(BUILD_DIR)/rainbios_msx2.sym
 OPENMSX_ROOT := $(BUILD_DIR)/openmsx
 OPENMSX_SHARE := $(OPENMSX_ROOT)/share
 OPENMSX_HOME := $(OPENMSX_ROOT)/home
@@ -198,6 +200,10 @@ OPENMSX_EXTERNAL_DIAGNOSTICS_SCREEN := \
 	$(OPENMSX_ROOT)/external-diagnostics.png
 OPENMSX_GEOBENCH_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_GeoBench.xml
+OPENMSX_MSX2_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_MSX2.xml
+OPENMSX_MSX2_REPORT := $(OPENMSX_M1_REPORT_DIR)/msx2.txt
+OPENMSX_MSX2_SCREEN := $(OPENMSX_ROOT)/msx2.png
 OPENMSX_GEOBENCH_REPORT := $(OPENMSX_M1_REPORT_DIR)/geobench-sunrise.txt
 OPENMSX_GEOBENCH_SCREEN := $(OPENMSX_ROOT)/geobench-sunrise.png
 OPENMSX_SUNRISE_SYSTEM_ROM := \
@@ -207,6 +213,8 @@ EMULATOR_1983_DIR := $(BUILD_DIR)/1983
 EMULATOR_1983_SCREEN := $(EMULATOR_1983_DIR)/rainbios_logo.ppm
 EMULATOR_1983_EXPANDED_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_msx2_expanded.ppm
+EMULATOR_1983_MSX2_SCREEN := \
+	$(EMULATOR_1983_DIR)/rainbios_msx2.ppm
 EMULATOR_1983_CART_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
 EMULATOR_1983_BBC_BASIC_SCREEN := \
@@ -305,6 +313,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-disk-fault \
 	test-openmsx-expanded-cartridge \
 	test-1983-expanded test-openmsx-embedded-basic \
+	test-openmsx-msx2 test-1983-msx2 \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-bbcbasic-tape-save \
@@ -369,6 +378,13 @@ $(MSX1_ROM): bbcbasic-payload $(SOURCES) $(LOGO_STAMP) \
 	$(LOGO_COMPRESSED_ASSETS) | $(BUILD_DIR)
 	$(RASM) $(firstword $(SOURCES)) -Isrc -I$(LOGO_DIR) -I$(BBC_EMBED_DIR) \
 		-ob $@ -s -os $(MSX1_SYM)
+
+$(MSX2_ROM): bbcbasic-payload $(SOURCES) $(LOGO_STAMP) \
+	$(LOGO_COMPRESSED_ASSETS) | $(BUILD_DIR)
+	$(RASM) $(firstword $(SOURCES)) -DMSX2=1 -Isrc -I$(LOGO_DIR) \
+		-I$(BBC_EMBED_DIR) -ob $@ -s -os $(MSX2_SYM)
+
+msx2-main-rom: $(MSX2_ROM)
 
 $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -686,6 +702,12 @@ $(OPENMSX_GEOBENCH_MACHINE): \
 	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
 		-e 's|@CBIOS_SUB_ROM@|$(abspath $(CBIOS_SUB_ROM))|' $< > $@
 
+$(OPENMSX_MSX2_MACHINE): \
+		tests/openmsx/RainBIOS_MSX2.xml.in $(MSX2_ROM) $(CBIOS_SUB_ROM)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
+		-e 's|@CBIOS_SUB_ROM@|$(abspath $(CBIOS_SUB_ROM))|' $< > $@
+
 $(OPENMSX_SUNRISE_SYSTEM_ROM): $(SUNRISE_ROM)
 	mkdir -p $(@D)
 	cp "$<" "$@"
@@ -862,6 +884,16 @@ test-openmsx-geobench-sunrise: $(OPENMSX_GEOBENCH_MACHINE) \
 	cmp "$(GEOBENCH_IMAGE)" "$(OPENMSX_GEOBENCH_IMAGE)"
 	$(PYTHON) tools/check_geobench.py --boot-state $(OPENMSX_GEOBENCH_REPORT) \
 		$(OPENMSX_GEOBENCH_SCREEN)
+
+test-openmsx-msx2: $(OPENMSX_MSX2_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2 \
+		-command "set msx2_output {$(abspath $(OPENMSX_MSX2_REPORT))}; set msx2_screenshot {$(abspath $(OPENMSX_MSX2_SCREEN))}" \
+		-script "$(abspath tests/openmsx/msx2_probe.tcl)"
+	$(PYTHON) tools/check_msx2_probe.py $(OPENMSX_MSX2_REPORT) \
+		$(OPENMSX_MSX2_SCREEN)
 
 test-openmsx-font: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -1154,6 +1186,15 @@ test-1983-expanded: $(MSX1_ROM)
 		--bios "$(MSX1_ROM)" --screenshot "$(EMULATOR_1983_EXPANDED_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_EXPANDED_SCREEN)
+
+test-1983-msx2: $(MSX2_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_msx2.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(CBIOS_SUB_ROM)" \
+		--screenshot "$(EMULATOR_1983_MSX2_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_MSX2_SCREEN)
 
 test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 	mkdir -p $(EMULATOR_1983_DIR)

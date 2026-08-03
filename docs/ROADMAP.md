@@ -338,10 +338,18 @@ passes a documented smoke-test matrix.
 
 ## M5 — MSX2 main BIOS and SUB-ROM
 
-Status: not started. The MSX1 ROM can scan for the standard `CD` SUB-ROM
-signature when providing a guarded partial Screen 7 `CHGMOD` handoff for
-current Nextor/GeoBench compatibility testing, but it does not publish
-`EXBRSA`, expose general SUB-ROM dispatch, or constitute an MSX2 main BIOS.
+Status: in progress (first slice).
+
+M5A produces a distinct MSX2 main-ROM build (`build/rainbios_msx2.rom`) from the
+same source with `-DMSX2=1`. It sets the `002Dh` generation byte to `01`,
+detects a live V9938 through the standard `CD` SUB-ROM scan, publishes the
+discovered slot in `EXBRSA` (`FAF8h`), loads a V9938 R8-R23 shadow baseline, and
+extends the public `WRTVDP` to shadow registers 8-23. The 1983 `msx2` model and
+an openMSX V9938 fixture both boot the ROM with the rendered boot logo, the
+correct generation byte, `EXBRSA=83h`, and `RG8SAV=08h`. This is a fixed-address
+front-end slice; it does not publish general SUB-ROM dispatch, `EXTROM`, bitmap
+modes, palette, commands, clock, or extended VRAM calls, and the MSX1 ROM's
+guarded Screen 7 handoff remains its own path.
 
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;

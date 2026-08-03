@@ -16,7 +16,9 @@ reviewable.
   boot-call ordering in `src/main.asm` and the documented `RAMAD0`-`RAMAD3`
   interface locations in `src/disk.asm`; later, the openMSX MSX2 machine
   layout in `configs/openMSX/C-BIOS_MSX2.xml` and the built `cbios_sub.rom`
-  solely as open-source integration-fixture inputs
+  solely as open-source integration-fixture inputs; later, the `002Dh` MSX
+  version byte value (`MODEL_MSX2 = 1`) and the `EXBRSA` (`FAF8h`) system
+  variable for the M5A MSX2 main-ROM build
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
 - Excluded: copying or adapting device or service implementation routines,

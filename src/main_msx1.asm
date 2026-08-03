@@ -89,6 +89,7 @@ BIOSSLT         equ #fcc0
 EXPTBL          equ #fcc1
 SLTTBL          equ #fcc5
 HOOKBASE        equ #fd9a
+EXBRSA          equ #faf8
 
 RAM_TEST2       equ #bfff
 RAM_TEST3       equ #f37f
@@ -171,7 +172,11 @@ ASSET_BUFFER    equ #c000
 ; International character set, D-M-Y date order, 60 Hz, US keyboard/BASIC.
                 db #21                          ; 002B IDBYT1
                 db #11                          ; 002C IDBYT2
+                IFDEF MSX2
+                db #01                          ; 002D MSX generation: MSX2
+                ELSE
                 db #00                          ; 002D MSX generation: MSX1
+                ENDIF
                 db #00                          ; 002E reserved
                 db #00                          ; 002F reserved
 
@@ -597,6 +602,10 @@ bootstrap_empty_hook:
                 ld (PAYLOAD_RAM_END),hl
 
                 ld sp,STACK_TOP
+
+                IFDEF MSX2
+                call bootstrap_msx2
+                ENDIF
 
 ; Initialize Graphics II with the display disabled.
                 ld a,#02
@@ -1298,6 +1307,14 @@ enascr:
                 jp wrtvdp
 
 wrtvdp:
+                IFDEF MSX2
+                ld a,c
+                cp 8
+                jr c,wrtvdp_msx2_r0_7
+                cp 24
+                jp c,wrtvdp_v9938
+wrtvdp_msx2_r0_7:
+                ENDIF
                 jp wrtvdp_impl
 
 ; $0062 CHGCLR: apply FORCLR/BAKCLR/BDRCLR to the current screen. The text
@@ -3476,6 +3493,31 @@ wrtvdp_v9938:
                 pop hl
                 pop af
                 ret
+
+IFDEF MSX2
+; MSX2 build only. A live V9938 is detected with the standard MSX2 extended
+; BIOS probe: scan every primary and expanded slot for the "CD" signature that
+; MSX2 SUB-ROMs carry at their start (the same probe used for the guarded
+; Screen 7 handoff). When found, publish the SUB-ROM slot in EXBRSA and load
+; the V9938 R8-R23 shadow baseline through the extended-register WRTVDP path.
+bootstrap_msx2:
+                call v9938_subrom_present
+                jr nz,bootstrap_msx2_no_v9938
+                ld a,e
+                ld (EXBRSA),a
+                ld hl,msx2_vdp_registers_8_23
+                ld c,8
+                ld d,16
+bootstrap_msx2_register_loop:
+                ld b,(hl)
+                call wrtvdp_v9938
+                inc hl
+                inc c
+                dec d
+                jr nz,bootstrap_msx2_register_loop
+bootstrap_msx2_no_v9938:
+                ret
+ENDIF
 
 ; Partial Screen 7 handoff for software that runs this MSX1 ROM on MSX2
 ; hardware. A discovered SUB-ROM is used only as the V9938 capability guard;
@@ -5710,6 +5752,14 @@ screen7_vdp_registers_0_6:
 screen7_vdp_registers_10_23:
                 db #00,#01,#00,#00,#00,#00,#0f,#00
                 db #00,#00,#00,#3b,#05,#00
+
+IFDEF MSX2
+; V9938 R8-R23 shadow baseline published at MSX2 boot. R8 enables 16x16
+; sprites; the remaining extended registers start in their power-on state.
+msx2_vdp_registers_8_23:
+                db #08,#00,#00,#00,#00,#00,#00,#00
+                db #00,#00,#00,#00,#00,#00,#00,#00
+ENDIF
 
 text40_vdp_registers:
                 db #00,#b0,#00,#00,#01,#36,#07,#f1

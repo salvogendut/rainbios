@@ -96,6 +96,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, blocking `CHGET`, Ctrl-STOP break, function-key display flags, `ERAFNK` row clearing/cursor preservation, text-mode forcing, auto-repeat, `INLIN`/`PINLIN`/`QINLIN`/`BEEP`, dead-key accents, and the key click |
 | `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, PSG R15 preservation, and no-paddle `GTPDL` |
 | `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 without changing the isolated image copy |
+| `test-openmsx-msx2` | MSX2 main-ROM boot on a V9938 machine with the C-BIOS SUB-ROM: generation byte, `EXBRSA`, R8-R23 shadows, and rendered boot frame |
 | `test-openmsx-font` | Printable project-owned font coverage |
 | `test-openmsx-cls` | Screen 0/1/2/3 clearing and cursor state |
 
@@ -140,6 +141,7 @@ make test-1983 \
 | `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
 | `test-1983-bbcbasic` | BBC BASIC menu launch, banner, prompt, and runtime state |
 | `test-1983-embedded-basic` | No-cartridge automatic launch of the embedded payload and clean top-of-screen banner/prompt |
+| `test-1983-msx2` | MSX2 main-ROM boot on the `msx2` model with the C-BIOS SUB-ROM: generation byte, `EXBRSA=83h`, `RG8SAV=08h`, and rendered boot frame |
 | `test-1983-bbcbasic-graphics` | Independently rendered Graphics II workload |
 | `test-1983-tape` | Raw cassette fixture through public `TAP*` calls |
 | `test-1983-bbcbasic-tape` | BBC BASIC cassette LOAD/RUN path |
