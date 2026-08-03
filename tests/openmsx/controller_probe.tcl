@@ -94,6 +94,12 @@ proc trigger_space {} {
 proc psg_port1_seeded {} {
     unplug joyporta
     plug joyporta circuit-designer-rd-dongle
+    # The joystick matrix is captured by the per-frame interrupt snapshot, so
+    # wait a frame before GTSTCK reads it.
+    after time 0.03 stick_port1_active_wait
+}
+
+proc stick_port1_active_wait {} {
     invoke_controller 0x00D5 1 stick_port1_active
 }
 
@@ -105,6 +111,10 @@ proc stick_port1_active {} {
 proc stick_port1_r15 {} {
     set ::psg_port_b [list [reg A]]
     unplug joyporta
+    after time 0.03 stick_port1_neutral_wait
+}
+
+proc stick_port1_neutral_wait {} {
     invoke_controller 0x00D5 1 stick_port1_neutral
 }
 
@@ -116,6 +126,10 @@ proc stick_port1_neutral {} {
 
 proc psg_port2_seeded {} {
     unplug joyportb
+    after time 0.03 stick_port2_neutral_wait
+}
+
+proc stick_port2_neutral_wait {} {
     invoke_controller 0x00D5 2 stick_port2_neutral
 }
 

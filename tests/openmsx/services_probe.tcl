@@ -224,6 +224,24 @@ proc getvc2_done {} {
     puts $::services_handle [
         format "GETVC2=%01X" [expr {[reg F] & 1}]
     ]
+    reg A 0x01
+    invoke_bios 0x00F3 motor_on_done
+}
+
+proc motor_on_done {} {
+    puts $::services_handle [
+        format "MOTOR_ON=%02X,%02X" \
+            [peek 0xF3BA] [peek 0xF3BB]
+    ]
+    after time 2.2 motor_stopped
+}
+
+proc motor_stopped {} {
+    puts $::services_handle [
+        format "MOTOR_STOP=%02X,%02X,%02X" \
+            [peek 0xF3BA] [peek 0xF3BB] \
+            [expr {[debug read "ioports" 0xAA] & 0x10}]
+    ]
     close $::services_handle
     exit
 }

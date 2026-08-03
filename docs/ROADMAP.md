@@ -88,8 +88,18 @@ Machines without a mapper report one segment. The `test-openmsx-mapper` target
 verifies the count and that a segment beyond the fixed 64 KiB baseline maps
 distinct RAM.
 
-- process broader interrupt sources (controllers, cassette, disk) in the IM 1
-  handler; the keyboard scan itself is covered by M3A/M3D;
+M1K services broader sources in the IM 1 handler. Each VBlank the handler
+captures the active-low joystick matrix for both connectors into a work area
+(preserving PSG R15), so `GTSTCK`/`GTTRIG` read a consistent interrupt
+snapshot instead of live port access, and it counts down a cassette-motor
+auto-stop timer that turns the motor off about two seconds after the last
+start/activity, matching `STMOTR`'s off write. The services probe verifies the
+snapshot capture and the auto-stop; the controller probe reads directions and
+triggers from the captured state.
+
+- process broader interrupt sources (disk) in the IM 1 handler; controllers
+  and the cassette motor are covered by M1K, and the keyboard scan by
+  M3A/M3D;
 - run the original diagnostic cartridge on hardware;
 
 Exit criterion: cold boot reaches the diagnostic cartridge on representative

@@ -35,6 +35,11 @@ LINL40          equ #f3ae
 LINL32          equ #f3af
 LINLEN          equ #f3b0
 CRTCNT          equ #f3b1
+CONTROLLER_PORT1 equ #f3b8
+CONTROLLER_PORT2 equ #f3b9
+CAS_MOTOR       equ #f3ba
+CAS_MOTOR_TIMER equ #f3bb
+CAS_MOTOR_FRAMES equ 120
 MLTNAM          equ #f3d1
 MLTCOL          equ #f3d3
 MLTCGP          equ #f3d5
@@ -570,8 +575,12 @@ bootstrap_empty_hook:
                 ld a,#ff
                 ld (PAYLOAD_SLOT),a
                 ld (IDE_SLOT),a
+                ld (CONTROLLER_PORT1),a
+                ld (CONTROLLER_PORT2),a
                 xor a
                 ld (SD_FLAGS),a
+                ld (CAS_MOTOR),a
+                ld (CAS_MOTOR_TIMER),a
                 ld hl,0
                 ld (PAYLOAD_ENTRY),hl
                 ld (PAYLOAD_RAM_END),hl
@@ -1252,6 +1261,8 @@ keyint:
                 push af
                 call keyboard_scan
                 call keyboard_click_update
+                call controller_capture
+                call cassette_motor_tick
                 call HOOKBASE+5                  ; H.TIMI
                 pop af
                 ld (STATFL),a
@@ -3813,6 +3824,8 @@ tapoon_header:
 
 tapout:
                 ld c,a
+                ld a,CAS_MOTOR_FRAMES
+                ld (CAS_MOTOR_TIMER),a
                 xor a
                 call tape_write_bit             ; start bit
                 ld d,8
@@ -3877,8 +3890,15 @@ stmotr:
                 ret nz
                 ld a,#08
                 out (PPI_CONTROL),a
+                ld a,1
+                ld (CAS_MOTOR),a
+                ld a,CAS_MOTOR_FRAMES
+                ld (CAS_MOTOR_TIMER),a
                 ret
 stmotr_off:
+                xor a
+                ld (CAS_MOTOR),a
+                ld (CAS_MOTOR_TIMER),a
                 ld a,#09
                 out (PPI_CONTROL),a
                 ret
@@ -3886,6 +3906,17 @@ stmotr_toggle:
                 in a,(PPI_CONTROL_C)
                 xor #10
                 out (PPI_CONTROL_C),a
+                and #10
+                jr z,stmotr_toggle_off
+                ld a,1
+                ld (CAS_MOTOR),a
+                ld a,CAS_MOTOR_FRAMES
+                ld (CAS_MOTOR_TIMER),a
+                ret
+stmotr_toggle_off:
+                xor a
+                ld (CAS_MOTOR),a
+                ld (CAS_MOTOR_TIMER),a
                 ret
 
 ; Detect the four primary-slot expanders after page-3 RAM and its stack have
@@ -5043,10 +5074,51 @@ snsmat:
                 in a,(PPI_KEYBOARD)
                 ret
 
+; Capture the active-low joystick matrix for both connectors each VBlank so
+; GTSTCK/GTTRIG read a consistent, interrupt-serviced snapshot. PSG R15 is
+; restored, so the keyboard scan's R15 baseline is untouched.
+controller_capture:
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                ld e,a                          ; original R15
+                xor a
+                call controller_read_port
+                ld (CONTROLLER_PORT1),a
+                ld a,1
+                call controller_read_port
+                ld (CONTROLLER_PORT2),a
+                ld a,PSG_PORT_B
+                out (PSG_ADDRESS),a
+                ld a,e
+                out (PSG_WRITE),a
+                ret
+
+; Auto-stop the cassette motor about two seconds after it started, unless a
+; cassette call restarted the countdown. Active TAP reads and writes disable
+; the interrupt for their busy periods, so the timer only advances while the
+; motor is idle.
+cassette_motor_tick:
+                ld a,(CAS_MOTOR)
+                or a
+                ret z
+                ld a,(CAS_MOTOR_TIMER)
+                or a
+                jr z,cassette_motor_stop
+                dec a
+                ld (CAS_MOTOR_TIMER),a
+                ret
+cassette_motor_stop:
+                xor a
+                ld (CAS_MOTOR),a
+                ld a,#09
+                out (PPI_CONTROL),a
+                ret
+
 ; Cursor keys and both joystick connectors use the standard 0=center,
 ; 1..8=clockwise-from-up direction values. GTSTCK may change all registers.
+; Joystick directions come from the per-frame interrupt snapshot.
 gtstck:
-                di
                 or a
                 jr z,gtstck_keyboard
                 dec a
@@ -5054,7 +5126,7 @@ gtstck:
                 dec a
                 jr z,gtstck_port2
                 xor a
-                jr gtstck_done
+                ret
 gtstck_keyboard:
                 ld a,8
                 call snsmat
@@ -5069,14 +5141,13 @@ gtstck_keyboard:
                 ld hl,keyboard_direction_table
                 add hl,de
                 ld a,(hl)
-                jr gtstck_done
+                ret
 gtstck_port1:
-                xor a
+                ld a,(CONTROLLER_PORT1)
                 jr gtstck_joystick
 gtstck_port2:
-                ld a,1
+                ld a,(CONTROLLER_PORT2)
 gtstck_joystick:
-                call controller_read_port
                 cpl
                 and #0f
                 ld e,a
@@ -5084,18 +5155,16 @@ gtstck_joystick:
                 ld hl,joystick_direction_table
                 add hl,de
                 ld a,(hl)
-gtstck_done:
-                ei
                 ret
 
 ; Space and connector buttons return FFh while pressed and 00h when released.
-; Only AF changes, matching the published GTTRIG contract.
+; Only AF changes, matching the published GTTRIG contract. Connector buttons
+; come from the per-frame interrupt snapshot.
 gttrig:
                 push bc
                 push de
                 push hl
                 ld c,a
-                di
                 or a
                 jr z,gttrig_space
                 cp 5
@@ -5107,7 +5176,13 @@ gttrig:
                 sub 2
 gttrig_port:
                 dec a                          ; selectors 1/2 become ports 0/1
-                call controller_read_port
+                or a
+                jr nz,gttrig_port2
+                ld a,(CONTROLLER_PORT1)
+                jr gttrig_check
+gttrig_port2:
+                ld a,(CONTROLLER_PORT2)
+gttrig_check:
                 and e
                 jr z,gttrig_pressed
                 jr gttrig_released
@@ -5123,7 +5198,6 @@ gttrig_pressed:
                 ld a,#ff
                 or a
 gttrig_done:
-                ei
                 pop hl
                 pop de
                 pop bc

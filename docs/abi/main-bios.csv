@@ -68,8 +68,8 @@ address,name,kind,status,milestone,notes
 00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line
 00CF,DSPFNK,jump,partial,M2,Sets CNSDFG and renders the FNKSTR strings on the bottom line
 00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display
-00D5,GTSTCK,jump,implemented,M3,Cursor keys and joystick ports 1/2 return standard directions 0-8
-00D8,GTTRIG,jump,implemented,M3,Space and both buttons on joystick ports 1/2 return 00h/FFh and preserve non-AF registers
+00D5,GTSTCK,jump,implemented,M1,Cursor keys read live and joystick ports 1/2 return standard directions 0-8 from the per-frame interrupt snapshot
+00D8,GTTRIG,jump,implemented,M1,Space reads live and both connector buttons return 00h/FFh from the per-frame interrupt snapshot, preserving non-AF registers
 00DB,GTPAD,jump,partial,M3,Mouse selectors 12-19 implemented; touch panel light pen and explicit trackball detection remain pending
 00DE,GTPDL,jump,partial,M3,Reads paddle 1-8 by firing the pin-8 trigger and measuring the one-shot low pulse on the PSG port-A pin; 0 with no paddle, unsupported paddles return 0, R15 restored
 00E1,TAPION,jump,implemented,M3,
@@ -78,7 +78,7 @@ address,name,kind,status,milestone,notes
 00EA,TAPOON,jump,implemented,M3,
 00ED,TAPOUT,jump,implemented,M3,
 00F0,TAPOOF,jump,implemented,M3,
-00F3,STMOTR,jump,implemented,M3,
+00F3,STMOTR,jump,implemented,M1,Starts/stops the cassette motor and arms the ~2s interrupt-driven auto-stop timer
 00F6,LFTQ,jump,stub,M3,
 00F9,PUTQ,jump,stub,M3,
 00FC,RIGHTC,jump,implemented,M2,Moves the cursor right; at the line end (LINLEN) it does not move

@@ -23,6 +23,8 @@ EXPECTED = {
     "OUTDLP": "1",
     "GETVCP": "1",
     "GETVC2": "1",
+    "MOTOR_ON": "01,78",
+    "MOTOR_STOP": "00,00,10",
 }
 
 

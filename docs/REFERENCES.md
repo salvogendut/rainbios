@@ -615,6 +615,20 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: test-harness facts only; no firmware behavior was changed by
   the cleanup
 
+## 2026-08-03 — Interrupt-driven controller snapshot and cassette motor
+
+- Primary specifications: the MSX2 Technical Handbook Chapter 5 controller
+  I/O (`GTSTCK`/`GTTRIG` selector and direction contracts) and the `STMOTR`
+  cassette-motor contract
+- Cross-check: the MSX Assembly Page BIOS reference for the same entries
+- Purpose: define M1K's per-frame joystick matrix snapshot (captured in the
+  IM 1 handler with PSG R15 preserved, read by `GTSTCK`/`GTTRIG`) and the
+  ~2s cassette-motor auto-stop timer
+- RainBIOS use: the public interface and hardware facts follow the published
+  contracts; the snapshot capture and the auto-stop timer are original
+  RainBIOS behavior (the standard BIOS does not snapshot controllers or
+  auto-stop the cassette motor)
+
 ## 2026-08-02 — Dead-key and accented-character contracts
 
 - Primary specifications: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST`
@@ -716,7 +730,6 @@ boot state. This diagnosis is not used to derive RainBIOS firmware code.
   internal control flow, disassembly, or decompilation were inspected
 
 ## 2026-08-02 — MSX controller and mouse interfaces
-
 - Primary specifications:
   - *MSX Technical Data Book — Hardware/Software Specifications*, hardware
     pp. 25-28 and BIOS pp. 124-125, public scan already identified above
