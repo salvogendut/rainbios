@@ -42,9 +42,9 @@ The main BIOS currently provides:
 
 - a distinct MSX2 main-ROM build from the same source with `-DMSX2=1`
   (`make msx2-main-rom`), publishing the MSX2 generation byte, a live V9938
-  `CD` scan, `EXBRSA`, a V9938 R8-R23 shadow baseline, and extended-register
-  `WRTVDP` dispatch; general SUB-ROM/EXTROM and bitmap modes remain pending M5
-  work;- deterministic reset, 32 KiB RAM discovery, stack/work-area initialization,
+  `CD` scan, `EXBRSA`, a V9938 R8-R23 shadow baseline, extended-register
+  `WRTVDP` dispatch, and the standard `SUBROM`/`EXTROM`/`CHKSLZ` SUB-ROM calling
+  entries; bitmap modes and general SUB-ROM dispatch remain pending M5 work;- deterministic reset, 32 KiB RAM discovery, stack/work-area initialization,
   and a project-owned Graphics II boot UI;
 - primary and expanded slot discovery and control, including `RDSLT`, `WRSLT`,
   `ENASLT`, `CALSLT` for page-0/page-1/page-2/page-3 targets, and inline
@@ -456,6 +456,7 @@ make test-1983-geobench-sunrise
 make test-1983-geobench-sd
 make test-1983-embedded-basic
 make test-1983-msx2
+make test-1983-msx2-subrom
 ```
 
 The default emulator paths expect the adjacent open-source 1983 checkout:
@@ -478,6 +479,7 @@ make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
   test-openmsx-controller \
   test-openmsx-embedded-basic \
   test-openmsx-msx2 \
+  test-openmsx-msx2-subrom \
   test-openmsx-disk-fault test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
@@ -506,7 +508,7 @@ is:
 | M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
-| M5 MSX2 main BIOS/SUB-ROM | In progress | First slice: distinct MSX2 main-ROM build with V9938 detection, EXBRSA, and R8-R23 shadows. Remaining: SUB-ROM dispatch, bitmap modes, palette, commands, clock, extended VRAM |
+| M5 MSX2 main BIOS/SUB-ROM | In progress | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling. Remaining: bitmap modes, palette, commands, clock, extended VRAM |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
@@ -535,11 +537,15 @@ The M5 first slice now produces a distinct MSX2 main-ROM build
 (`build/rainbios_msx2.rom`) via `make msx2-main-rom`. It is validated by
 `test-1983-msx2` (1983 `msx2` model with the C-BIOS SUB-ROM: generation byte,
 `EXBRSA=83h`, `RG8SAV=08h`, rendered boot frame) and `test-openmsx-msx2`
-(openMSX V9938 fixture with the C-BIOS SUB-ROM). The next M5 slice should add
-general SUB-ROM discovery and `EXTROM` dispatch, then bitmap modes, palette,
-VDP commands, clock, and extended VRAM, each with their own ABI updates and
-emulator gates. Keep the guarded Screen 7 handoff in the MSX1 ROM independent
-until the MSX2 build actually replaces it.
+(openMSX V9938 fixture with the C-BIOS SUB-ROM). The M5 second slice adds the
+standard SUB-ROM calling contract: `SUBROM` (`015Ch`), `EXTROM` (`015Fh`), and
+`CHKSLZ` (`0162h`), validated by `test-1983-msx2-subrom` and
+`test-openmsx-msx2-subrom` which call all three entries into a fixture SUB-ROM
+and observe the called routine's effect, the republished `EXBRSA=83h`, and the
+CHKSLZ carry. The next M5 slice should implement the bitmap-mode, palette, VDP
+command, clock, and extended VRAM routines that run *inside* the SUB-ROM, each
+with their own ABI updates and emulator gates. Keep the guarded Screen 7
+handoff in the MSX1 ROM independent until the MSX2 build actually replaces it.
 
 The immediate floppy priority is real NMS 8250-compatible hardware validation.
 `docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ
@@ -592,8 +598,11 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/make_ide_image.py` | Deterministic raw IDE boot fixture generator |
 | `tools/run_1983_embedded_basic.py` | No-cartridge combined-ROM launch probe for 1983 |
 | `tools/run_1983_msx2.py` | MSX2 main-ROM boot probe for 1983 (ID byte, EXBRSA, R8-R23) |
+| `tools/run_1983_msx2_subrom.py` | MSX2 SUB-ROM calling probe for 1983 (SUBROM/EXTROM/CHKSLZ) |
 | `tools/check_msx2_probe.py` | openMSX MSX2 boot report validator |
+| `tools/check_msx2_subrom_probe.py` | openMSX MSX2 SUB-ROM calling report validator |
 | `tests/openmsx/msx2_probe.tcl` | openMSX MSX2 boot state and screenshot probe |
+| `tests/openmsx/msx2_subrom_probe.tcl` | openMSX MSX2 SUB-ROM calling probe |
 | `tests/openmsx/embedded_basic_probe.tcl` | No-cartridge combined-ROM launch and ROM-write probe for openMSX |
 | `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
 | `tools/check_controller_probe.py` | Controller and mouse report validator |

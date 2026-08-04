@@ -10,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 ROM_PATH = Path(
     os.environ.get("RAINBIOS_MSX1_ROM", ROOT / "build" / "rainbios_msx1.rom")
 )
+MSX2_ROM_PATH = Path(
+    os.environ.get("RAINBIOS_MSX2_ROM", ROOT / "build" / "rainbios_msx2.rom")
+)
 BBC_BASIC_ROM_PATH = Path(
     os.environ.get(
         "RAINBIOS_BBC_BASIC_ROM",
@@ -52,6 +55,8 @@ class MainRomLayoutTest(unittest.TestCase):
         for row in self.abi:
             if row["kind"] != "jump":
                 continue
+            if "MSX2 build only" in row["notes"]:
+                continue  # fixed entries exist only in the MSX2 ROM build
             address = int(row["address"], 16)
             with self.subTest(name=row["name"], address=row["address"]):
                 self.assertEqual(self.rom[address], 0xC3)
@@ -63,6 +68,20 @@ class MainRomLayoutTest(unittest.TestCase):
 
     def test_msx1_extrom_compatibility_entry_returns(self):
         self.assertEqual(self.rom[0x015F], 0xC9)  # RET
+
+    def test_msx2_subrom_calling_entries_are_jumps(self):
+        if not MSX2_ROM_PATH.exists():
+            self.skipTest("MSX2 ROM not built")
+        rom = MSX2_ROM_PATH.read_bytes()
+        self.assertEqual(rom[0x002D], 0x01)  # MSX2 generation byte
+        for address in (0x015C, 0x015F, 0x0162):
+            with self.subTest(address=hex(address)):
+                self.assertEqual(rom[address], 0xC3)
+                destination = int.from_bytes(
+                    rom[address + 1 : address + 3], "little"
+                )
+                self.assertGreaterEqual(destination, 0x0200)
+                self.assertLess(destination, len(rom))
 
     def test_primary_slot_register_calls_are_direct(self):
         rslreg = int.from_bytes(self.rom[0x0139:0x013B], "little")

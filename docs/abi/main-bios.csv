@@ -113,4 +113,6 @@ address,name,kind,status,milestone,notes
 0153,GETVC2,jump,partial,M6,Returns a pointer into the voice control block by index and field offset
 0156,KILBUF,jump,implemented,M3,Resets GETPNT and PUTPNT to the start of the standard 40-byte key buffer
 0159,CALBAS,jump,stub,M6,
-015F,EXTROM_COMPAT,return,stub,M4,MSX1 compatibility return
+015C,SUBROM,jump,partial,M5,MSX2 build only. Documented push IX / jp SUBROM wrapper that calls the SUB-ROM routine in IX through EXTROM and then pops IX
+015F,EXTROM,jump,partial,M5,MSX2 build only. Calls the SUB-ROM routine at IX through CALSLT using the slot published in EXBRSA, preserving the caller's alternate registers and interrupt state
+0162,CHKSLZ,jump,partial,M5,MSX2 build only. Scans primary and expanded slots for the CD SUB-ROM signature and republishes the slot in EXBRSA with carry set when found
