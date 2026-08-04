@@ -461,9 +461,15 @@ POSIT positions the cursor to (H, L) in CSRX/CSRY, ERAFNK clears CNSDFG and
 erases the bottom text row, DSPFNK sets CNSDFG and moves the cursor to the
 last row, FNKSB toggles per CNSDFG, and TOTEXT forces the text mode and
 preserves the function-key display state. Their notes in `docs/abi/main-bios.csv`
-are updated. Remaining partial entries whose flags or clobber behavior are
-still unprobed (keyboard and slot primitives among others) are follow-up
-characterization work.
+are updated.
+
+The keyboard buffer entries are characterized by `test-1983-kbd`: CHSNS
+reports zero when the circular buffer is empty and nonzero when data is
+present (AF-only change), CHGET returns the injected character, preserves
+BC/DE/HL, and advances GETPNT, and KILBUF resets the buffer. Remaining partial
+entries whose flags or clobber behavior are still unprobed (slot primitives
+and remaining keyboard lock-state among others) are follow-up characterization
+work.
 
 A reproducible release bundle is now produced by `make release` (and
 `check-release` validates it). It assembles the production ROMs, their symbol
