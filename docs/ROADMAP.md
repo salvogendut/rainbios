@@ -338,7 +338,7 @@ passes a documented smoke-test matrix.
 
 ## M5 — MSX2 main BIOS and SUB-ROM
 
-Status: in progress (first slice).
+Status: complete.
 
 M5A produces a distinct MSX2 main-ROM build (`build/rainbios_msx2.rom`) from the
 same source with `-DMSX2=1`. It sets the `002Dh` generation byte to `01`,
