@@ -450,6 +450,15 @@ through CALSLT with known register inputs and verifies the documented
 safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. NMI
 (0066h) is excluded: it is an interrupt return (`retn`), not a callable stub.
 
+A reproducible release bundle is now produced by `make release` (and
+`check-release` validates it). It assembles the production ROMs, their symbol
+files, `components.json`, `THIRD_PARTY_NOTICES.md`, and the license texts into
+`build/release/<git-describe>/` with a `SHA256SUMS` file and `RELEASE-NOTES.md`
+naming the source commit. `make test` rebuilds and validates the bundle, so
+the shipped ROM digests always match the freshly built outputs. A public
+GitHub release remains gated on branding permission or a rename; the local
+bundle is the reproducible distribution artifact.
+
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
 Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
