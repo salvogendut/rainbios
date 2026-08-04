@@ -431,11 +431,55 @@ proc edit_keys_read_cb {index} {
     if {$index < 4} {
         invoke_bios 0x009F [list edit_keys_read_cb $index]
     } else {
-        # M3 GICINI: after the PSG registers, the PLAY statement work area is
-        # initialized (QUEUES -> QUETAB, interpreter free, counters and voice
-        # queues cleared).
-        invoke_bios 0x0090 gicini_done
+        snsmat_kilbuf
     }
+}
+
+proc snsmat_kilbuf {} {
+    # M3 SNSMAT: read every matrix row back active-low through the PPI. Each
+    # record holds A (the active-low byte), C (the masked row selector), and
+    # sentinel B/DE/HL to prove that only A and C change. Rows 6 (four keys)
+    # and 7 (editing keys) use masks that avoid the CAPS/GRAPH and STOP lock
+    # edges; the other full rows prove the complement of every press.
+    set ::snsmat_rows {
+        {0 0xFF} {1 0x81} {2 0x42} {3 0xFF} {4 0xFF}
+        {5 0xFF} {6 0x0F} {7 0xAC} {8 0xFF} {9 0xFF}
+    }
+    set ::snsmat_index 0
+    invoke_bios 0x0156 snsmat_press
+}
+
+proc snsmat_press {} {
+    lassign [lindex $::snsmat_rows $::snsmat_index] row mask
+    keymatrixdown $row $mask
+    after time 0.05 [list snsmat_sample $row $mask]
+}
+
+proc snsmat_sample {row mask} {
+    reg A $row
+    reg BC 0x3355
+    reg DE 0x1234
+    reg HL 0xABCD
+    invoke_bios 0x0141 [list snsmat_sampled $row $mask]
+}
+
+proc snsmat_sampled {row mask} {
+    record_keyboard [format "SNSMAT%02X=%02X,%02X,%04X,%04X,%04X" \
+        $row [reg A] [reg C] [reg BC] [reg DE] [reg HL]]
+    keymatrixup $row $mask
+    incr ::snsmat_index
+    if {$::snsmat_index < [llength $::snsmat_rows]} {
+        after time 0.05 snsmat_press
+    } else {
+        invoke_bios 0x0156 snsmat_release_done
+    }
+}
+
+proc snsmat_release_done {} {
+    # M3 GICINI: after the PSG registers, the PLAY statement work area is
+    # initialized (QUEUES -> QUETAB, interpreter free, counters and voice
+    # queues cleared).
+    invoke_bios 0x0090 gicini_done
 }
 
 proc gicini_done {} {
