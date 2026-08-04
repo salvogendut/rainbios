@@ -63,11 +63,11 @@ address,name,kind,status,milestone,notes
 00BD,CKCNTC,jump,partial,M3,Shares ISCNTC's break consumption
 00C0,BEEP,jump,implemented,M3,Short PSG channel-A tone
 00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
-00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking
-00C9,FNKSB,jump,partial,M2,Displays or erases the function keys according to CNSDFG
-00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line directly without changing CSRX/CSRY
-00CF,DSPFNK,jump,partial,M2,Sets CNSDFG and renders the FNKSTR strings on the bottom line
-00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display
+00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking; verified by test-1983-fnkey (CSRX=H, CSRY=L)
+00C9,FNKSB,jump,partial,M2,Displays or erases the function keys according to CNSDFG; verified by test-1983-fnkey (toggle on/off)
+00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line directly without changing CSRX/CSRY; verified by test-1983-fnkey (CNSDFG=0, bottom row spaces)
+00CF,DSPFNK,jump,partial,M2,Sets CNSDFG and renders the FNKSTR strings on the bottom line; verified by test-1983-fnkey (CNSDFG=FF, cursor to last row)
+00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display; verified by test-1983-fnkey (Screen 0, CNSDFG preserved)
 00D5,GTSTCK,jump,implemented,M1,Cursor keys read live and joystick ports 1/2 return standard directions 0-8 from the per-frame interrupt snapshot
 00D8,GTTRIG,jump,implemented,M1,Space reads live and both connector buttons return 00h/FFh from the per-frame interrupt snapshot, preserving non-AF registers
 00DB,GTPAD,jump,partial,M3,Mouse selectors 12-19 implemented; touch panel light pen and explicit trackball detection remain pending

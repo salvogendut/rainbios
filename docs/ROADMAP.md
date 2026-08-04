@@ -454,9 +454,16 @@ The partial ABI entries with explicitly named flag/clobber gaps are now
 characterized: `test-1983-abi-clobber` verifies DCOMPR's compare contract
 (carry when HL<DE, zero when equal, carry clear when HL>DE, BC preserved) and
 a WRTPSG/RDPSG round trip through the PSG ports. Their notes in
-`docs/abi/main-bios.csv` are updated. Remaining partial entries whose flags or
-clobber behavior are still unprobed (keyboard, text output, and slot primitives
-among others) are follow-up characterization work.
+`docs/abi/main-bios.csv` are updated.
+
+The text and function-key entries are characterized by `test-1983-fnkey`:
+POSIT positions the cursor to (H, L) in CSRX/CSRY, ERAFNK clears CNSDFG and
+erases the bottom text row, DSPFNK sets CNSDFG and moves the cursor to the
+last row, FNKSB toggles per CNSDFG, and TOTEXT forces the text mode and
+preserves the function-key display state. Their notes in `docs/abi/main-bios.csv`
+are updated. Remaining partial entries whose flags or clobber behavior are
+still unprobed (keyboard and slot primitives among others) are follow-up
+characterization work.
 
 A reproducible release bundle is now produced by `make release` (and
 `check-release` validates it). It assembles the production ROMs, their symbol
