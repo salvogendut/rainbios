@@ -100,6 +100,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-msx2-subrom` | MSX2 SUB-ROM calling contract into a fixture SUB-ROM: `SUBROM`/`EXTROM`/`CHKSLZ` markers and the SUB-ROM spin PC |
 | `test-openmsx-msx2-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8, palette GETPLT, 16-bit WRTVRM/RDVRM, and VDP registers |
 | `test-openmsx-msx2-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
+| `test-openmsx-msx2-64k` | RainBIOS MSX2 main ROM + SUB-ROM on a 64 KiB VRAM V9938: CHGMOD Screens 5/8 and even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range |
 | `test-openmsx-font` | Printable project-owned font coverage |
 | `test-openmsx-cls` | Screen 0/1/2/3 clearing and cursor state |
 

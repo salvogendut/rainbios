@@ -492,6 +492,7 @@ make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
   test-openmsx-msx2-subrom \
   test-openmsx-msx2-services \
   test-openmsx-msx2-cmdclock \
+  test-openmsx-msx2-64k \
   test-openmsx-disk-fault test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
@@ -520,7 +521,7 @@ is:
 | M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
-| M5 MSX2 main BIOS/SUB-ROM | In progress | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. Remaining: disk-file transfers, bitmap modes 10-12, extended VRAM, 64/128 KiB config validation |
+| M5 MSX2 main BIOS/SUB-ROM | In progress | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Remaining: disk-file transfers, bitmap modes 10-12, extended VRAM |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
@@ -564,11 +565,16 @@ palette. The M5 fourth slice adds the VDP command transfers and the clock:
 `REDCLK`/`WRTCLK`, validated by `test-1983-msx2-subrom-cmdclock` and
 `test-openmsx-msx2-cmdclock`, which call `EXTROM` into all five entries and
 check the copied VRAM bytes, the BLTMV header/pixels, and the RTC round trip.
-The next M5 slices should implement the remaining SUB-ROM services
-(disk-file transfer commands `BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`, bitmap modes
-10-12) and validate 64 KiB vs 128 KiB VRAM configurations, each with their own
-ABI updates and emulator gates. Keep the guarded Screen 7 handoff in the MSX1
-ROM independent until the MSX2 build actually replaces it.
+The M5 fifth slice validates 64 KiB VRAM with `test-openmsx-msx2-64k`
+(openMSX fixture with a 64 KiB V9938): CHGMOD Screens 5/8 and even-address
+16-bit WRTVRM/RDVRM round trips across the full 64 KiB range. openMSX's
+V9938 64 KiB model is known to mishandle CPU VRAM access to odd addresses
+(openMSX issue #1157), so the 64 KiB gate exercises the even-address range;
+the 128 KiB gates cover every address. The next M5 slices should implement
+the remaining SUB-ROM services (disk-file transfer commands
+`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`, bitmap modes 10-12), each with their own ABI
+updates and emulator gates. Keep the guarded Screen 7 handoff in the MSX1 ROM
+independent until the MSX2 build actually replaces it.
 
 The immediate floppy priority is real NMS 8250-compatible hardware validation.
 `docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ
@@ -629,11 +635,15 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/check_msx2_subrom_probe.py` | openMSX MSX2 SUB-ROM calling report validator |
 | `tools/check_msx2_services_probe.py` | openMSX MSX2 SUB-ROM services report validator |
 | `tools/check_msx2_cmdclock_probe.py` | openMSX MSX2 SUB-ROM command/clock report validator |
+| `tools/check_msx2_64k_probe.py` | openMSX MSX2 64 KiB VRAM report validator |
 | `tests/openmsx/msx2_probe.tcl` | openMSX MSX2 boot state and screenshot probe |
 | `tests/openmsx/msx2_subrom_probe.tcl` | openMSX MSX2 SUB-ROM calling probe |
 | `tests/openmsx/msx2_services_probe.tcl` | openMSX MSX2 SUB-ROM bitmap/palette/VRAM probe |
 | `tests/openmsx/msx2_cmdclock_probe.tcl` | openMSX MSX2 SUB-ROM block-transfer/clock probe |
 | `tests/openmsx/RainBIOS_MSX2_CMDCLOCK.xml.in` | openMSX MSX2 SUB-ROM command/clock fixture |
+| `tests/openmsx/msx2_64k_probe.tcl` | openMSX MSX2 64 KiB VRAM probe |
+| `tests/openmsx/RainBIOS_MSX2_64K.xml.in` | openMSX MSX2 64 KiB VRAM fixture |
+| `tests/cartridges/subrom_64k_probe.asm` | 64 KiB VRAM probe cartridge |
 | `tests/openmsx/embedded_basic_probe.tcl` | No-cartridge combined-ROM launch and ROM-write probe for openMSX |
 | `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
 | `tools/check_controller_probe.py` | Controller and mouse report validator |
