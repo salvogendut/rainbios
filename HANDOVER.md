@@ -522,7 +522,7 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
-| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate in the host suite |
+| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; BIOS stub safe-return contract gated by `test-1983-stubs` |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
@@ -622,6 +622,8 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `src/zx0_decompress.asm` | BSD-3-Clause forward ZX0 decoder used for boot/menu tables |
 | `components.json` | Machine-readable component manifest (SPDX-style) for the combined ROM and siblings |
 | `tests/test_component_manifest.py` | Host validation of the component manifest against built artifacts |
+| `tests/cartridges/stub_probe.asm` | Probe for the BIOS stub safe-return contract |
+| `tools/run_1983_stub_probe.py` | 1983 runner validating the stub probe markers |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
