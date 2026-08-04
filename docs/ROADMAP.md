@@ -443,13 +443,12 @@ of the lower bank rises above `3600h` (reserve below `0xA00` bytes) or falls
 below `3000h`, so substantial new page-0 work must be a deliberate, documented
 step rather than an accidental boundary erosion.
 
-The stub BIOS entries are characterized and gated: `test-1983-stubs` calls the
-M6 stub entries (SYNCHR, CHRGTR, GETYPR, INITIO, STRTMS, LFTQ, PUTQ, CNVCHR,
-CALBAS) through CALSLT with known register inputs and verifies the documented
-safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. The
-remaining stub entries (printer, sprite attribute, and scanline helpers) follow
-the same implementation and remain covered by the same gate as their register
-contract is added to the probe.
+The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
+all 25 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
+LPTOUT, LPTSTT, CNVCHR, LFTQ, PUTQ, the SCALXY..CHGSND group, and CALBAS)
+through CALSLT with known register inputs and verifies the documented
+safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. NMI
+(0066h) is excluded: it is an interrupt return (`retn`), not a callable stub.
 
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
