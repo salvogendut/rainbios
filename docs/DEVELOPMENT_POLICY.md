@@ -68,3 +68,18 @@ A firmware change is ready to merge when:
 - open-source attribution is complete;
 - tests cover normal behavior and relevant edge cases;
 - the ABI status table and roadmap remain truthful.
+
+## Component manifest
+
+`components.json` is the machine-readable counterpart to the human-readable
+`THIRD_PARTY_NOTICES.md`. Every component that ships in a release artifact
+(original firmware, generated logo data, the vendored ZX0 decoder, and the
+embedded BBC BASIC payload) must be declared there with an SPDX-style license
+identifier, its origin, and — for external components — a pinned source
+repository and commit. The embedded payload's digest is locked in
+`deps/bbcbasic-z80-msx.lock.json`. The `check-manifest` target (and the host
+suite) fail the build when a declared license or source file is missing, an
+external component lacks a pin, the manifest and the notices disagree on
+license citations, or the combined ROM's embedded payload no longer matches
+the lock. When the component set changes, update `components.json`,
+`THIRD_PARTY_NOTICES.md`, and the manifest tests together.

@@ -1,0 +1,69 @@
+{
+  "format_version": 1,
+  "product": {
+    "name": "RainBIOS",
+    "artifacts": {
+      "msx1_rom": "build/rainbios_msx1.rom",
+      "msx2_rom": "build/rainbios_msx2.rom",
+      "msx2_sub_rom": "build/rainbios_msx2_sub.rom"
+    }
+  },
+  "components": [
+    {
+      "id": "rainbios-firmware",
+      "name": "RainBIOS firmware, font, and menu tables",
+      "description": "Original project firmware below 4000h in the combined ROM, excluding generated logo data and the vendored ZX0 decoder.",
+      "origin": "this repository",
+      "license": "BSD-3-Clause",
+      "license_file": "LICENSE"
+    },
+    {
+      "id": "rainbios-boot-logo",
+      "name": "RainBIOS boot logo",
+      "description": "Generated Screen 2 logo pattern, name, and color data below 4000h.",
+      "origin": "this repository",
+      "source": "src/logo-simple.png",
+      "generator": "tools/png_to_screen2.py",
+      "license": "CC0-1.0",
+      "license_file": "LICENSES/CC0-1.0.txt"
+    },
+    {
+      "id": "zx0",
+      "name": "ZX0 v2 compressor and standard forward Z80 decoder",
+      "description": "ZX0 compressor used at build time and the standard forward decompressor embedded in the ROM.",
+      "origin": "external",
+      "source_identity": {
+        "repository": "https://github.com/einar-saukas/ZX0",
+        "commit": "ecde3a2ae05061fe06469ed46df81a33b7de7d86"
+      },
+      "license": "BSD-3-Clause",
+      "license_file": "LICENSES/ZX0.txt",
+      "decoder_source": "src/zx0_decompress.asm"
+    },
+    {
+      "id": "bbc-basic-z80-core",
+      "name": "R. T. Russell Z80 interpreter core",
+      "description": "Ported BBC BASIC Z80 interpreter core, altered for MSX, embedded as the compressed payload in the combined ROM.",
+      "origin": "external",
+      "source_identity": {
+        "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
+        "commit": "34540d468d3f39da0d283da49c0feb2dab9a1313"
+      },
+      "license": "Zlib-style",
+      "license_file": "LICENSES/BBCBASIC-Z80.txt",
+      "lock_file": "deps/bbcbasic-z80-msx.lock.json"
+    },
+    {
+      "id": "bbc-basic-msx-layer",
+      "name": "MSX platform layer",
+      "description": "Independently written MSX cartridge, console, graphics, storage, state, and descriptor adapters.",
+      "origin": "this repository",
+      "source_identity": {
+        "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
+        "commit": "34540d468d3f39da0d283da49c0feb2dab9a1313"
+      },
+      "license": "BSD-3-Clause",
+      "license_file": "LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt"
+    }
+  ]
+}

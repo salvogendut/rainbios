@@ -426,6 +426,17 @@ Human-readable component notices are complete; public release remains gated
 on branding permission or a rename, a machine-readable component manifest,
 broader emulator regression coverage, and real hardware.
 
+A machine-readable component manifest (`components.json`) now declares the
+combined ROM's components with SPDX-style license identifiers, source
+identity (including the pinned external commits), and the dependency lock for
+the embedded payload. `check-manifest` and the host suite validate the
+manifest against the built artifacts: every referenced license and source
+file exists, external components pin a repository and commit, the manifest and
+`THIRD_PARTY_NOTICES.md` agree on license citations, and the combined ROM's
+`RBC1` container carries the same compressed payload whose uncompressed digest
+matches `deps/bbcbasic-z80-msx.lock.json`. A full SPDX JSON export remains a
+follow-up; the manifest format is chosen to be translatable to SPDX later.
+
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
 Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
