@@ -522,7 +522,7 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
-| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 25 callable BIOS stub entries gated by `test-1983-stubs`; reproducible release bundle (`make release`) with `check-release` and host validation |
+| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 25 callable BIOS stub entries gated by `test-1983-stubs`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export and host validation |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
@@ -627,6 +627,8 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/make_release_bundle.py` | Assembles the reproducible release bundle under `build/release/` |
 | `tools/check_release_bundle.py` | Validates a release bundle against the build outputs |
 | `tests/test_release_bundle.py` | Host validation of the produced release bundle |
+| `tools/export_spdx.py` | Generates the SPDX 2.3 JSON document from `components.json` |
+| `tests/test_spdx_export.py` | Host validation of the SPDX document against the manifest and ROMs |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |

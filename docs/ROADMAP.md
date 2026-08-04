@@ -455,9 +455,15 @@ A reproducible release bundle is now produced by `make release` (and
 files, `components.json`, `THIRD_PARTY_NOTICES.md`, and the license texts into
 `build/release/<git-describe>/` with a `SHA256SUMS` file and `RELEASE-NOTES.md`
 naming the source commit. `make test` rebuilds and validates the bundle, so
-the shipped ROM digests always match the freshly built outputs. A public
-GitHub release remains gated on branding permission or a rename; the local
-bundle is the reproducible distribution artifact.
+the shipped ROM digests always match the freshly built outputs. The bundle now
+also carries an SPDX 2.3 JSON document (`rainbios.spdx.json`) generated from
+the component manifest: each component becomes a Package with its SPDX license
+expression, external components pin the source repository and commit as the
+download location and version, the production ROMs appear as files with their
+SHA-256 digests, and the Zlib-style interpreter notice is declared as an
+extracted license. The SPDX document is validated by the host suite alongside
+the manifest. A public GitHub release remains gated on branding permission or
+a rename; the local bundle is the reproducible distribution artifact.
 
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
