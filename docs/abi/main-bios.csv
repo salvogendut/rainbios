@@ -104,7 +104,7 @@ address,name,kind,status,milestone,notes
 0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
 013B,WSLREG,jump,implemented,M1,Writes the primary-slot register while preserving all registers
 013E,RDVDP,jump,implemented,M2,Reads the VDP status register zero and mirrors it in STATFL
-0141,SNSMAT,jump,partial,M3,Reads active-low matrix rows through the PPI and changes AF/C; broader hardware tests remain
+0141,SNSMAT,jump,partial,M3,Reads active-low matrix rows 0-9 through the PPI; A returns the complement of the pressed bits (row 6 has only four keys), C holds the masked row selector, and B/DE/HL are preserved; every row verified by test-openmsx-keyboard
 0144,PHYDIO,jump,partial,M6,Calls the H_PHYD hook when present; read-only-safe default reports no backend
 0147,FORMAT,jump,partial,M6,Calls the H_FORM hook when present; read-only-safe default reports no backend
 014A,ISFLIO,jump,partial,M6,Calls H_ISFL if present; read-only-safe default reports no active I/O

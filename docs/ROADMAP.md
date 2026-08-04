@@ -269,7 +269,11 @@ the display-flag transitions, text-mode forcing, and auto-repeat. The same
 probe characterizes the cursor/edit-key codes: pressing every row-8 key
 (SPACE/HOME/INSERT/DEL/LEFT/UP/DOWN/RIGHT) and the row-7 editing keys
 (ESC/TAB/BS/CR) makes CHGET return the standard MSX control codes from the
-Technical Handbook (`20/0B/12/7F/1D/1E/1F/1C` and `1B/09/08/0D`).
+Technical Handbook (`20/0B/12/7F/1D/1E/1F/1C` and `1B/09/08/0D`). SNSMAT is
+characterized directly: the probe presses known masks on every row 0-9 and
+verifies the PPI returns the active-low complement (row 6 has only four
+keys), that A and C hold the row byte and masked selector, and that B/DE/HL
+are preserved.
 
 M3E implements the prompt/line-input path. `PINLIN` reads keyboard input into
 `BUFFER` until Return or a Ctrl-STOP break, returning `HL = BUFFER-1`, the
