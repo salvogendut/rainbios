@@ -49,8 +49,8 @@ address,name,kind,status,milestone,notes
 0093,WRTPSG,jump,partial,M3,Verified by test-1983-abi-clobber: writes E to PSG register A and round-trips through RDPSG
 0096,RDPSG,jump,partial,M3,Verified by test-1983-abi-clobber: reads PSG register A into A; WRTPSG/RDPSG round trip
 0099,STRTMS,jump,stub,M3,
-009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register
-009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending
+009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register; verified by test-1983-kbd (zero when empty, nonzero when data present)
+009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending; char/register/pointer behavior verified by test-1983-kbd
 00A2,CHPUT,jump,implemented,M2,Screen 0/1 text and Screen 2 glyph output plus backspace, tab, CR, LF, cursor-up, form feed, wrap, and scroll
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,

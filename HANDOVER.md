@@ -522,7 +522,7 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
-| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 25 callable BIOS stub entries gated by `test-1983-stubs`; DCOMPR/PSG clobber and flag contracts gated by `test-1983-abi-clobber`; function-key/text contracts gated by `test-1983-fnkey`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export |
+| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 25 callable BIOS stub entries gated by `test-1983-stubs`; DCOMPR/PSG clobber and flag contracts gated by `test-1983-abi-clobber`; function-key/text contracts gated by `test-1983-fnkey`; keyboard buffer contracts gated by `test-1983-kbd`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
@@ -633,6 +633,8 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/run_1983_abi_clobber_probe.py` | 1983 runner validating the ABI clobber probe markers |
 | `tests/cartridges/fnkey_probe.asm` | Probe for POSIT/ERAFNK/DSPFNK/FNKSB/TOTEXT contracts |
 | `tools/run_1983_fnkey_probe.py` | 1983 runner validating the function-key probe markers |
+| `tests/cartridges/kbd_probe.asm` | Probe for CHSNS/CHGET/KILBUF contracts |
+| `tools/run_1983_kbd_probe.py` | 1983 runner validating the keyboard probe markers |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |

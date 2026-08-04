@@ -369,7 +369,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-embedded-basic \
 	test-1983-cartridge test-external-cartridges \
 	test-1983-stubs test-1983-abi-clobber \
-	test-1983-fnkey \
+	test-1983-fnkey test-1983-kbd \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
@@ -849,6 +849,12 @@ FNKEY_PROBE_CART := $(BUILD_DIR)/cartridges/fnkey_probe.rom
 $(FNKEY_PROBE_CART): tests/cartridges/fnkey_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(FNKEY_PROBE_CART:.rom=.sym)
+
+KBD_PROBE_CART := $(BUILD_DIR)/cartridges/kbd_probe.rom
+
+$(KBD_PROBE_CART): tests/cartridges/kbd_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(KBD_PROBE_CART:.rom=.sym)
 
 SUBROM_CMDCLOCK_PROBE_CART := \
 	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.rom
@@ -1437,6 +1443,12 @@ test-1983-fnkey: $(MSX1_ROM) $(FNKEY_PROBE_CART)
 	$(PYTHON) tools/run_1983_fnkey_probe.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(FNKEY_PROBE_CART)"
+
+test-1983-kbd: $(MSX1_ROM) $(KBD_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_kbd_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(KBD_PROBE_CART)"
 
 test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM) $(MENU_INPUT_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
