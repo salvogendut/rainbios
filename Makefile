@@ -372,7 +372,8 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
-	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom clean
+	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom \
+	check-manifest clean
 
 all: $(MSX1_ROM)
 
@@ -1861,6 +1862,10 @@ check-bbcbasic:
 	$(MAKE) -C $(BBC_BASIC_DIR) check
 
 check-bbcbasic-artifact: bbcbasic-payload
+
+check-manifest: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) bbcbasic-payload
+	PYTHONDONTWRITEBYTECODE=1 \
+	$(PYTHON) -m unittest tests.test_component_manifest -v
 
 clean:
 	rm -rf $(BUILD_DIR)

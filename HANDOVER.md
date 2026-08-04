@@ -125,9 +125,9 @@ header/descriptor bytes, and zero writes to the ROM page. The broader internal
 graphics, cassette, mixed-storage, and
 hardware matrix remains to be promoted. Public release is also blocked on
 permission to use the `BBC BASIC` name or a distinct rename. Human-readable
-combined notices are present in `THIRD_PARTY_NOTICES.md` and `LICENSES/`; a
-machine-readable component manifest remains pending. See
-`docs/EMBEDDED_BASIC.md`.
+combined notices are present in `THIRD_PARTY_NOTICES.md` and `LICENSES/`; the
+machine-readable component manifest is `components.json`, validated by the
+`check-manifest` target and the host suite. See `docs/EMBEDDED_BASIC.md`.
 
 ## Current Floppy Status
 
@@ -522,7 +522,7 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
-| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality |
+| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) added with `check-manifest` and host validation |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
@@ -618,6 +618,8 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `src/main_msx1.asm` | Main BIOS, reset, slots, hooks, devices, console; `-DMSX2=1` builds the MSX2 variant |
 | `src/main_msx2_sub.asm` | Self-contained MSX2 SUB-ROM: bitmap Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, block transfers, clock |
 | `src/zx0_decompress.asm` | BSD-3-Clause forward ZX0 decoder used for boot/menu tables |
+| `components.json` | Machine-readable component manifest (SPDX-style) for the combined ROM and siblings |
+| `tests/test_component_manifest.py` | Host validation of the component manifest against built artifacts |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
