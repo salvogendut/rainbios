@@ -13,6 +13,11 @@ ROM_PATH = Path(
 MSX2_ROM_PATH = Path(
     os.environ.get("RAINBIOS_MSX2_ROM", ROOT / "build" / "rainbios_msx2.rom")
 )
+MSX2_SUB_ROM_PATH = Path(
+    os.environ.get(
+        "RAINBIOS_MSX2_SUB_ROM", ROOT / "build" / "rainbios_msx2_sub.rom"
+    )
+)
 BBC_BASIC_ROM_PATH = Path(
     os.environ.get(
         "RAINBIOS_BBC_BASIC_ROM",
@@ -82,6 +87,24 @@ class MainRomLayoutTest(unittest.TestCase):
                 )
                 self.assertGreaterEqual(destination, 0x0200)
                 self.assertLess(destination, len(rom))
+
+    def test_msx2_sub_rom_is_16_kib_with_cd_header(self):
+        if not MSX2_SUB_ROM_PATH.exists():
+            self.skipTest("MSX2 SUB-ROM not built")
+        sub = MSX2_SUB_ROM_PATH.read_bytes()
+        self.assertEqual(len(sub), 0x4000)
+        self.assertEqual(sub[:2], b"CD")
+        # Documented SUB-ROM entry points must be EI + JP into the ROM.
+        for address in (0x00D1, 0x0109, 0x010D, 0x012D, 0x0131,
+                        0x0141, 0x0145, 0x0149, 0x014D):
+            with self.subTest(address=hex(address)):
+                self.assertEqual(sub[address], 0xFB)  # EI
+                self.assertEqual(sub[address + 1], 0xC3)  # JP
+                destination = int.from_bytes(
+                    sub[address + 2 : address + 4], "little"
+                )
+                self.assertGreaterEqual(destination, 0x0200)
+                self.assertLess(destination, 0x4000)
 
     def test_primary_slot_register_calls_are_direct(self):
         rslreg = int.from_bytes(self.rom[0x0139:0x013B], "little")

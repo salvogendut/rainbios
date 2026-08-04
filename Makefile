@@ -24,6 +24,8 @@ MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
 MSX1_SYM := $(BUILD_DIR)/rainbios_msx1.sym
 MSX2_ROM := $(BUILD_DIR)/rainbios_msx2.rom
 MSX2_SYM := $(BUILD_DIR)/rainbios_msx2.sym
+MSX2_SUB_ROM := $(BUILD_DIR)/rainbios_msx2_sub.rom
+MSX2_SUB_SYM := $(BUILD_DIR)/rainbios_msx2_sub.sym
 OPENMSX_ROOT := $(BUILD_DIR)/openmsx
 OPENMSX_SHARE := $(OPENMSX_ROOT)/share
 OPENMSX_HOME := $(OPENMSX_ROOT)/home
@@ -210,6 +212,20 @@ OPENMSX_MSX2_SUBROM_REPORT := $(OPENMSX_M1_REPORT_DIR)/msx2-subrom.txt
 OPENMSX_MSX2_SUBROM_SCREEN := $(OPENMSX_ROOT)/msx2-subrom.png
 SUBROM_PROBE_ROM := $(BUILD_DIR)/subroms/subrom_probe.rom
 SUBROM_PROBE_CART := $(BUILD_DIR)/cartridges/subrom_probe.rom
+SUBROM_SERVICES_PROBE_CART := \
+	$(BUILD_DIR)/cartridges/subrom_services_probe.rom
+OPENMSX_MSX2_SERVICES_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_MSX2_SERVICES.xml
+OPENMSX_MSX2_SERVICES_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/msx2-services.txt
+OPENMSX_MSX2_SERVICES_SCREEN := $(OPENMSX_ROOT)/msx2-services.png
+SUBROM_CMDCLOCK_PROBE_CART := \
+	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.rom
+OPENMSX_MSX2_CMDCLOCK_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_MSX2_CMDCLOCK.xml
+OPENMSX_MSX2_CMDCLOCK_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/msx2-cmdclock.txt
+OPENMSX_MSX2_CMDCLOCK_SCREEN := $(OPENMSX_ROOT)/msx2-cmdclock.png
 EMULATOR_1983_MSX2_SUBROM_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_msx2_subrom.ppm
 OPENMSX_GEOBENCH_REPORT := $(OPENMSX_M1_REPORT_DIR)/geobench-sunrise.txt
@@ -323,6 +339,8 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-expanded test-openmsx-embedded-basic \
 	test-openmsx-msx2 test-1983-msx2 \
 	test-openmsx-msx2-subrom test-1983-msx2-subrom \
+	test-openmsx-msx2-services test-1983-msx2-subrom-services \
+	test-openmsx-msx2-cmdclock test-1983-msx2-subrom-cmdclock \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-bbcbasic-tape-save \
@@ -392,6 +410,11 @@ $(MSX2_ROM): bbcbasic-payload $(SOURCES) $(LOGO_STAMP) \
 	$(LOGO_COMPRESSED_ASSETS) | $(BUILD_DIR)
 	$(RASM) $(firstword $(SOURCES)) -DMSX2=1 -Isrc -I$(LOGO_DIR) \
 		-I$(BBC_EMBED_DIR) -ob $@ -s -os $(MSX2_SYM)
+
+$(MSX2_SUB_ROM): src/main_msx2_sub.asm | $(BUILD_DIR)
+	$(RASM) $< -ob $@ -s -os $(MSX2_SUB_SYM)
+
+msx2-sub-rom: $(MSX2_SUB_ROM)
 
 msx2-main-rom: $(MSX2_ROM)
 
@@ -614,10 +637,12 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
-test: $(MSX1_ROM) $(MSX2_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
-	$(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) $(VALID_PAYLOAD_CART)
+test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
+	$(DISK_BOOT_SECTOR_BIN) $(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) \
+	$(VALID_PAYLOAD_CART)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
 	RAINBIOS_MSX2_ROM=$(MSX2_ROM) \
+	RAINBIOS_MSX2_SUB_ROM=$(MSX2_SUB_ROM) \
 	RAINBIOS_BBC_BASIC_ROM=$(BBC_PAYLOAD_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
@@ -726,6 +751,24 @@ $(OPENMSX_MSX2_SUBROM_MACHINE): \
 		-e 's|@SUBROM_PROBE_ROM@|$(abspath $(SUBROM_PROBE_ROM))|' \
 		-e 's|@SUBROM_PROBE_CART@|$(abspath $(SUBROM_PROBE_CART))|' $< > $@
 
+$(OPENMSX_MSX2_SERVICES_MACHINE): \
+		tests/openmsx/RainBIOS_MSX2_SERVICES.xml.in $(MSX2_ROM) \
+		$(MSX2_SUB_ROM) $(SUBROM_SERVICES_PROBE_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
+		-e 's|@MSX2_SUB_ROM@|$(abspath $(MSX2_SUB_ROM))|' \
+		-e 's|@SUBROM_SERVICES_PROBE_CART@|$(abspath $(SUBROM_SERVICES_PROBE_CART))|' \
+		$< > $@
+
+$(OPENMSX_MSX2_CMDCLOCK_MACHINE): \
+		tests/openmsx/RainBIOS_MSX2_CMDCLOCK.xml.in $(MSX2_ROM) \
+		$(MSX2_SUB_ROM) $(SUBROM_CMDCLOCK_PROBE_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
+		-e 's|@MSX2_SUB_ROM@|$(abspath $(MSX2_SUB_ROM))|' \
+		-e 's|@SUBROM_CMDCLOCK_PROBE_CART@|$(abspath $(SUBROM_CMDCLOCK_PROBE_CART))|' \
+		$< > $@
+
 $(SUBROM_PROBE_ROM): tests/subroms/subrom_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(SUBROM_PROBE_ROM:.rom=.sym)
@@ -733,6 +776,31 @@ $(SUBROM_PROBE_ROM): tests/subroms/subrom_probe.asm | $(BUILD_DIR)
 $(SUBROM_PROBE_CART): tests/cartridges/subrom_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(SUBROM_PROBE_CART:.rom=.sym)
+
+SUBROM_SERVICES_PROBE_CART := \
+	$(BUILD_DIR)/cartridges/subrom_services_probe.rom
+SUBROM_SERVICES_PROBE_SYM := \
+	$(BUILD_DIR)/cartridges/subrom_services_probe.sym
+
+$(SUBROM_SERVICES_PROBE_CART): \
+		tests/cartridges/subrom_services_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(SUBROM_SERVICES_PROBE_CART:.rom=.sym)
+
+$(SUBROM_CMDCLOCK_PROBE_CART): \
+		tests/cartridges/subrom_cmdclock_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(SUBROM_CMDCLOCK_PROBE_CART:.rom=.sym)
+
+SUBROM_CMDCLOCK_PROBE_CART := \
+	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.rom
+SUBROM_CMDCLOCK_PROBE_SYM := \
+	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.sym
+
+$(SUBROM_CMDCLOCK_PROBE_CART): \
+		tests/cartridges/subrom_cmdclock_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(SUBROM_CMDCLOCK_PROBE_SYM)
 
 $(OPENMSX_SUNRISE_SYSTEM_ROM): $(SUNRISE_ROM)
 	mkdir -p $(@D)
@@ -930,6 +998,26 @@ test-openmsx-msx2-subrom: $(OPENMSX_MSX2_SUBROM_MACHINE)
 		-script "$(abspath tests/openmsx/msx2_subrom_probe.tcl)"
 	$(PYTHON) tools/check_msx2_subrom_probe.py \
 		$(OPENMSX_MSX2_SUBROM_REPORT)
+
+test-openmsx-msx2-services: $(OPENMSX_MSX2_SERVICES_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2_SERVICES \
+		-command "set msx2_services_output {$(abspath $(OPENMSX_MSX2_SERVICES_REPORT))}; set msx2_services_screenshot {$(abspath $(OPENMSX_MSX2_SERVICES_SCREEN))}" \
+		-script "$(abspath tests/openmsx/msx2_services_probe.tcl)"
+	$(PYTHON) tools/check_msx2_services_probe.py \
+		$(OPENMSX_MSX2_SERVICES_REPORT)
+
+test-openmsx-msx2-cmdclock: $(OPENMSX_MSX2_CMDCLOCK_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2_CMDCLOCK \
+		-command "set msx2_cmdclock_output {$(abspath $(OPENMSX_MSX2_CMDCLOCK_REPORT))}; set msx2_cmdclock_screenshot {$(abspath $(OPENMSX_MSX2_CMDCLOCK_SCREEN))}" \
+		-script "$(abspath tests/openmsx/msx2_cmdclock_probe.tcl)"
+	$(PYTHON) tools/check_msx2_cmdclock_probe.py \
+		$(OPENMSX_MSX2_CMDCLOCK_REPORT)
 
 test-openmsx-font: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -1238,6 +1326,22 @@ test-1983-msx2-subrom: $(MSX2_ROM) $(SUBROM_PROBE_ROM) $(SUBROM_PROBE_CART)
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX2_ROM)" --subrom "$(SUBROM_PROBE_ROM)" \
 		--cartridge "$(SUBROM_PROBE_CART)"
+
+test-1983-msx2-subrom-services: \
+		$(MSX2_ROM) $(MSX2_SUB_ROM) $(SUBROM_SERVICES_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_msx2_subrom_services.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)" \
+		--cartridge "$(SUBROM_SERVICES_PROBE_CART)"
+
+test-1983-msx2-subrom-cmdclock: \
+		$(MSX2_ROM) $(MSX2_SUB_ROM) $(SUBROM_CMDCLOCK_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_msx2_cmdclock.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)" \
+		--cartridge "$(SUBROM_CMDCLOCK_PROBE_CART)"
 
 test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
