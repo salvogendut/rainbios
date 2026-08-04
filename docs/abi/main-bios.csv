@@ -50,7 +50,7 @@ address,name,kind,status,milestone,notes
 0096,RDPSG,jump,partial,M3,Verified by test-1983-abi-clobber: reads PSG register A into A; WRTPSG/RDPSG round trip
 0099,STRTMS,jump,stub,M3,
 009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register; verified by test-1983-kbd (zero when empty, nonzero when data present)
-009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending; char/register/pointer behavior verified by test-1983-kbd
+009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; the standard MSX cursor/edit-key codes (SPACE=20 HOME=0B INS=12 DEL=7F LEFT=1D UP=1E DOWN=1F RIGHT=1C ESC=1B TAB=09 BS=08 CR=0D) are verified by test-openmsx-keyboard; char/register/pointer behavior verified by test-1983-kbd
 00A2,CHPUT,jump,implemented,M2,Screen 0/1 text and Screen 2 glyph output plus backspace, tab, CR, LF, cursor-up, form feed, wrap, and scroll
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,

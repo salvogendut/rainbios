@@ -41,6 +41,18 @@ EXPECTED = {
     "DEADKEY": "85,82,62,79",
     "CLICK1": "F8",
     "CLICK2": "78",
+    "CURSOR00": "20",
+    "CURSOR01": "0B",
+    "CURSOR02": "12",
+    "CURSOR03": "7F",
+    "CURSOR04": "1D",
+    "CURSOR05": "1E",
+    "CURSOR06": "1F",
+    "CURSOR07": "1C",
+    "EDIT00": "1B",
+    "EDIT01": "09",
+    "EDIT02": "08",
+    "EDIT03": "0D",
     "GICINI": "F959,FF,00,00,00,00",
 }
 

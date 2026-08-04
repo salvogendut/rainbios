@@ -93,7 +93,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-expanded-slots` | Expanded selectors, slot tables, all pages, restoration, and returning `CALSLT` incl. page-0 and page-3 different-slot targets |
 | `test-openmsx-mapper` | Boot-time memory-mapper sizing and access to a segment beyond the fixed 64 KiB baseline |
 | `test-openmsx-services` | Interrupt, hook, VDP, mode, console, scrolling, and `CLS` services |
-| `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, blocking `CHGET`, Ctrl-STOP break, function-key display flags, `ERAFNK` row clearing/cursor preservation, text-mode forcing, auto-repeat, `INLIN`/`PINLIN`/`QINLIN`/`BEEP`, dead-key accents, and the key click |
+| `test-openmsx-keyboard` | Physical matrix input, translation, CAPS, buffering, blocking `CHGET`, Ctrl-STOP break, function-key display flags, `ERAFNK` row clearing/cursor preservation, text-mode forcing, auto-repeat, `INLIN`/`PINLIN`/`QINLIN`/`BEEP`, dead-key accents, the key click, and the standard MSX cursor/edit-key codes through `CHGET` |
 | `test-openmsx-controller` | Cursor/joystick directions, triggers, mouse requests and cached axes on both ports, PSG R15 preservation, and no-paddle `GTPDL` |
 | `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 without changing the isolated image copy |
 | `test-openmsx-msx2` | MSX2 main-ROM boot on a V9938 machine with the C-BIOS SUB-ROM: generation byte, `EXBRSA`, R8-R23 shadows, and rendered boot frame |
