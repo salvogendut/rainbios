@@ -437,6 +437,12 @@ file exists, external components pin a repository and commit, the manifest and
 matches `deps/bbcbasic-z80-msx.lock.json`. A full SPDX JSON export remains a
 follow-up; the manifest format is chosen to be translatable to SPDX later.
 
+The lower-bank headroom is now a host-suite gate:
+`test_lower_bank_preserves_headroom_ceiling` fails if the last non-`FF` byte
+of the lower bank rises above `3600h` (reserve below `0xA00` bytes) or falls
+below `3000h`, so substantial new page-0 work must be a deliberate, documented
+step rather than an accidental boundary erosion.
+
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
 Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector

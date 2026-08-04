@@ -198,6 +198,11 @@ reserve, providing useful development headroom. Committing the entire upper half
 to the BASIC container remains the principal long-term technical cost of a traditional
 combined ROM, so the assembly boundary and size reporting remain mandatory.
 
+The host suite gates the headroom: `test_lower_bank_preserves_headroom_ceiling`
+fails if the last non-`FF` byte of the lower bank rises above `3600h` (i.e. the
+reserve drops below `0xA00` bytes) or falls below `3000h`. Raising the ceiling
+is a deliberate, documented step before substantial new page-0 work.
+
 ## Internal launch design
 
 The built-in payload container occupies the MAIN-ROM's own page 1, so it need

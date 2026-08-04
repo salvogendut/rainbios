@@ -42,6 +42,29 @@ class MainRomLayoutTest(unittest.TestCase):
     def test_rom_is_exactly_32_kib(self):
         self.assertEqual(len(self.rom), 0x8000)
 
+    def test_lower_bank_preserves_headroom_ceiling(self):
+        """The lower-bank firmware (code, font, and boot assets below 4000h)
+        must keep a documented minimum reserve so substantial new page-0 work
+        does not silently erode the 4000h boundary (see docs/EMBEDDED_BASIC.md
+        and ROADMAP M6). The ceiling below is the last non-FF byte of the
+        lower bank; raising it must be a deliberate, documented step."""
+        lower = self.rom[:0x4000]
+        last = len(lower)
+        while last > 0 and lower[last - 1] == 0xFF:
+            last -= 1
+        self.assertLessEqual(
+            last,
+            0x3600,
+            f"lower-bank firmware now occupies {last:#x} bytes; "
+            "the 0x3600 ceiling (>=0xA00-byte reserve) was raised",
+        )
+        self.assertGreaterEqual(
+            last,
+            0x3000,
+            f"lower-bank firmware only occupies {last:#x} bytes; "
+            "the expected 0x3000 floor no longer holds",
+        )
+
     def test_reset_starts_with_di_and_absolute_jump(self):
         self.assertEqual(self.rom[0], 0xF3)  # DI
         self.assertEqual(self.rom[1], 0xC3)  # JP nn

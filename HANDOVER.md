@@ -522,13 +522,15 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
-| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) added with `check-manifest` and host validation |
+| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate in the host suite |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
 ## Recommended Next Work
 
 The simpler boot logo leaves 3,247 bytes of page-0 headroom and passes the 1983
-rendered-boot gate. Issue #62 now covers the Arkanoid application-cartridge
+rendered-boot gate; the host suite now gates that headroom (the lower-bank last
+non-`FF` byte must stay within `3000h`-`3600h`). Issue #62 now covers the
+Arkanoid application-cartridge
 gate, corrected keyboard/`BREAKX` semantics, compressed internal payload, and
 GeoBench through 1983 Sunrise/SD plus openMSX Sunrise. The next embedded-payload
 priority is to promote the existing external-payload graphics, cassette,
