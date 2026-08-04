@@ -16,6 +16,7 @@ import hashlib
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 
 PRODUCTION_ROMS = [
@@ -84,6 +85,33 @@ def main() -> int:
         destination = output / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+
+    # SPDX 2.3 JSON document.
+    spdx = output / "rainbios.spdx.json"
+    namespace = (
+        f"https://github.com/salvogendut/rainbios/releases/download/"
+        f"{arguments.version}/spdx.json"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(arguments.root / "tools" / "export_spdx.py"),
+            "--root",
+            str(arguments.root),
+            "--build",
+            str(arguments.build),
+            "--output",
+            str(spdx),
+            "--namespace",
+            namespace,
+            "--roms",
+            *PRODUCTION_ROMS,
+        ],
+        check=True,
+    )
+    if result.returncode:
+        print("error: SPDX export failed", file=sys.stderr)
+        return 1
 
     # SHA256SUMS for the ROMs.
     checksums = output / "SHA256SUMS"
