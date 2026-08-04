@@ -389,8 +389,17 @@ Note that openMSX's V9938 64 KiB model has a known inaccuracy for CPU VRAM
 access to odd addresses (openMSX issue #1157), so the 64 KiB gate exercises
 the even-address range; the 128 KiB gates already cover every address.
 
-The disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) and screen
-10-12 remain follow-up M5 work.
+The disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) are left as
+documented safe returns and screen 10-12 remains out of scope. A real disk-file
+implementation streams whole files through the DOS API (BDOS open/create/set
+DTA/random block I/O/close) and therefore needs the machine to boot a disk
+system such as Nextor. De-risking found that the RainBIOS MSX2 build does not
+yet boot a cartridge/Nextor storage layer: the boot scan finds the Sunrise
+cartridge (IDE_SLOT is published) but on the MSX2 model it does not take over
+(its bank-windowed header is not recognized), whereas the NMS 8250 reference
+boots Nextor end to end. Wiring MSX2 storage boot is therefore separate
+M6/M7 work and a prerequisite for these entries; until then they stay safe
+returns, matching the C-BIOS reference.
 
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;

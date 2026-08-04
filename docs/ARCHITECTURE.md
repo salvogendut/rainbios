@@ -170,9 +170,11 @@ colour to R44 (`BLTVM`) or reads it from status 7 (`BLTMV`), packing pixels
 per the current screen mode (SC5/SC7 two 4-bit, SC6 four 2-bit, SC8 one 8-bit
 per byte). `REDCLK`/`WRTCLK` read and write the MSX2 clock registers through
 the `B4h`/`B5h` ports, selecting the block through the RTC mode register.
-General SUB-ROM dispatch for the disk-file transfer commands, bitmap modes
-10-12, and 64/128 KiB configuration validation remains pending M5 work, and
-the MSX1 ROM keeps its `015F` compatibility return.
+The disk-file transfer entries (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) remain safe
+returns: a real implementation streams whole files through the DOS API and
+requires the machine to boot a disk system such as Nextor, which the MSX2
+build does not yet do (see ROADMAP M5). Screen 10-12 is V9958-only and out of
+scope. The MSX1 ROM keeps its `015F` compatibility return.
 
 The M5 fifth slice validates the firmware on a 64 KiB VRAM V9938
 (`test-openmsx-msx2-64k`) with an openMSX fixture, CHGMOD Screens 5/8, and

@@ -521,7 +521,7 @@ is:
 | M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
-| M5 MSX2 main BIOS/SUB-ROM | In progress | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Remaining: disk-file transfers, bitmap modes 10-12, extended VRAM |
+| M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
@@ -570,11 +570,16 @@ The M5 fifth slice validates 64 KiB VRAM with `test-openmsx-msx2-64k`
 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range. openMSX's
 V9938 64 KiB model is known to mishandle CPU VRAM access to odd addresses
 (openMSX issue #1157), so the 64 KiB gate exercises the even-address range;
-the 128 KiB gates cover every address. The next M5 slices should implement
-the remaining SUB-ROM services (disk-file transfer commands
-`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`, bitmap modes 10-12), each with their own ABI
-updates and emulator gates. Keep the guarded Screen 7 handoff in the MSX1 ROM
-independent until the MSX2 build actually replaces it.
+the 128 KiB gates cover every address. The disk-file transfer entries
+(`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) remain documented safe returns: a real
+implementation streams whole files through the DOS API (BDOS
+open/create/set-DTA/random block I/O/close) and needs the machine to boot a
+disk system such as Nextor. De-risking showed the RainBIOS MSX2 build does not
+yet boot a cartridge/Nextor storage layer (the Sunrise cartridge is found by
+the boot scan but does not take over on MSX2, unlike the NMS 8250 reference);
+that storage boot is separate M6/M7 work and a prerequisite for these entries.
+Screen 10-12 remains out of scope (V9958). Keep the guarded Screen 7 handoff
+in the MSX1 ROM independent until the MSX2 build actually replaces it.
 
 The immediate floppy priority is real NMS 8250-compatible hardware validation.
 `docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ

@@ -33,8 +33,20 @@ shadow work area are handled locally.
 | `01F9h` | WRTCLK | implemented | Write A to the RTC register selected by C (`xxBBAAAA`) through the clock ports |
 
 The remaining graphics/screen-mode entries (`0085h`-`00CDh`, `00D5h`-`00F1h`,
-`00F5h`-`0105h`, `0111h`-`0119h`, `013Dh`, `019Dh`+) return cleanly; they are
-not implemented in this slice.
+`00F5h`-`0105h`, `0111h`-`0119h`, `013Dh`, `019Dh`-`01B3h` excluding the
+implemented block transfers and clock) return cleanly; they are not
+implemented in this slice.
+
+The disk-file transfer entries `BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`
+(`019Dh`/`01A1h`/`01A5h`/`01A9h`) are deliberately left as safe returns. A real
+implementation streams whole files between disk and VRAM/RAM through the DOS
+file API (open/create/set-DTA/random block I/O/close via BDOS), and requires
+the machine to boot a disk system such as Nextor. The RainBIOS MSX2 build
+does not yet boot a cartridge/Nextor storage layer (the Sunrise cartridge is
+found by the boot scan but does not take over on the MSX2 model, unlike the
+NMS 8250 reference), so there is no DOS for these entries to call. Wiring that
+storage boot is separate M6/M7 work; until then the entries stay safe returns,
+mirroring the C-BIOS reference.
 
 ## VDP command engine
 
