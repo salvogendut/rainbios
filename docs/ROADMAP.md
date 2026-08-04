@@ -450,6 +450,14 @@ through CALSLT with known register inputs and verifies the documented
 safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. NMI
 (0066h) is excluded: it is an interrupt return (`retn`), not a callable stub.
 
+The partial ABI entries with explicitly named flag/clobber gaps are now
+characterized: `test-1983-abi-clobber` verifies DCOMPR's compare contract
+(carry when HL<DE, zero when equal, carry clear when HL>DE, BC preserved) and
+a WRTPSG/RDPSG round trip through the PSG ports. Their notes in
+`docs/abi/main-bios.csv` are updated. Remaining partial entries whose flags or
+clobber behavior are still unprobed (keyboard, text output, and slot primitives
+among others) are follow-up characterization work.
+
 A reproducible release bundle is now produced by `make release` (and
 `check-release` validates it). It assembles the production ROMs, their symbol
 files, `components.json`, `THIRD_PARTY_NOTICES.md`, and the license texts into

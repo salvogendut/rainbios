@@ -9,7 +9,7 @@ address,name,kind,status,milestone,notes
 0014,WRSLT,jump,partial,M1,Writes primary or expanded slots on all four pages and restores the exact prior primary and secondary selections
 0018,OUTDO,jump,stub,M6,
 001C,CALSLT,jump,partial,M1,Calls page-1/page-2 targets with exact normal inputs in primary or expanded slots; page-0 targets switch through the page-3 CLPRIM helper and page-3 targets in another slot use a return frame in the target's page-3 RAM. Restores both selectors when the target returns
-0020,DCOMPR,jump,partial,M0,Needs flag and clobber conformance tests
+0020,DCOMPR,jump,partial,M0,Verified by test-1983-abi-clobber: carry set when HL<DE, zero set when HL==DE, carry clear when HL>DE; preserves BC
 0024,ENASLT,jump,partial,M1,Supports primary and validated expanded slot IDs on all four pages and updates SLTTBL
 0028,GETYPR,jump,stub,M6,
 002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
@@ -46,8 +46,8 @@ address,name,kind,status,milestone,notes
 008A,GSPSIZ,jump,implemented,M2,Queries R1 without changing it and returns the current sprite-pattern size: A=8/carry clear for 8x8 or A=32/carry set for 16x16
 008D,GRPPRT,jump,implemented,M2,Prints the character in A on the graphic screen at the cursor using the project font and FORCLR, then advances the cursor by one 8-pixel cell; CR/LF move the cursor
 0090,GICINI,jump,implemented,M3,Initializes PSG R0-R15 and the PLAY statement work area (QUEUES points to QUETAB, FRCNEW=255, voice static data and queues cleared)
-0093,WRTPSG,jump,partial,M3,Needs register-clobber tests
-0096,RDPSG,jump,partial,M3,Needs register-clobber tests
+0093,WRTPSG,jump,partial,M3,Verified by test-1983-abi-clobber: writes E to PSG register A and round-trips through RDPSG
+0096,RDPSG,jump,partial,M3,Verified by test-1983-abi-clobber: reads PSG register A into A; WRTPSG/RDPSG round trip
 0099,STRTMS,jump,stub,M3,
 009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register
 009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending
