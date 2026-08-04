@@ -351,6 +351,19 @@ front-end slice; it does not publish general SUB-ROM dispatch, `EXTROM`, bitmap
 modes, palette, commands, clock, or extended VRAM calls, and the MSX1 ROM's
 guarded Screen 7 handoff remains its own path.
 
+M5B adds the standard SUB-ROM calling contract to the MSX2 build: `SUBROM`
+(`015Ch`), `EXTROM` (`015Fh`), and `CHKSLZ` (`0162h`). `EXTROM` calls the SUB-ROM
+routine at IX through the mapper-compatible expanded `CALSLT` frame using the
+slot in `EXBRSA`, preserving the caller's alternate registers and interrupt
+state; `SUBROM` implements the documented `push IX`/`jp SUBROM` wrapper;
+`CHKSLZ` scans primary and expanded slots for the `CD` signature and republishes
+`EXBRSA` with carry set when found. Dedicated 1983 and openMSX probes call all
+three entries into a known SUB-ROM fixture and verify the called routine's
+effect, `EXBRSA=83h`, and the carry result. The MSX1 ROM keeps its `015F`
+compatibility return and remains byte-identical. Bitmap modes, palette, VDP
+commands, clock, and extended VRAM that run *inside* the SUB-ROM remain
+follow-up M5 work.
+
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;
 - implement bitmap modes, palette, commands, clock, and extended VRAM calls;

@@ -136,8 +136,21 @@ assembled from the same `main_msx1.asm` source with `-DMSX2=1`. It sets the
 SUB-ROM scan, publishes the discovered slot in `EXBRSA` (`FAF8h`), and loads a
 V9938 R8-R23 shadow baseline. On that build the public `WRTVDP` dispatches
 registers 8-23 through the extended-register shadow path in addition to the
-TMS9918 R0-R7 contract. General SUB-ROM dispatch, bitmap modes, palette, VDP
-commands, clock, and extended VRAM remain pending M5 work.
+TMS9918 R0-R7 contract.
+
+The M5 second slice adds the standard SUB-ROM calling contract to the MSX2
+build: `SUBROM` (`015Ch`), `EXTROM` (`015Fh`), and `CHKSLZ` (`0162h`). `EXTROM`
+saves the caller's alternate registers and interrupt state, loads the slot
+published in `EXBRSA` into IYH, and dispatches the routine at IX through the
+mapper-compatible expanded `CALSLT` frame; the caller's normal registers reach
+the SUB-ROM routine and its results are returned in them. `SUBROM` implements
+the documented `push IX`/`jp SUBROM` wrapper that restores IX after the call.
+`CHKSLZ` reuses the boot `CD` scan to republish the SUB-ROM slot in `EXBRSA`,
+returning carry set when found. Dedicated 1983 and openMSX probes call all three
+entries into a fixture SUB-ROM and observe the called routine's write, the
+republished `EXBRSA`, and the carry result. General SUB-ROM dispatch for bitmap
+modes, palette, VDP commands, clock, and extended VRAM remains pending M5 work,
+and the MSX1 ROM keeps its `015F` compatibility return.
 
 M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated

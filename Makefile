@@ -204,6 +204,14 @@ OPENMSX_MSX2_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_MSX2.xml
 OPENMSX_MSX2_REPORT := $(OPENMSX_M1_REPORT_DIR)/msx2.txt
 OPENMSX_MSX2_SCREEN := $(OPENMSX_ROOT)/msx2.png
+OPENMSX_MSX2_SUBROM_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_MSX2_SUBROM.xml
+OPENMSX_MSX2_SUBROM_REPORT := $(OPENMSX_M1_REPORT_DIR)/msx2-subrom.txt
+OPENMSX_MSX2_SUBROM_SCREEN := $(OPENMSX_ROOT)/msx2-subrom.png
+SUBROM_PROBE_ROM := $(BUILD_DIR)/subroms/subrom_probe.rom
+SUBROM_PROBE_CART := $(BUILD_DIR)/cartridges/subrom_probe.rom
+EMULATOR_1983_MSX2_SUBROM_SCREEN := \
+	$(EMULATOR_1983_DIR)/rainbios_msx2_subrom.ppm
 OPENMSX_GEOBENCH_REPORT := $(OPENMSX_M1_REPORT_DIR)/geobench-sunrise.txt
 OPENMSX_GEOBENCH_SCREEN := $(OPENMSX_ROOT)/geobench-sunrise.png
 OPENMSX_SUNRISE_SYSTEM_ROM := \
@@ -314,6 +322,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-expanded-cartridge \
 	test-1983-expanded test-openmsx-embedded-basic \
 	test-openmsx-msx2 test-1983-msx2 \
+	test-openmsx-msx2-subrom test-1983-msx2-subrom \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-openmsx-bbcbasic-tape-save \
@@ -605,9 +614,10 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
 
-test: $(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
+test: $(MSX1_ROM) $(MSX2_ROM) $(NMS8250_DISK_ROM) $(DISK_BOOT_SECTOR_BIN) \
 	$(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) $(VALID_PAYLOAD_CART)
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
+	RAINBIOS_MSX2_ROM=$(MSX2_ROM) \
 	RAINBIOS_BBC_BASIC_ROM=$(BBC_PAYLOAD_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
@@ -707,6 +717,22 @@ $(OPENMSX_MSX2_MACHINE): \
 	mkdir -p $(@D)
 	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
 		-e 's|@CBIOS_SUB_ROM@|$(abspath $(CBIOS_SUB_ROM))|' $< > $@
+
+$(OPENMSX_MSX2_SUBROM_MACHINE): \
+		tests/openmsx/RainBIOS_MSX2_SUBROM.xml.in $(MSX2_ROM) \
+		$(SUBROM_PROBE_ROM) $(SUBROM_PROBE_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
+		-e 's|@SUBROM_PROBE_ROM@|$(abspath $(SUBROM_PROBE_ROM))|' \
+		-e 's|@SUBROM_PROBE_CART@|$(abspath $(SUBROM_PROBE_CART))|' $< > $@
+
+$(SUBROM_PROBE_ROM): tests/subroms/subrom_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(SUBROM_PROBE_ROM:.rom=.sym)
+
+$(SUBROM_PROBE_CART): tests/cartridges/subrom_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(SUBROM_PROBE_CART:.rom=.sym)
 
 $(OPENMSX_SUNRISE_SYSTEM_ROM): $(SUNRISE_ROM)
 	mkdir -p $(@D)
@@ -894,6 +920,16 @@ test-openmsx-msx2: $(OPENMSX_MSX2_MACHINE)
 		-script "$(abspath tests/openmsx/msx2_probe.tcl)"
 	$(PYTHON) tools/check_msx2_probe.py $(OPENMSX_MSX2_REPORT) \
 		$(OPENMSX_MSX2_SCREEN)
+
+test-openmsx-msx2-subrom: $(OPENMSX_MSX2_SUBROM_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2_SUBROM \
+		-command "set msx2_subrom_output {$(abspath $(OPENMSX_MSX2_SUBROM_REPORT))}; set msx2_subrom_screenshot {$(abspath $(OPENMSX_MSX2_SUBROM_SCREEN))}" \
+		-script "$(abspath tests/openmsx/msx2_subrom_probe.tcl)"
+	$(PYTHON) tools/check_msx2_subrom_probe.py \
+		$(OPENMSX_MSX2_SUBROM_REPORT)
 
 test-openmsx-font: $(OPENMSX_SHARE)/machines/RainBIOS_M1_RAM3.xml
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
@@ -1195,6 +1231,13 @@ test-1983-msx2: $(MSX2_ROM)
 		--screenshot "$(EMULATOR_1983_MSX2_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_MSX2_SCREEN)
+
+test-1983-msx2-subrom: $(MSX2_ROM) $(SUBROM_PROBE_ROM) $(SUBROM_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_msx2_subrom.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(SUBROM_PROBE_ROM)" \
+		--cartridge "$(SUBROM_PROBE_CART)"
 
 test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 	mkdir -p $(EMULATOR_1983_DIR)

@@ -280,8 +280,14 @@ ASSET_BUFFER    equ #c000
                 jp disk_getvc2                  ; 0153 GETVC2
                 jp kilbuf                       ; 0156 KILBUF
                 jp unsupported_call             ; 0159 CALBAS
+                IFDEF MSX2
+                jp subrom                       ; 015C SUBROM
+                jp extrom                       ; 015F EXTROM
+                jp chkslz                       ; 0162 CHKSLZ
+                ELSE
                 defs #015f-$,#ff
                 ret                             ; 015F MSX1 compatibility
+                ENDIF
 
 ; Keep implementation code away from the fixed ABI area.
                 defs #0200-$,#ff
@@ -3516,6 +3522,66 @@ bootstrap_msx2_register_loop:
                 dec d
                 jr nz,bootstrap_msx2_register_loop
 bootstrap_msx2_no_v9938:
+                ret
+
+; $015C SUBROM: call a routine in the SUB-ROM, documented as `push IX` then
+; `jp SUBROM`. The pushed value restores IX after the call, and the final RET
+; returns to the caller of the push sequence, mirroring the reference ABI.
+subrom:
+                call extrom
+                pop ix
+                ret
+
+; $015F EXTROM: call the SUB-ROM routine at IX through CALSLT using the slot
+; published in EXBRSA. The caller's alternate registers and IY are preserved,
+; the SUB-ROM routine receives the caller's normal registers, and the
+; interrupt state active at entry is restored on return (CALSLT disables
+; interrupts during the transfer).
+extrom:
+                ex af,af'
+                exx
+                push af                         ; save alternate AF
+                push bc                         ; save alternate BC
+                push de                         ; save alternate DE
+                push hl                         ; save alternate HL
+                ld a,i
+                push af                         ; IFF2 snapshot in P/V
+                exx
+                push iy
+                ld a,(EXBRSA)
+                push af
+                pop iy                          ; IYH = SUB-ROM slot ID
+                ex af,af'
+                call calslt
+                pop iy
+                ex af,af'
+                exx
+                pop af
+                jp po,extrom_restore_interrupts
+                ei
+extrom_restore_interrupts:
+                pop hl
+                pop de
+                pop bc
+                pop af
+                exx
+                ex af,af'
+                ret
+
+; $0162 CHKSLZ: scan primary and expanded slots for the standard "CD" SUB-ROM
+; signature and republish the discovered slot in EXBRSA. Carry is set when a
+; SUB-ROM is found and cleared otherwise, matching the documented contract.
+chkslz:
+                call v9938_subrom_present
+                jr nz,chkslz_not_found
+                ld a,e
+                ld (EXBRSA),a
+                scf
+                ret
+chkslz_not_found:
+                xor a
+                ld (EXBRSA),a
+                or a                            ; clear carry
                 ret
 ENDIF
 
