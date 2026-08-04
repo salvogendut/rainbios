@@ -60,7 +60,7 @@ def main() -> int:
         "600",
         "--dump-state",
         "--dump-ram",
-        "0xF400:0x9",
+        "0xF400:0x19",
     ]
     result = subprocess.run(
         command,
@@ -74,7 +74,7 @@ def main() -> int:
 
     try:
         ram = parse_ram_dump(result.stdout)
-        results = [ram.get(0xF400 + i) for i in range(9)]
+        results = [ram.get(0xF400 + i) for i in range(25)]
         for index, value in enumerate(results):
             if value != 0x07:
                 raise ValueError(
@@ -90,7 +90,7 @@ def main() -> int:
 
     print(
         "validated BIOS stub safe-return contract: "
-        "all 9 documented stubs set carry and preserve A/BC/DE/HL"
+        "all 25 documented stubs set carry and preserve A/BC/DE/HL"
     )
     return 0
 

@@ -143,7 +143,7 @@ make test-1983 \
 | `test-1983` | MSX1 stack, RAM page map, and rendered boot frame |
 | `test-1983-expanded` | NMS 8250 expanded-slot RAM layout |
 | `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
-| `test-1983-stubs` | BIOS stub safe-return contract: each of the 9 M6 stubs (SYNCHR/CHRGTR/GETYPR/INITIO/STRTMS/LFTQ/PUTQ/CNVCHR/CALBAS) sets carry and preserves A/BC/DE/HL via CALSLT |
+| `test-1983-stubs` | BIOS stub safe-return contract: all 25 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/LPTOUT/LPTSTT/CNVCHR/LFTQ/PUTQ and the SCALXY..CHGSND group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
 | `test-1983-bbcbasic` | BBC BASIC menu launch, banner, prompt, and runtime state |
 | `test-1983-embedded-basic` | No-cartridge automatic launch of the embedded payload and clean top-of-screen banner/prompt |
 | `test-1983-msx2` | MSX2 main-ROM boot on the `msx2` model with the C-BIOS SUB-ROM: generation byte, `EXBRSA=83h`, `RG8SAV=08h`, and rendered boot frame |

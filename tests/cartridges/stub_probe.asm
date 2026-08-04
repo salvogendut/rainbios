@@ -8,21 +8,41 @@
 ;   bit 0 = carry set on return (scf contract)
 ;   bit 1 = BC/DE/HL preserved
 ;   bit 2 = A restored to the pre-call value
+;
+; NMI (0066h) is deliberately excluded: it is an interrupt return (`retn`),
+; not a callable subroutine with the scf; ret contract.
 
 CALSLT          equ #001c
 BIOSSLT         equ #fcc0
 
 SYNCHR          equ #0008
 CHRGTR          equ #0010
+OUTDO           equ #0018
 GETYPR          equ #0028
 INITIO          equ #003b
 STRTMS          equ #0099
+LPTOUT          equ #00a5
+LPTSTT          equ #00a8
+CNVCHR          equ #00ab
 LFTQ            equ #00f6
 PUTQ            equ #00f9
-CNVCHR          equ #00ab
+SCALXY          equ #010e
+MAPXY           equ #0111
+FETCHC          equ #0114
+STOREC          equ #0117
+SETATR          equ #011a
+READC           equ #011d
+SETC            equ #0120
+NSETCX          equ #0123
+GTASPC          equ #0126
+PNTINI          equ #0129
+SCANR           equ #012c
+SCANL           equ #012f
+CHGCAP          equ #0132
+CHGSND          equ #0135
 CALBAS          equ #0159
 
-ENTRY_COUNT     equ 9
+ENTRY_COUNT     equ 25
 
                 org #4000
 
@@ -126,12 +146,29 @@ stub_probe_spin:
 entry_table:
                 dw SYNCHR
                 dw CHRGTR
+                dw OUTDO
                 dw GETYPR
                 dw INITIO
                 dw STRTMS
+                dw LPTOUT
+                dw LPTSTT
+                dw CNVCHR
                 dw LFTQ
                 dw PUTQ
-                dw CNVCHR
+                dw SCALXY
+                dw MAPXY
+                dw FETCHC
+                dw STOREC
+                dw SETATR
+                dw READC
+                dw SETC
+                dw NSETCX
+                dw GTASPC
+                dw PNTINI
+                dw SCANR
+                dw SCANL
+                dw CHGCAP
+                dw CHGSND
                 dw CALBAS
 
 ; ---- page-3 work area ----
