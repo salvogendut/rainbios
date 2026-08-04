@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<!--
+  SPDX-License-Identifier: BSD-2-Clause
+
+  V9938 integration fixture adapted from the C-BIOS 0.29a openMSX MSX2
+  configuration, extended with the RainBIOS SUB-ROM and a primary-slot-1
+  probe cartridge for the bitmap/palette/VRAM services, with the V9938
+  configured with 64 KiB VRAM to validate the firmware at the smaller
+  configuration. See LICENSES/CBIOS.txt and docs/REFERENCES.md.
+-->
+<!DOCTYPE msxconfig SYSTEM "msxconfig2.dtd">
+<msxconfig>
+  <info>
+    <manufacturer>RainBIOS contributors</manufacturer>
+    <code>RainBIOS-M2-SERVICES-64K</code>
+    <release_year>2026</release_year>
+    <description>RainBIOS MSX2 main-ROM + SUB-ROM services fixture (64 KiB VRAM)</description>
+    <type>MSX2</type>
+  </info>
+
+  <devices>
+    <primary slot="0">
+      <ROM id="RainBIOS MSX2 Main ROM">
+        <mem base="0x0000" size="0x8000"/>
+        <rom>
+          <filename>@RAINBIOS_ROM@</filename>
+        </rom>
+      </ROM>
+    </primary>
+
+    <primary slot="1">
+      <ROM id="SUB-ROM services probe cartridge">
+        <mem base="0x0000" size="0x8000"/>
+        <rom>
+          <filename>@SUBROM_64K_PROBE_CART@</filename>
+        </rom>
+      </ROM>
+    </primary>
+
+    <primary external="true" slot="2"/>
+
+    <primary slot="3">
+      <secondary slot="0">
+        <ROM id="RainBIOS SUB-ROM">
+          <mem base="0x0000" size="0x4000"/>
+          <rom>
+            <filename>@MSX2_SUB_ROM@</filename>
+          </rom>
+        </ROM>
+      </secondary>
+
+      <secondary slot="2">
+        <MemoryMapper id="Main RAM">
+          <mem base="0x0000" size="0x10000"/>
+          <size>512</size>
+        </MemoryMapper>
+      </secondary>
+    </primary>
+
+    <PPI id="ppi">
+      <io base="0xA8" num="4"/>
+      <sound>
+        <volume>16000</volume>
+      </sound>
+      <key_ghosting>false</key_ghosting>
+      <keyboard_type>int</keyboard_type>
+      <has_keypad>true</has_keypad>
+      <code_kana_locks>false</code_kana_locks>
+      <graph_locks>false</graph_locks>
+    </PPI>
+
+    <VDP id="VDP">
+      <io base="0x98" num="4" type="O"/>
+      <io base="0x98" num="2" type="I"/>
+      <version>V9938</version>
+      <vram>64</vram>
+    </VDP>
+
+    <PSG id="PSG">
+      <type>YM2149</type>
+      <ignorePortDirections>false</ignorePortDirections>
+      <io base="0xA0" num="2" type="O"/>
+      <io base="0xA2" num="1" type="I"/>
+      <sound>
+        <volume>21000</volume>
+      </sound>
+    </PSG>
+
+    <RTC id="Real time clock">
+      <io base="0xB4" num="2" type="O"/>
+      <io base="0xB5" num="1" type="I"/>
+      <sramname>rainbios-msx2-64k.cmos</sramname>
+    </RTC>
+  </devices>
+</msxconfig>

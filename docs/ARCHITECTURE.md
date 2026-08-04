@@ -174,6 +174,13 @@ General SUB-ROM dispatch for the disk-file transfer commands, bitmap modes
 10-12, and 64/128 KiB configuration validation remains pending M5 work, and
 the MSX1 ROM keeps its `015F` compatibility return.
 
+The M5 fifth slice validates the firmware on a 64 KiB VRAM V9938
+(`test-openmsx-msx2-64k`) with an openMSX fixture, CHGMOD Screens 5/8, and
+even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range.
+openMSX's 64 KiB V9938 model is known to mishandle CPU VRAM access to odd
+addresses (openMSX issue #1157), so the 64 KiB gate exercises the even-address
+range; the 128 KiB gates cover every address.
+
 M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated
 into the standard 40-byte circular `KEYBUF`. `CHSNS` tests its read/write

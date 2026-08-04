@@ -380,10 +380,17 @@ move pixels between RAM and VRAM through the LMMC/LMCM CPU-transfer handshake
 (reading/writing R44 and status 7 with the mode's pixel packing), and
 `REDCLK`/`WRTCLK` read and write RTC registers through the `B4h`/`B5h` ports.
 Dedicated 1983 and openMSX probes call all five entries and validate the
-copied VRAM bytes, the BLTMV header/pixels, and the RTC round trip. The
-disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`), screen 10-12,
-and explicit 64 KiB vs 128 KiB configuration validation remain follow-up M5
-work.
+copied VRAM bytes, the BLTMV header/pixels, and the RTC round trip.
+
+M5E validates the firmware on a 64 KiB VRAM machine (`test-openmsx-msx2-64k`),
+reusing an openMSX fixture with a 64 KiB V9938, CHGMOD Screens 5/8, and
+even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range.
+Note that openMSX's V9938 64 KiB model has a known inaccuracy for CPU VRAM
+access to odd addresses (openMSX issue #1157), so the 64 KiB gate exercises
+the even-address range; the 128 KiB gates already cover every address.
+
+The disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) and screen
+10-12 remain follow-up M5 work.
 
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;
