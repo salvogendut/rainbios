@@ -368,6 +368,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-embedded-basic \
 	test-1983-cartridge test-external-cartridges \
+	test-1983-stubs \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
@@ -815,6 +816,12 @@ $(SUBROM_64K_PROBE_CART): \
 		tests/cartridges/subrom_64k_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(SUBROM_64K_PROBE_CART:.rom=.sym)
+
+STUB_PROBE_CART := $(BUILD_DIR)/cartridges/stub_probe.rom
+
+$(STUB_PROBE_CART): tests/cartridges/stub_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(STUB_PROBE_CART:.rom=.sym)
 
 SUBROM_CMDCLOCK_PROBE_CART := \
 	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.rom
@@ -1385,6 +1392,12 @@ test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 		--screenshot "$(EMULATOR_1983_CART_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_CART_SCREEN)
+
+test-1983-stubs: $(MSX1_ROM) $(STUB_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_stub_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(STUB_PROBE_CART)"
 
 test-1983-bbcbasic: $(MSX1_ROM) $(BBC_BASIC_ROM) $(MENU_INPUT_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
