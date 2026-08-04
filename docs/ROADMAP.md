@@ -364,6 +364,27 @@ compatibility return and remains byte-identical. Bitmap modes, palette, VDP
 commands, clock, and extended VRAM that run *inside* the SUB-ROM remain
 follow-up M5 work.
 
+M5C adds a RainBIOS-owned SUB-ROM (`src/main_msx2_sub.asm`, built as
+`build/rainbios_msx2_sub.rom`). It carries the standard `CD` header and the
+documented SUB-ROM fixed-entry layout and provides the extended VDP services
+through the `EXTROM` dispatch: `CHGMOD` for bitmap screens 5/6/7/8 with
+table-base work-area publication and a full bitmap clear, the palette calls
+`INIPLT`/`RSTPLT`/`GETPLT`/`SETPLT` over the V9938 latch with a VRAM palette
+store, `WRTVDP`/`VDPSTA`, and 16-bit `WRTVRM`/`RDVRM` covering the full
+128 KiB range. Dedicated 1983 and openMSX probes call all three entry groups
+and validate the observable VDP registers, work area, VRAM, and palette.
+
+M5D adds the VDP command transfers and the real-time clock to the SUB-ROM.
+`BLTVV` copies a VRAM rectangle through the LMMM command, `BLTVM`/`BLTMV`
+move pixels between RAM and VRAM through the LMMC/LMCM CPU-transfer handshake
+(reading/writing R44 and status 7 with the mode's pixel packing), and
+`REDCLK`/`WRTCLK` read and write RTC registers through the `B4h`/`B5h` ports.
+Dedicated 1983 and openMSX probes call all five entries and validate the
+copied VRAM bytes, the BLTMV header/pixels, and the RTC round trip. The
+disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`), screen 10-12,
+and explicit 64 KiB vs 128 KiB configuration validation remain follow-up M5
+work.
+
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;
 - implement bitmap modes, palette, commands, clock, and extended VRAM calls;

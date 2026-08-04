@@ -19,7 +19,13 @@ reviewable.
   solely as open-source integration-fixture inputs; later, the `002Dh` MSX
   version byte value (`MODEL_MSX2 = 1`), the `EXBRSA` (`FAF8h`) system
   variable, and the `SUBROM`/`EXTROM`/`CHKSLZ` calling behavior at `015Ch`,
-  `015Fh`, and `0162h` for the M5A/M5B MSX2 main-ROM builds
+  `015Fh`, and `0162h` for the M5A/M5B MSX2 main-ROM builds; later, the
+  SUB-ROM fixed-entry layout, `CHGMOD` register programming, the V9938 palette
+  latch protocol, and the 16-bit VRAM access in `src/sub.asm`/`src/video.asm`
+  for the M5C RainBIOS SUB-ROM; later, the `BLTVV`/`BLTVM`/`BLTMV` command
+  register programming, the LMMC/LMCM CPU-transfer handshake, and the
+  `REDCLK`/`WRTCLK` RTC port protocol in `src/sub.asm` for the M5D RainBIOS
+  SUB-ROM slice
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
 - Excluded: copying or adapting device or service implementation routines,

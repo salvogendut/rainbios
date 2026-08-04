@@ -98,6 +98,8 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 without changing the isolated image copy |
 | `test-openmsx-msx2` | MSX2 main-ROM boot on a V9938 machine with the C-BIOS SUB-ROM: generation byte, `EXBRSA`, R8-R23 shadows, and rendered boot frame |
 | `test-openmsx-msx2-subrom` | MSX2 SUB-ROM calling contract into a fixture SUB-ROM: `SUBROM`/`EXTROM`/`CHKSLZ` markers and the SUB-ROM spin PC |
+| `test-openmsx-msx2-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8, palette GETPLT, 16-bit WRTVRM/RDVRM, and VDP registers |
+| `test-openmsx-msx2-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
 | `test-openmsx-font` | Printable project-owned font coverage |
 | `test-openmsx-cls` | Screen 0/1/2/3 clearing and cursor state |
 
@@ -144,6 +146,8 @@ make test-1983 \
 | `test-1983-embedded-basic` | No-cartridge automatic launch of the embedded payload and clean top-of-screen banner/prompt |
 | `test-1983-msx2` | MSX2 main-ROM boot on the `msx2` model with the C-BIOS SUB-ROM: generation byte, `EXBRSA=83h`, `RG8SAV=08h`, and rendered boot frame |
 | `test-1983-msx2-subrom` | MSX2 SUB-ROM calling contract into a fixture SUB-ROM: CHKSLZ carry/EXBRSA, EXTROM write marker, SUBROM write marker, and the SUB-ROM spin PC |
+| `test-1983-msx2-subrom-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8 SCRMOD and table bases, palette SETPLT/GETPLT, and 16-bit WRTVRM/RDVRM |
+| `test-1983-msx2-subrom-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
 | `test-1983-bbcbasic-graphics` | Independently rendered Graphics II workload |
 | `test-1983-tape` | Raw cassette fixture through public `TAP*` calls |
 | `test-1983-bbcbasic-tape` | BBC BASIC cassette LOAD/RUN path |

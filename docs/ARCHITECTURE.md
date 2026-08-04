@@ -9,7 +9,7 @@ that missing behavior is visible and testable.
 | --- | ---: | ---: | --- |
 | MSX1 main ROM | `0000h-7FFFh` | 32 KiB | Lower-bank firmware/assets plus source-built page-1 BASIC payload |
 | MSX2 main ROM | `0000h-7FFFh` | 32 KiB | MSX1 ABI plus MSX2 dispatch and initialization |
-| MSX2 SUB-ROM | normally page 1 | 16 KiB | Extended VDP, clock, palette, and graphics ABI |
+| MSX2 SUB-ROM | normally page 1 | 16 KiB | Extended VDP, clock, palette, and graphics ABI; first slices provide bitmap modes, palette, 16-bit VRAM, block transfers, and the clock |
 | NMS 8250 disk ROM | `4000h-7FFFh` | 16 KiB | Optional read-only WD2793 PHYDIO + DSKCHG/GETDPB extension |
 
 The main and SUB-ROM targets will share implementation modules but have
@@ -148,9 +148,31 @@ the documented `push IX`/`jp SUBROM` wrapper that restores IX after the call.
 `CHKSLZ` reuses the boot `CD` scan to republish the SUB-ROM slot in `EXBRSA`,
 returning carry set when found. Dedicated 1983 and openMSX probes call all three
 entries into a fixture SUB-ROM and observe the called routine's write, the
-republished `EXBRSA`, and the carry result. General SUB-ROM dispatch for bitmap
-modes, palette, VDP commands, clock, and extended VRAM remains pending M5 work,
-and the MSX1 ROM keeps its `015F` compatibility return.
+republished `EXBRSA`, and the carry result.
+
+The M5 third slice adds the RainBIOS-owned SUB-ROM
+(`src/main_msx2_sub.asm`, `build/rainbios_msx2_sub.rom`), a self-contained
+16 KiB extended-VDP ROM with the standard `CD` header and the documented
+fixed-entry layout. It implements `CHGMOD` for bitmap screens 5/6/7/8
+(register programming, table-base work-area publication, and a full bitmap
+clear through the VDP HMMV command), the palette calls
+`INIPLT`/`RSTPLT`/`GETPLT`/`SETPLT` over the V9938 palette latch with a VRAM
+palette store, `WRTVDP`/`VDPSTA`, and 16-bit `WRTVRM`/`RDVRM` covering the full
+128 KiB range. Because it runs in its own slot, the SUB-ROM cannot call the
+main BIOS; it performs VDP register writes, VRAM access, and the R0-R23 shadow
+updates locally.
+
+The M5 fourth slice adds the VDP command transfers and the real-time clock to
+the SUB-ROM. `BLTVV` drives the LMMM command for VRAM-to-VRAM rectangle
+copies and waits for the CE bit. `BLTVM`/`BLTMV` use the LMMC/LMCM CPU-transfer
+handshake: the CPU waits for the status-2 TR bit, then writes each pixel
+colour to R44 (`BLTVM`) or reads it from status 7 (`BLTMV`), packing pixels
+per the current screen mode (SC5/SC7 two 4-bit, SC6 four 2-bit, SC8 one 8-bit
+per byte). `REDCLK`/`WRTCLK` read and write the MSX2 clock registers through
+the `B4h`/`B5h` ports, selecting the block through the RTC mode register.
+General SUB-ROM dispatch for the disk-file transfer commands, bitmap modes
+10-12, and 64/128 KiB configuration validation remains pending M5 work, and
+the MSX1 ROM keeps its `015F` compatibility return.
 
 M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated

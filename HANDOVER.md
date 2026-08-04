@@ -27,7 +27,7 @@ discard unrelated changes in a dirty worktree.
 | NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook implemented |
 | Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | First slice built | `build/rainbios_msx2.rom` | Distinct 32 KiB build sharing the MSX1 source: MSX2 ID byte, V9938 CD-scan detection, EXBRSA publication, R8-R23 shadow baseline and WRTVDP dispatch |
-| MSX2 SUB-ROM | Not yet available | Planned 16 KiB ROM | M5 pending |
+| MSX2 SUB-ROM | Services + command/clock slices built | `build/rainbios_msx2_sub.rom` | Self-contained 16 KiB extended-VDP ROM: CHGMOD Screens 5/6/7/8, palette, WRTVDP/VDPSTA, 16-bit WRTVRM/RDVRM, BLTVV/BLTVM/BLTMV block transfers, REDCLK/WRTCLK. Disk-file transfers, screens 10-12 pending |
 
 The main BIOS and disk ROM remain separate components. `make all` builds only
 the combined main BIOS; the model-specific disk ROM is explicitly optional.
@@ -44,7 +44,15 @@ The main BIOS currently provides:
   (`make msx2-main-rom`), publishing the MSX2 generation byte, a live V9938
   `CD` scan, `EXBRSA`, a V9938 R8-R23 shadow baseline, extended-register
   `WRTVDP` dispatch, and the standard `SUBROM`/`EXTROM`/`CHKSLZ` SUB-ROM calling
-  entries; bitmap modes and general SUB-ROM dispatch remain pending M5 work;- deterministic reset, 32 KiB RAM discovery, stack/work-area initialization,
+  entries;
+- a RainBIOS-owned MSX2 SUB-ROM (`make msx2-sub-rom`,
+  `build/rainbios_msx2_sub.rom`) with the standard `CD` header and fixed-entry
+  layout, providing bitmap Screens 5/6/7/8 via `CHGMOD`, the palette calls
+  `INIPLT`/`RSTPLT`/`GETPLT`/`SETPLT`, `WRTVDP`/`VDPSTA`, 16-bit
+  `WRTVRM`/`RDVRM`, the block transfers `BLTVV`/`BLTVM`/`BLTMV`, and the clock
+  calls `REDCLK`/`WRTCLK`; the disk-file transfer commands and bitmap modes
+  10-12 remain pending M5 work;
+- deterministic reset, 32 KiB RAM discovery, stack/work-area initialization,
   and a project-owned Graphics II boot UI;
 - primary and expanded slot discovery and control, including `RDSLT`, `WRSLT`,
   `ENASLT`, `CALSLT` for page-0/page-1/page-2/page-3 targets, and inline
@@ -457,6 +465,8 @@ make test-1983-geobench-sd
 make test-1983-embedded-basic
 make test-1983-msx2
 make test-1983-msx2-subrom
+make test-1983-msx2-subrom-services
+make test-1983-msx2-subrom-cmdclock
 ```
 
 The default emulator paths expect the adjacent open-source 1983 checkout:
@@ -480,6 +490,8 @@ make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
   test-openmsx-embedded-basic \
   test-openmsx-msx2 \
   test-openmsx-msx2-subrom \
+  test-openmsx-msx2-services \
+  test-openmsx-msx2-cmdclock \
   test-openmsx-disk-fault test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
@@ -508,7 +520,7 @@ is:
 | M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
-| M5 MSX2 main BIOS/SUB-ROM | In progress | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling. Remaining: bitmap modes, palette, commands, clock, extended VRAM |
+| M5 MSX2 main BIOS/SUB-ROM | In progress | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. Remaining: disk-file transfers, bitmap modes 10-12, extended VRAM, 64/128 KiB config validation |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality |
 | M7 disk/IDE boot | In progress | Real DOS files, documented loader inputs, hardware validation |
 
@@ -542,10 +554,21 @@ standard SUB-ROM calling contract: `SUBROM` (`015Ch`), `EXTROM` (`015Fh`), and
 `CHKSLZ` (`0162h`), validated by `test-1983-msx2-subrom` and
 `test-openmsx-msx2-subrom` which call all three entries into a fixture SUB-ROM
 and observe the called routine's effect, the republished `EXBRSA=83h`, and the
-CHKSLZ carry. The next M5 slice should implement the bitmap-mode, palette, VDP
-command, clock, and extended VRAM routines that run *inside* the SUB-ROM, each
-with their own ABI updates and emulator gates. Keep the guarded Screen 7
-handoff in the MSX1 ROM independent until the MSX2 build actually replaces it.
+CHKSLZ carry. The M5 third slice adds the RainBIOS-owned SUB-ROM
+(`make msx2-sub-rom`, `build/rainbios_msx2_sub.rom`), validated by
+`test-1983-msx2-subrom-services` and `test-openmsx-msx2-services`, which call
+`EXTROM` into `CHGMOD` Screens 5/6/7/8, the palette routines, and 16-bit
+`WRTVRM`/`RDVRM` and check the observable VDP registers, work area, VRAM, and
+palette. The M5 fourth slice adds the VDP command transfers and the clock:
+`BLTVV` (LMMM), `BLTVM`/`BLTMV` (LMMC/LMCM CPU transfers), and
+`REDCLK`/`WRTCLK`, validated by `test-1983-msx2-subrom-cmdclock` and
+`test-openmsx-msx2-cmdclock`, which call `EXTROM` into all five entries and
+check the copied VRAM bytes, the BLTMV header/pixels, and the RTC round trip.
+The next M5 slices should implement the remaining SUB-ROM services
+(disk-file transfer commands `BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`, bitmap modes
+10-12) and validate 64 KiB vs 128 KiB VRAM configurations, each with their own
+ABI updates and emulator gates. Keep the guarded Screen 7 handoff in the MSX1
+ROM independent until the MSX2 build actually replaces it.
 
 The immediate floppy priority is real NMS 8250-compatible hardware validation.
 `docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ
@@ -582,6 +605,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | Path | Purpose |
 | --- | --- |
 | `src/main_msx1.asm` | Main BIOS, reset, slots, hooks, devices, console; `-DMSX2=1` builds the MSX2 variant |
+| `src/main_msx2_sub.asm` | Self-contained MSX2 SUB-ROM: bitmap Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, block transfers, clock |
 | `src/zx0_decompress.asm` | BSD-3-Clause forward ZX0 decoder used for boot/menu tables |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
@@ -599,10 +623,17 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/run_1983_embedded_basic.py` | No-cartridge combined-ROM launch probe for 1983 |
 | `tools/run_1983_msx2.py` | MSX2 main-ROM boot probe for 1983 (ID byte, EXBRSA, R8-R23) |
 | `tools/run_1983_msx2_subrom.py` | MSX2 SUB-ROM calling probe for 1983 (SUBROM/EXTROM/CHKSLZ) |
+| `tools/run_1983_msx2_subrom_services.py` | MSX2 SUB-ROM bitmap/palette/VRAM probe for 1983 |
+| `tools/run_1983_msx2_cmdclock.py` | MSX2 SUB-ROM block-transfer/clock probe for 1983 |
 | `tools/check_msx2_probe.py` | openMSX MSX2 boot report validator |
 | `tools/check_msx2_subrom_probe.py` | openMSX MSX2 SUB-ROM calling report validator |
+| `tools/check_msx2_services_probe.py` | openMSX MSX2 SUB-ROM services report validator |
+| `tools/check_msx2_cmdclock_probe.py` | openMSX MSX2 SUB-ROM command/clock report validator |
 | `tests/openmsx/msx2_probe.tcl` | openMSX MSX2 boot state and screenshot probe |
 | `tests/openmsx/msx2_subrom_probe.tcl` | openMSX MSX2 SUB-ROM calling probe |
+| `tests/openmsx/msx2_services_probe.tcl` | openMSX MSX2 SUB-ROM bitmap/palette/VRAM probe |
+| `tests/openmsx/msx2_cmdclock_probe.tcl` | openMSX MSX2 SUB-ROM block-transfer/clock probe |
+| `tests/openmsx/RainBIOS_MSX2_CMDCLOCK.xml.in` | openMSX MSX2 SUB-ROM command/clock fixture |
 | `tests/openmsx/embedded_basic_probe.tcl` | No-cartridge combined-ROM launch and ROM-write probe for openMSX |
 | `tools/check_nextor_screenshot.py` | Exact Nextor banner/prompt screenshot gate |
 | `tools/check_controller_probe.py` | Controller and mouse report validator |
