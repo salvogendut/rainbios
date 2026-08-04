@@ -573,11 +573,16 @@ target.
 - close the timing-sensitive GeoBench/openMSX rendering gap and promote that
   boot-state test to the same full-desktop geometry gate used in 1983;
 - filesystem services, formatting, floppy drive B, other controllers, writable
-  media, and real-hardware timing validation remain pending;
-- restore the Sunrise IDE bootstrap 1983 gates: `test-1983-ide-boot` observes
-  the CPU reaching unused ROM padding instead of the fixture pass label, and
-  `test-1983-ide-menu` does not return the no-medium fallback to the RainBIOS
-  menu stack; the SD Mapper paths pass.
+  media, and real-hardware timing validation remain pending.
+
+The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
+fixture pass label with the cartridge mapped in page 1 (slot `F8`), and
+`test-1983-ide-menu` returns the no-medium fallback to the RainBIOS menu stack
+with page 1 restored to `BIOSSLT` (slot `F0`), the same state the passing
+floppy and no-cartridge fallbacks produce. The earlier `FC` menu expectation
+was stale: the Sunrise IDE cartridge, unlike the SD Mapper, provides no RAM, so
+the restored menu map leaves pages 2/3 on the NMS 8250's internal RAM slot and
+page 1 on the main ROM slot.
 
 “Complete” means documented compatibility for the public interfaces and boot
 behavior; it does not mean byte identity with any existing ROM.
