@@ -265,7 +265,11 @@ new press. `INIFNK` seeds the ten default function-key strings in `FNKSTR`;
 `FNKSB`, `ERAFNK`, `DSPFNK`, and `TOTEXT` manage the `CNSDFG` display flag,
 render/erase the bottom text line, and force the text width. The openMSX
 keyboard probe covers the break latch, both stop variants, buffer clearing,
-the display-flag transitions, text-mode forcing, and auto-repeat.
+the display-flag transitions, text-mode forcing, and auto-repeat. The same
+probe characterizes the cursor/edit-key codes: pressing every row-8 key
+(SPACE/HOME/INSERT/DEL/LEFT/UP/DOWN/RIGHT) and the row-7 editing keys
+(ESC/TAB/BS/CR) makes CHGET return the standard MSX control codes from the
+Technical Handbook (`20/0B/12/7F/1D/1E/1F/1C` and `1B/09/08/0D`).
 
 M3E implements the prompt/line-input path. `PINLIN` reads keyboard input into
 `BUFFER` until Return or a Ctrl-STOP break, returning `HL = BUFFER-1`, the
