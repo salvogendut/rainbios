@@ -374,7 +374,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
 	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom \
-	check-manifest clean
+	check-manifest check-release clean
 
 all: $(MSX1_ROM)
 
@@ -425,6 +425,20 @@ $(MSX2_SUB_ROM): src/main_msx2_sub.asm | $(BUILD_DIR)
 msx2-sub-rom: $(MSX2_SUB_ROM)
 
 msx2-main-rom: $(MSX2_ROM)
+
+RELEASE_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
+RELEASE_DIR := $(BUILD_DIR)/release/$(RELEASE_VERSION)
+
+release: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
+		$(MSX1_SYM) $(MSX2_SYM) $(MSX2_SUB_SYM) $(NMS8250_DISK_ROM_SYM)
+	$(PYTHON) tools/make_release_bundle.py \
+		--build "$(BUILD_DIR)" --root "$(CURDIR)" \
+		--output "$(RELEASE_DIR)" --version "$(RELEASE_VERSION)"
+
+check-release: release
+	$(PYTHON) tools/check_release_bundle.py \
+		--bundle "$(RELEASE_DIR)" --root "$(CURDIR)" \
+		--version "$(RELEASE_VERSION)"
 
 $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -647,7 +661,7 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 
 test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
 	$(DISK_BOOT_SECTOR_BIN) $(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) \
-	$(VALID_PAYLOAD_CART)
+	$(VALID_PAYLOAD_CART) release
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
 	RAINBIOS_MSX2_ROM=$(MSX2_ROM) \
 	RAINBIOS_MSX2_SUB_ROM=$(MSX2_SUB_ROM) \
