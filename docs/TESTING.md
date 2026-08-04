@@ -144,6 +144,7 @@ make test-1983 \
 | `test-1983-expanded` | NMS 8250 expanded-slot RAM layout |
 | `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
 | `test-1983-stubs` | BIOS stub safe-return contract: all 25 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/LPTOUT/LPTSTT/CNVCHR/LFTQ/PUTQ and the SCALXY..CHGSND group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
+| `test-1983-abi-clobber` | DCOMPR flag/carry contract (HL<DE, HL==DE, HL>DE) and BC preservation; WRTPSG/RDPSG round trip through the PSG ports |
 | `check-release` | Reproducible release bundle: production ROMs, symbol files, component manifest, notices, and license texts under `build/release/`, with consistent `SHA256SUMS` and `RELEASE-NOTES.md` naming the source commit |
 | `test_spdx_export` | SPDX 2.3 JSON document in the bundle: packages match the manifest, external components pin download locations, ROM files carry build-matching SHA-256 digests, and every element is described |
 | `test-1983-bbcbasic` | BBC BASIC menu launch, banner, prompt, and runtime state |
