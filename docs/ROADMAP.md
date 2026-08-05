@@ -295,6 +295,13 @@ the PSG port-A pin (0 with no paddle), restoring R15. The keyboard probe
 checks the click bit, and the controller probe checks the no-paddle neutral
 result.
 
+`CHGCAP` (`0132h`) and `CHGSND` (`0135h`) gate the Caps-Lock lamp and the
+key-click switch. `CHGCAP` takes the new lamp state in `A` (00 = on, non-zero =
+off), drives PPI port-C bit 6, and preserves BC/DE/HL; the CAPS key handler
+routes through it so the LED stays in lockstep with `CAPST`. `CHGSND` writes
+`A` to `CLIKSW` (zero = click off, non-zero = on) preserving all registers. The
+keyboard probe covers both through CALSLT.
+
 M3H completes the editing-key behavior inside `PINLIN`/`INLIN`: the cursor
 moves left and right, Home returns to the start, typing inserts at the cursor,
 Backspace removes the character before it, and Delete removes the character
@@ -452,8 +459,8 @@ below `3000h`, so substantial new page-0 work must be a deliberate, documented
 step rather than an accidental boundary erosion.
 
 The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
-all 25 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
-LPTOUT, LPTSTT, CNVCHR, LFTQ, PUTQ, the SCALXY..CHGSND group, and CALBAS)
+all 23 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
+LPTOUT, LPTSTT, CNVCHR, LFTQ, PUTQ, the SCALXY..SCANL group, and CALBAS)
 through CALSLT with known register inputs and verifies the documented
 safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. NMI
 (0066h) is excluded: it is an interrupt return (`retn`), not a callable stub.

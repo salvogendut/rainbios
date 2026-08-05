@@ -99,8 +99,8 @@ address,name,kind,status,milestone,notes
 0129,PNTINI,jump,stub,M2,
 012C,SCANR,jump,stub,M2,
 012F,SCANL,jump,stub,M2,
-0132,CHGCAP,jump,stub,M3,
-0135,CHGSND,jump,stub,M3,
+0132,CHGCAP,jump,implemented,M3,Turns the internal Caps Lock lamp on from A=00 and off from any non-zero value via keyboard PPI port C bit 6 (0 = lamp on); preserves BC/DE/HL and only AF changes
+0135,CHGSND,jump,implemented,M3,Changes the key-click sound status: writes A to CLIKSW (F3DBh) with zero = click off and non-zero = click on; preserves all caller registers
 0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
 013B,WSLREG,jump,implemented,M1,Writes the primary-slot register while preserving all registers
 013E,RDVDP,jump,implemented,M2,Reads the VDP status register zero and mirrors it in STATFL
