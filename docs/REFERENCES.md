@@ -457,6 +457,20 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   and function-key display
 - RainBIOS use: validation harness only
 
+## 2026-08-05 — CHGCAP and CHGSND public BIOS-call contracts
+
+- Primary specification: the public MSX BIOS calls reference (map.tni.nl),
+  `CHGCAP` "Turn Caps-Lock light on/off" (`A=00` = lamp on, non-zero = lamp
+  off) and `CHGSND` "Change status of 1 bit sound port"
+- Cross-checks: the MSX2 Technical Handbook Appendix 4 work-area list (`CLIKSW`
+  at `F3DBh`, `CAPST` at `FCABh`) already cited above, and the keyboard PPI
+  port-C bit layout (bit 6 = lamp, bit 7 = click) from the MSX Technical Data
+  Book
+- Purpose: define the M3 basic-device `CHGCAP`/`CHGSND` externally observable
+  behavior and register-preservation contract
+- RainBIOS use: interface and externally observable behavior facts only; the
+  implementations in `src/main_msx1.asm` are original RainBIOS work
+
 ## 2026-08-02 — Line-input and BEEP contracts
 
 - Primary specification: MSX2 Technical Handbook Appendix 1 (`PINLIN`,

@@ -50,7 +50,7 @@ address,name,kind,status,milestone,notes
 0096,RDPSG,jump,partial,M3,Verified by test-1983-abi-clobber: reads PSG register A into A; WRTPSG/RDPSG round trip
 0099,STRTMS,jump,stub,M3,
 009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register; verified by test-1983-kbd (zero when empty, nonzero when data present)
-009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; cursor and remaining lock-state behavior are pending; char/register/pointer behavior verified by test-1983-kbd
+009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; the standard MSX cursor/edit-key codes (SPACE=20 HOME=0B INS=12 DEL=7F LEFT=1D UP=1E DOWN=1F RIGHT=1C ESC=1B TAB=09 BS=08 CR=0D) are verified by test-openmsx-keyboard; char/register/pointer behavior verified by test-1983-kbd
 00A2,CHPUT,jump,implemented,M2,Screen 0/1 text and Screen 2 glyph output plus backspace, tab, CR, LF, cursor-up, form feed, wrap, and scroll
 00A5,LPTOUT,jump,stub,M3,
 00A8,LPTSTT,jump,stub,M3,
@@ -99,12 +99,12 @@ address,name,kind,status,milestone,notes
 0129,PNTINI,jump,stub,M2,
 012C,SCANR,jump,stub,M2,
 012F,SCANL,jump,stub,M2,
-0132,CHGCAP,jump,stub,M3,
-0135,CHGSND,jump,stub,M3,
+0132,CHGCAP,jump,implemented,M3,Turns the internal Caps Lock lamp on from A=00 and off from any non-zero value via keyboard PPI port C bit 6 (0 = lamp on); preserves BC/DE/HL and only AF changes
+0135,CHGSND,jump,implemented,M3,Changes the key-click sound status: writes A to CLIKSW (F3DBh) with zero = click off and non-zero = click on; preserves all caller registers
 0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
 013B,WSLREG,jump,implemented,M1,Writes the primary-slot register while preserving all registers
 013E,RDVDP,jump,implemented,M2,Reads the VDP status register zero and mirrors it in STATFL
-0141,SNSMAT,jump,partial,M3,Reads active-low matrix rows through the PPI and changes AF/C; broader hardware tests remain
+0141,SNSMAT,jump,partial,M3,Reads active-low matrix rows 0-9 through the PPI; A returns the complement of the pressed bits (row 6 has only four keys), C holds the masked row selector, and B/DE/HL are preserved; every row verified by test-openmsx-keyboard
 0144,PHYDIO,jump,partial,M6,Calls the H_PHYD hook when present; read-only-safe default reports no backend
 0147,FORMAT,jump,partial,M6,Calls the H_FORM hook when present; read-only-safe default reports no backend
 014A,ISFLIO,jump,partial,M6,Calls H_ISFL if present; read-only-safe default reports no active I/O

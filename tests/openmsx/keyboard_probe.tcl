@@ -383,6 +383,99 @@ proc click_low {} {
     keymatrixup 2 0x40
     record_keyboard [format "CLICK2=%02X" \
         [expr {[debug read "ioports" 0xAA] & 0xFF}]]
+    # M3 cursor/edit-key contract: pressing every row-8 key together enqueues
+    # SPACE/HOME/INSERT/DEL/LEFT/UP/DOWN/RIGHT in bit order, and CHGET returns
+    # the standard MSX control codes (MSX2 Technical Handbook Appendix 8).
+    invoke_bios 0x0156 cursor_edit_kilbuf
+}
+
+proc cursor_edit_kilbuf {} {
+    keymatrixdown 8 0xFF
+    after time 0.05 {keymatrixup 8 0xFF}
+    after time 0.10 cursor_edit_read
+}
+
+proc cursor_edit_read {} {
+    invoke_bios 0x009F [list cursor_edit_read_cb 0]
+}
+
+proc cursor_edit_read_cb {index} {
+    record_keyboard [format "CURSOR%02X=%02X" $index [reg A]]
+    incr index
+    if {$index < 8} {
+        invoke_bios 0x009F [list cursor_edit_read_cb $index]
+    } else {
+        edit_keys_start
+    }
+}
+
+proc edit_keys_start {} {
+    # Row 7 editing keys ESC/TAB/BS/CR (bits 2/3/5/7) give 1B/09/08/0D.
+    # STOP (bit 4) is deliberately excluded: it latches a break.
+    invoke_bios 0x0156 edit_keys_kilbuf
+}
+
+proc edit_keys_kilbuf {} {
+    keymatrixdown 7 0xAC
+    after time 0.05 {keymatrixup 7 0xAC}
+    after time 0.10 edit_keys_read
+}
+
+proc edit_keys_read {} {
+    invoke_bios 0x009F [list edit_keys_read_cb 0]
+}
+
+proc edit_keys_read_cb {index} {
+    record_keyboard [format "EDIT%02X=%02X" $index [reg A]]
+    incr index
+    if {$index < 4} {
+        invoke_bios 0x009F [list edit_keys_read_cb $index]
+    } else {
+        snsmat_kilbuf
+    }
+}
+
+proc snsmat_kilbuf {} {
+    # M3 SNSMAT: read every matrix row back active-low through the PPI. Each
+    # record holds A (the active-low byte), C (the masked row selector), and
+    # sentinel B/DE/HL to prove that only A and C change. Rows 6 (four keys)
+    # and 7 (editing keys) use masks that avoid the CAPS/GRAPH and STOP lock
+    # edges; the other full rows prove the complement of every press.
+    set ::snsmat_rows {
+        {0 0xFF} {1 0x81} {2 0x42} {3 0xFF} {4 0xFF}
+        {5 0xFF} {6 0x0F} {7 0xAC} {8 0xFF} {9 0xFF}
+    }
+    set ::snsmat_index 0
+    invoke_bios 0x0156 snsmat_press
+}
+
+proc snsmat_press {} {
+    lassign [lindex $::snsmat_rows $::snsmat_index] row mask
+    keymatrixdown $row $mask
+    after time 0.05 [list snsmat_sample $row $mask]
+}
+
+proc snsmat_sample {row mask} {
+    reg A $row
+    reg BC 0x3355
+    reg DE 0x1234
+    reg HL 0xABCD
+    invoke_bios 0x0141 [list snsmat_sampled $row $mask]
+}
+
+proc snsmat_sampled {row mask} {
+    record_keyboard [format "SNSMAT%02X=%02X,%02X,%04X,%04X,%04X" \
+        $row [reg A] [reg C] [reg BC] [reg DE] [reg HL]]
+    keymatrixup $row $mask
+    incr ::snsmat_index
+    if {$::snsmat_index < [llength $::snsmat_rows]} {
+        after time 0.05 snsmat_press
+    } else {
+        invoke_bios 0x0156 snsmat_release_done
+    }
+}
+
+proc snsmat_release_done {} {
     # M3 GICINI: after the PSG registers, the PLAY statement work area is
     # initialized (QUEUES -> QUETAB, interpreter free, counters and voice
     # queues cleared).

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 """Boot the MSX1 main ROM in 1983 with the keyboard probe and validate the
-CHSNS, CHGET, and KILBUF contracts."""
+CHSNS, CHGET, KILBUF, CHGCAP, and CHGSND contracts."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def main() -> int:
         "600",
         "--dump-state",
         "--dump-ram",
-        "0xF380:0x8",
+        "0xF380:0xD",
     ]
     result = subprocess.run(
         command,
@@ -75,6 +75,11 @@ def main() -> int:
             "chget_regs": ram.get(0xF384),
             "chget_ptr": ram.get(0xF385),
             "chsns_after": ram.get(0xF386),
+            "chgcap_on": ram.get(0xF388),
+            "chgcap_regs": ram.get(0xF389),
+            "chgsnd_on": ram.get(0xF38A),
+            "chgsnd_off": ram.get(0xF38B),
+            "chgsnd_regs": ram.get(0xF38C),
             "pass": ram.get(0xF387),
         }
         for name, value in markers.items():
@@ -92,7 +97,8 @@ def main() -> int:
     print(
         "validated keyboard contracts: "
         "CHSNS empty/data, CHGET char + BC/DE/HL preserved + pointer advance, "
-        "KILBUF reset"
+        "KILBUF reset, CHGCAP lamp on + BC/DE/HL preserved, "
+        "CHGSND click on/off + BC/DE/HL preserved"
     )
     return 0
 

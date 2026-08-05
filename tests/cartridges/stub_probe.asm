@@ -10,7 +10,8 @@
 ;   bit 2 = A restored to the pre-call value
 ;
 ; NMI (0066h) is deliberately excluded: it is an interrupt return (`retn`),
-; not a callable subroutine with the scf; ret contract.
+; not a callable subroutine with the scf; ret contract. CHGCAP (0132h) and
+; CHGSND (0135h) were implemented in M3 and are covered by their own ABI probe.
 
 CALSLT          equ #001c
 BIOSSLT         equ #fcc0
@@ -38,11 +39,9 @@ GTASPC          equ #0126
 PNTINI          equ #0129
 SCANR           equ #012c
 SCANL           equ #012f
-CHGCAP          equ #0132
-CHGSND          equ #0135
 CALBAS          equ #0159
 
-ENTRY_COUNT     equ 25
+ENTRY_COUNT     equ 23
 
                 org #4000
 
@@ -167,8 +166,6 @@ entry_table:
                 dw PNTINI
                 dw SCANR
                 dw SCANL
-                dw CHGCAP
-                dw CHGSND
                 dw CALBAS
 
 ; ---- page-3 work area ----

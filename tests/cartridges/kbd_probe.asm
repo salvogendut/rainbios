@@ -5,9 +5,14 @@
 ;   CHGET (009Fh)  wait for and remove one buffered character, preserving
 ;                  BC/DE/HL
 ;   KILBUF (0156h) empty the standard key buffer
+;   CHGCAP (0132h) set the CAPS lamp from A (00 = lamp on, non-00 = lamp off)
+;                  on keyboard PPI port-C bit 6, preserving BC/DE/HL
+;   CHGSND (0135h) set the key-click switch from A (00 = click off, non-00 =
+;                  click on) through CLIKSW, preserving BC/DE/HL
 ; The probe injects a character directly into KEYBUF, sets PUTPNT/GETPNT, and
 ; calls each entry through CALSLT into the BIOS slot, recording observable
-; markers for the host runner.
+; markers for the host runner. CHGCAP is verified by reading the keyboard
+; lamp port back so only bit 6 changes; CHGSND by reading CLIKSW.
 
 CALSLT          equ #001c
 BIOSSLT         equ #fcc0
@@ -15,11 +20,18 @@ BIOSSLT         equ #fcc0
 CHSNS           equ #009c
 CHGET           equ #009f
 KILBUF          equ #0156
+CHGCAP          equ #0132
+CHGSND          equ #0135
 
+PPI_CONTROL_C   equ #aa
+CLIKSW          equ #f3db
 PUTPNT          equ #f3f8
 GETPNT          equ #f3fa
 KEYBUF          equ #fbf0
 KEYBUF_END      equ #fc18
+
+; The CAPS lamp is keyboard PPI port-C bit 6: 0 = lamp on, 1 = lamp off.
+CAPS_LAMP_BIT   equ #40
 
                 org #4000
 
@@ -124,6 +136,115 @@ kbd_chget_after:
 kbd_after_empty:
                 ld (marker_chsns_after),a
 
+                ; --- CHGCAP with A=0 turns the CAPS lamp on (bit 6 clear).
+                ld a,#5a
+                ld b,#a5
+                ld c,#5a
+                ld d,#a5
+                ld e,#5a
+                ld h,#a5
+                ld l,#5a
+                xor a
+                call call_chgcap
+                in a,(PPI_CONTROL_C)
+                and CAPS_LAMP_BIT
+                jr z,kbd_chgcap_on_ok
+                xor a
+                ld (marker_chgcap_on),a
+                jr kbd_chgcap_on_regs
+kbd_chgcap_on_ok:
+                ld a,1
+                ld (marker_chgcap_on),a
+kbd_chgcap_on_regs:
+                ld a,b
+                cp #a5
+                jr nz,kbd_chgcap_on_regs_bad
+                ld a,c
+                cp #5a
+                jr nz,kbd_chgcap_on_regs_bad
+                ld a,d
+                cp #a5
+                jr nz,kbd_chgcap_on_regs_bad
+                ld a,e
+                cp #5a
+                jr nz,kbd_chgcap_on_regs_bad
+                ld a,h
+                cp #a5
+                jr nz,kbd_chgcap_on_regs_bad
+                ld a,l
+                cp #5a
+                jr nz,kbd_chgcap_on_regs_bad
+                ld a,1
+                ld (marker_chgcap_regs),a
+                jr kbd_chgsnd
+kbd_chgcap_on_regs_bad:
+                xor a
+                ld (marker_chgcap_regs),a
+
+                ; --- CHGSND with a non-zero flag turns the click on (CLIKSW
+                ;     becomes non-zero); with zero it turns the click off.
+kbd_chgsnd:
+                ld b,#a5
+                ld c,#5a
+                ld d,#a5
+                ld e,#5a
+                ld h,#a5
+                ld l,#5a
+                ld a,1
+                call call_chgsnd
+                ld a,(CLIKSW)
+                or a
+                jr nz,kbd_chgsnd_on_ok
+                xor a
+                ld (marker_chgsnd_on),a
+                jr kbd_chgsnd_regs
+kbd_chgsnd_on_ok:
+                ld a,1
+                ld (marker_chgsnd_on),a
+kbd_chgsnd_regs:
+                ld b,#a5
+                ld c,#5a
+                ld d,#a5
+                ld e,#5a
+                ld h,#a5
+                ld l,#5a
+                xor a
+                call call_chgsnd
+                ld a,(CLIKSW)
+                or a
+                jr nz,kbd_chgsnd_off_bad
+                ld a,1
+                ld (marker_chgsnd_off),a
+                jr kbd_chgsnd_regs_check
+kbd_chgsnd_off_bad:
+                xor a
+                ld (marker_chgsnd_off),a
+kbd_chgsnd_regs_check:
+                ld a,b
+                cp #a5
+                jr nz,kbd_chgsnd_regs_bad
+                ld a,c
+                cp #5a
+                jr nz,kbd_chgsnd_regs_bad
+                ld a,d
+                cp #a5
+                jr nz,kbd_chgsnd_regs_bad
+                ld a,e
+                cp #5a
+                jr nz,kbd_chgsnd_regs_bad
+                ld a,h
+                cp #a5
+                jr nz,kbd_chgsnd_regs_bad
+                ld a,l
+                cp #5a
+                jr nz,kbd_chgsnd_regs_bad
+                ld a,1
+                ld (marker_chgsnd_regs),a
+                jr kbd_done
+kbd_chgsnd_regs_bad:
+                xor a
+                ld (marker_chgsnd_regs),a
+
 kbd_done:
                 ld a,1
                 ld (pass_marker),a
@@ -145,6 +266,16 @@ call_kilbuf:
                 ld ix,KILBUF
                 jr abi_callslt
 
+call_chgcap:
+                push ix
+                ld ix,CHGCAP
+                jr abi_callslt_arg
+
+call_chgsnd:
+                push ix
+                ld ix,CHGSND
+                jr abi_callslt_arg
+
 abi_callslt:
                 push iy
                 ld a,(bios_slot)
@@ -152,6 +283,25 @@ abi_callslt:
                 ld iyh,a
                 call CALSLT
                 pop iy
+                pop ix
+                ret
+
+; CALSLT variant for entries that read their argument from A. The caller's
+; AF/BC/DE/HL inputs are parked on the stack while the slot is loaded into
+; IY, then restored before the call so the target receives the real values.
+abi_callslt_arg:
+                push af
+                push bc
+                push de
+                push hl
+                ld a,(bios_slot)
+                ld iy,0
+                ld iyh,a
+                pop hl
+                pop de
+                pop bc
+                pop af
+                call CALSLT
                 pop ix
                 ret
 
@@ -163,6 +313,11 @@ marker_chget_char equ #f383
 marker_chget_regs equ #f384
 marker_chget_ptr equ #f385
 marker_chsns_after equ #f386
+marker_chgcap_on equ #f388
+marker_chgcap_regs equ #f389
+marker_chgsnd_on equ #f38a
+marker_chgsnd_off equ #f38b
+marker_chgsnd_regs equ #f38c
 pass_marker     equ #f387
 
                 defs #8000-$,#ff

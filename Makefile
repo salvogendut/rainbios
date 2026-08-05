@@ -1605,7 +1605,7 @@ test-1983-ide-menu: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 		--disk-rom "$(NMS8250_DISK_ROM)" \
 		--sunrise-rom "$(SUNRISE_ROM)" \
 		--paste-at 180 --paste-text " 3" \
-		--expect-fallback --expected-slot FC --exit-after 1200 \
+		--expect-fallback --expected-slot F0 --exit-after 1200 \
 		--screenshot "$(EMULATOR_1983_IDE_MENU_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 --min-colors 2 --foreground-box 64,224,576,240 \

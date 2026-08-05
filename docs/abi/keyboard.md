@@ -100,6 +100,20 @@ With `CLIKSW` (`F3DBh`) nonzero, each new key press drives the 1-bit click
 line (PPI port-C bit 7) high for a couple of frames. The keyboard probe
 verifies the click bit fires and returns to low.
 
+## Caps Lock lamp and key-click switch (M3)
+
+`CHGCAP` (`0132h`) turns the internal Caps Lock lamp on or off from `A`:
+`A=00` lights it and any non-zero value turns it off, driving keyboard PPI
+port-C bit 6 (0 = lamp on, 1 = lamp off). The call preserves `BC/DE/HL` and
+only `AF` may change. The CAPS key handler routes through `CHGCAP`, so the
+lamp stays in lockstep with the lock state in `CAPST` (`FCABh`).
+
+`CHGSND` (`0135h`) changes the key-click status by writing `A` to `CLIKSW`
+(`F3DBh`): zero disables the click and non-zero enables it. The call preserves
+every caller register. The keyboard probe verifies both directions through
+`CALSLT`, including `BC/DE/HL` preservation, and the lamp is checked by
+reading PPI port-C back.
+
 ## PSG and PLAY work-area initialization (M3)
 
 `GICINI` (`0090h`) programs the PSG registers R0-R15 and then initializes

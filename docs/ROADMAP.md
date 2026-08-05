@@ -265,7 +265,15 @@ new press. `INIFNK` seeds the ten default function-key strings in `FNKSTR`;
 `FNKSB`, `ERAFNK`, `DSPFNK`, and `TOTEXT` manage the `CNSDFG` display flag,
 render/erase the bottom text line, and force the text width. The openMSX
 keyboard probe covers the break latch, both stop variants, buffer clearing,
-the display-flag transitions, text-mode forcing, and auto-repeat.
+the display-flag transitions, text-mode forcing, and auto-repeat. The same
+probe characterizes the cursor/edit-key codes: pressing every row-8 key
+(SPACE/HOME/INSERT/DEL/LEFT/UP/DOWN/RIGHT) and the row-7 editing keys
+(ESC/TAB/BS/CR) makes CHGET return the standard MSX control codes from the
+Technical Handbook (`20/0B/12/7F/1D/1E/1F/1C` and `1B/09/08/0D`). SNSMAT is
+characterized directly: the probe presses known masks on every row 0-9 and
+verifies the PPI returns the active-low complement (row 6 has only four
+keys), that A and C hold the row byte and masked selector, and that B/DE/HL
+are preserved.
 
 M3E implements the prompt/line-input path. `PINLIN` reads keyboard input into
 `BUFFER` until Return or a Ctrl-STOP break, returning `HL = BUFFER-1`, the
@@ -286,6 +294,13 @@ paddles 1-8 by firing the pin-8 trigger and measuring the one-shot low pulse on
 the PSG port-A pin (0 with no paddle), restoring R15. The keyboard probe
 checks the click bit, and the controller probe checks the no-paddle neutral
 result.
+
+`CHGCAP` (`0132h`) and `CHGSND` (`0135h`) gate the Caps-Lock lamp and the
+key-click switch. `CHGCAP` takes the new lamp state in `A` (00 = on, non-zero =
+off), drives PPI port-C bit 6, and preserves BC/DE/HL; the CAPS key handler
+routes through it so the LED stays in lockstep with `CAPST`. `CHGSND` writes
+`A` to `CLIKSW` (zero = click off, non-zero = on) preserving all registers. The
+keyboard probe covers both through CALSLT.
 
 M3H completes the editing-key behavior inside `PINLIN`/`INLIN`: the cursor
 moves left and right, Home returns to the start, typing inserts at the cursor,
@@ -338,7 +353,7 @@ passes a documented smoke-test matrix.
 
 ## M5 — MSX2 main BIOS and SUB-ROM
 
-Status: in progress (first slice).
+Status: complete.
 
 M5A produces a distinct MSX2 main-ROM build (`build/rainbios_msx2.rom`) from the
 same source with `-DMSX2=1`. It sets the `002Dh` generation byte to `01`,
@@ -444,8 +459,8 @@ below `3000h`, so substantial new page-0 work must be a deliberate, documented
 step rather than an accidental boundary erosion.
 
 The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
-all 25 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
-LPTOUT, LPTSTT, CNVCHR, LFTQ, PUTQ, the SCALXY..CHGSND group, and CALBAS)
+all 23 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
+LPTOUT, LPTSTT, CNVCHR, LFTQ, PUTQ, the SCALXY..SCANL group, and CALBAS)
 through CALSLT with known register inputs and verifies the documented
 safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. NMI
 (0066h) is excluded: it is an interrupt return (`retn`), not a callable stub.
@@ -573,11 +588,16 @@ target.
 - close the timing-sensitive GeoBench/openMSX rendering gap and promote that
   boot-state test to the same full-desktop geometry gate used in 1983;
 - filesystem services, formatting, floppy drive B, other controllers, writable
-  media, and real-hardware timing validation remain pending;
-- restore the Sunrise IDE bootstrap 1983 gates: `test-1983-ide-boot` observes
-  the CPU reaching unused ROM padding instead of the fixture pass label, and
-  `test-1983-ide-menu` does not return the no-medium fallback to the RainBIOS
-  menu stack; the SD Mapper paths pass.
+  media, and real-hardware timing validation remain pending.
+
+The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
+fixture pass label with the cartridge mapped in page 1 (slot `F8`), and
+`test-1983-ide-menu` returns the no-medium fallback to the RainBIOS menu stack
+with page 1 restored to `BIOSSLT` (slot `F0`), the same state the passing
+floppy and no-cartridge fallbacks produce. The earlier `FC` menu expectation
+was stale: the Sunrise IDE cartridge, unlike the SD Mapper, provides no RAM, so
+the restored menu map leaves pages 2/3 on the NMS 8250's internal RAM slot and
+page 1 on the main ROM slot.
 
 “Complete” means documented compatibility for the public interfaces and boot
 behavior; it does not mean byte identity with any existing ROM.
