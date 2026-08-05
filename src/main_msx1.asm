@@ -266,8 +266,8 @@ ASSET_BUFFER    equ #c000
                 jp unsupported_call             ; 0129 PNTINI
                 jp unsupported_call             ; 012C SCANR
                 jp unsupported_call             ; 012F SCANL
-                jp unsupported_call             ; 0132 CHGCAP
-                jp unsupported_call             ; 0135 CHGSND
+                jp chgcap                        ; 0132 CHGCAP
+                jp chgsnd                        ; 0135 CHGSND
                 jp rslreg                       ; 0138 RSLREG
                 jp wslreg                       ; 013B WSLREG
                 jp rdvdp                        ; 013E RDVDP
@@ -3028,9 +3028,9 @@ keyboard_scan_modifier:
                 ld a,(CAPST)
                 cpl
                 ld (CAPST),a
-                in a,(PPI_CONTROL_C)
-                xor #40                         ; CAPS LED follows the lock
-                out (PPI_CONTROL_C),a
+                xor #01                         ; the lamp flag is the inverse
+                                                ; of the lock (A = 0 lamps on)
+                call chgcap                     ; keep the lamp in lockstep
                 jr keyboard_scan_next
 
 ; B is the matrix row, C contains newly pressed bits, and D contains the
@@ -3345,7 +3345,36 @@ keyboard_click_off:
                 out (PPI_CONTROL_C),a           ; click low
                 ret
 
-; Return Z when the keyboard buffer is empty and NZ when input is ready.
+; Set the CAPS lamp from the input flag and set the key-click switch from the
+; input flag. Both entries follow the documented miscellany contract: only AF
+; changes and the LED/click 1-bit lines match the value in A. RainBIOS drives
+; the lamp on keyboard PPI port-C bit 6 (0 = on, 1 = off, the same convention
+; set by the cold-boot `or #40` clear) and the click on port-C bit 7, so the
+; CAPS key handler below routes through chgcap to keep the two in lockstep.
+;
+; CHGCAP, 0132h: A = 00 turns the CAP lamp on, non-00 turns it off.
+; CHGSND, 0135h: A = 00 turns the 1-bit click sound off, non-00 turns it on
+;                (gated through CLIKSW so KEYINT only drives the click line
+;                while the switch is on).
+chgcap:
+                push de                         ; preserve DE across the port RMW
+                push af                         ; preserve the caller's input flag
+                in a,(PPI_CONTROL_C)
+                and #bf                         ; clear bit 6 (lamp on)
+                ld e,a
+                pop af                          ; restore the caller's AF
+                or a
+                ld a,e                          ; base image (bit 6 clear)
+                jr z,chgcap_write
+                or #40                          ; lamp off: set bit 6
+chgcap_write:
+                out (PPI_CONTROL_C),a
+                pop de
+                ret
+
+chgsnd:
+                ld (CLIKSW),a
+                ret
 ; Only AF is changed, matching the public entry contract.
 chsns:
                 push hl
