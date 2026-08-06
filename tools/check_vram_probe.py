@@ -17,6 +17,14 @@ EXPECTED = {
     "FILL": "5A,5A,00",
     "LDIRMV": "61,62,63,64",
     "LDIRVM": "41,42,43,44",
+    "FILLX": "5C,5C,5C,5C",
+    "LDIRVMX": "71,74,75,78",
+    "LDIRMVX": "71,74,75,78",
+    "WRAPTOP": "88",
+    "WRAPBASE": "77",
+    "WRAPZERO": "77",
+    "ORDER": "5A",
+    "HOOKFIRE": "01",
     "VDPREG": "02,E0",
 }
 

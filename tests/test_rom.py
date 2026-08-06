@@ -149,6 +149,43 @@ class MainRomLayoutTest(unittest.TestCase):
         self.assertGreaterEqual(target, 0x0200)
         self.assertLess(target, len(self.rom))
 
+    def _jump_target(self, address: int) -> int:
+        self.assertEqual(self.rom[address], 0xC3)  # JP
+        return int.from_bytes(self.rom[address + 1 : address + 3], "little")
+
+    def test_setrd_setwrt_pairs_are_atomic_with_14_bit_mask(self):
+        # The VRAM address-control pair is written under DI and masked to the
+        # 14-bit window, so an interrupt cannot split the low/high bytes and
+        # addresses beyond 16 KiB wrap into the window. SETRD uses command 00,
+        # SETWRT adds the write bit (40).
+        setrd = self._jump_target(0x0050)
+        setwrt = self._jump_target(0x0053)
+        self.assertEqual(
+            self.rom[setrd : setrd + 11],
+            bytes((0xF3, 0x7D, 0xD3, 0x99, 0x7C, 0xE6, 0x3F, 0xD3, 0x99,
+                   0xFB, 0xC9)),
+        )
+        self.assertEqual(
+            self.rom[setwrt : setwrt + 13],
+            bytes((0xF3, 0x7D, 0xD3, 0x99, 0x7C, 0xE6, 0x3F, 0xF6, 0x40,
+                   0xD3, 0x99, 0xFB, 0xC9)),
+        )
+
+    def test_wrtvdp_register_pair_is_interrupt_atomic(self):
+        # WRTVDP writes the value byte then the register byte to the control
+        # port as one DI-protected pair (the F3...FB envelope with the register
+        # byte or 80), after publishing the register shadow.
+        impl = self._jump_target(self._jump_target(0x0047))
+        self.assertEqual(
+            self.rom[impl : impl + 16],
+            bytes((0xF5, 0xE5, 0x79, 0xE6, 0x07, 0xC6, 0xDF, 0x6F, 0x26,
+                   0xF3, 0x70, 0xF3, 0x78, 0xD3, 0x99, 0x79)),
+        )
+        self.assertEqual(
+            self.rom[impl + 16 : impl + 21],
+            bytes((0xF6, 0x80, 0xD3, 0x99, 0xFB)),
+        )
+
     def test_abi_addresses_are_unique_and_ordered(self):
         addresses = [int(row["address"], 16) for row in self.abi]
         self.assertEqual(addresses, sorted(addresses))
