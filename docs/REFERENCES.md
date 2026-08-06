@@ -680,6 +680,24 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 - RainBIOS use: interface and externally observable behavior facts only; the
   latch, combination table, and scan integration are original RainBIOS work
 
+## 2026-08-06 — International dead-key key and literal accent glyphs
+
+- Primary specification: the open `msxsyssrc` international keyboard handler
+  (`basekey/keyint.mac`) and its German/French/UK counterparts: the four
+  accent glyphs `` ` ``/`'`/`^`/`"` come from the normal/shift scan tables and
+  are literal characters, while a dedicated dead-key key (matrix row 2,
+  column 5, value `0FFh` in every modifier table) latches `DEADST` as
+  1 = grave, 2 = acute (Shift), 3 = circumflex (Code), 4 = umlaut (Shift+Code)
+  and combines with the next a/e/i/o/u/y (valid-letter table `aeiouy`)
+- Cross-checks: the MSX2 Technical Handbook Ch. 5 §3.2 `DEADST` wording already
+  cited above, and C-BIOS `scancodes_uk.asm`/`main.asm` (UK shift table yields
+  `022h` for Shift+the `'` key; the graph/code tables are unused)
+- Purpose: correct M3F so the literal `'`, `` ` ``, `^`, `"` reach the key
+  buffer on the first press (fixing `"` string literals in BBC BASIC) while
+  accents stay available through the dedicated dead-key key
+- RainBIOS use: interface and externally observable behavior facts only; the
+  latch, combination table, and scan integration are original RainBIOS work
+
 ## 2026-08-02 — Key click and paddle contracts
 
 - Primary specifications: MSX2 Technical Handbook Ch. 5 §3.2 `CLIKSW`

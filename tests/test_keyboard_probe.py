@@ -128,22 +128,29 @@ class KeyboardProbeTests(unittest.TestCase):
     def test_grave_then_a_must_produce_a_grave(self) -> None:
         with self.assertRaisesRegex(ValueError, "DEADKEY"):
             validate_report(
-                self.make_report().replace("DEADKEY=85,82,62,79",
-                                           "DEADKEY=61,82,62,79")
+                self.make_report().replace("DEADKEY=85,82,62,22,27,60,5E",
+                                           "DEADKEY=61,82,62,22,27,60,5E")
             )
 
     def test_acute_then_e_must_produce_e_acute(self) -> None:
         with self.assertRaisesRegex(ValueError, "DEADKEY"):
             validate_report(
-                self.make_report().replace("DEADKEY=85,82,62,79",
-                                           "DEADKEY=85,65,62,79")
+                self.make_report().replace("DEADKEY=85,82,62,22,27,60,5E",
+                                           "DEADKEY=85,65,62,22,27,60,5E")
             )
 
     def test_non_combinable_letter_after_accent_must_be_plain(self) -> None:
         with self.assertRaisesRegex(ValueError, "DEADKEY"):
             validate_report(
-                self.make_report().replace("DEADKEY=85,82,62,79",
-                                           "DEADKEY=85,82,63,79")
+                self.make_report().replace("DEADKEY=85,82,62,22,27,60,5E",
+                                           "DEADKEY=85,82,63,22,27,60,5E")
+            )
+
+    def test_double_quote_key_must_reach_buffer_literally(self) -> None:
+        with self.assertRaisesRegex(ValueError, "DEADKEY"):
+            validate_report(
+                self.make_report().replace("DEADKEY=85,82,62,22,27,60,5E",
+                                           "DEADKEY=85,82,62,00,27,60,5E")
             )
 
     def test_click_high_bit_must_fire(self) -> None:

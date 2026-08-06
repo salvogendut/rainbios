@@ -76,7 +76,9 @@ The main BIOS currently provides:
 - international keyboard scanning, auto-repeat, Ctrl-STOP break handling
   (`BREAKX`/`ISCNTC`/`CKCNTC`), function-key strings and display
   (`INIFNK`/`FNKSB`/`ERAFNK`/`DSPFNK`/`TOTEXT`), prompt/line input
-  (`INLIN`/`PINLIN`/`QINLIN`) with mid-line cursor editing, dead-key accents,
+  (`INLIN`/`PINLIN`/`QINLIN`) with mid-line cursor editing, dead-key accents
+  via the dedicated dead-key key (grave/acute/circumflex/umlaut) while the
+  accent glyphs themselves stay literal (`'`, `` ` ``, `^`, `"`),
   key click (`CLIKSW`), `BEEP`, paddle input (`GTPDL`), PSG/PLAY work-area
   initialization (`GICINI`), and partial character-input services;
 - cassette motor, leader, framed-byte input/output, and BBC BASIC sequential
@@ -487,7 +489,7 @@ openMSX is installed as a Flatpak on the current workstation. Use:
 make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
   test-openmsx-mapper test-openmsx-services test-openmsx-keyboard \
   test-openmsx-controller \
-  test-openmsx-embedded-basic \
+  test-openmsx-embedded-basic test-openmsx-bbcbasic-quote \
   test-openmsx-msx2 \
   test-openmsx-msx2-subrom \
   test-openmsx-msx2-services \

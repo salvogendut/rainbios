@@ -3074,6 +3074,16 @@ keyboard_translate:
                 ld (DEADST),a                   ; unsupported rows clear the accent
                 ret
 keyboard_translate_printable:
+                ; The dedicated dead-key key sits between the "/" and "A" keys
+                ; (matrix row 2, column 5); it latches DEADST instead of emitting.
+                ld a,b
+                cp 2
+                jr nz,keyboard_translate_lookup
+                ld a,e
+                cp 5
+                jp z,keyboard_deadkey_key
+keyboard_translate_lookup:
+                ld a,b
                 add a,a
                 add a,a
                 add a,a
@@ -3105,18 +3115,6 @@ keyboard_translate_table:
                 ld c,a
 keyboard_translate_keep:
                 ld a,c
-                ; The accent glyphs are dead keys: latch DEADST instead of
-                ; emitting, so the next combinable letter produces the accented
-                ; character. DEADST: 1 = grave, 2 = acute, 3 = circumflex,
-                ; 4 = umlaut.
-                cp #27                          ; ' acute
-                jr z,keyboard_deadkey_acute
-                cp #60                          ; ` grave
-                jr z,keyboard_deadkey_grave
-                cp #5e                          ; ^ circumflex
-                jr z,keyboard_deadkey_circumflex
-                cp #22                          ; " umlaut
-                jr z,keyboard_deadkey_umlaut
                 ; Apply any pending accent to this printable character.
                 ld (DEADKEY_TMP),a
                 ld a,(DEADST)
@@ -3137,17 +3135,19 @@ keyboard_deadkey_combined:
                 ld (DEADST),a
                 pop af
                 ret
-keyboard_deadkey_grave:
+
+; The dead key latches DEADST like the official international BIOS:
+; 1 = grave, 2 = acute (Shift), 3 = circumflex (Code), 4 = umlaut
+; (Shift+Code). Nothing is emitted; the next combinable letter combines.
+keyboard_deadkey_key:
                 ld a,1
-                jr keyboard_deadkey_latch
-keyboard_deadkey_acute:
-                ld a,2
-                jr keyboard_deadkey_latch
-keyboard_deadkey_circumflex:
-                ld a,3
-                jr keyboard_deadkey_latch
-keyboard_deadkey_umlaut:
-                ld a,4
+                bit 0,d                         ; Shift held? (active-low)
+                jr nz,keyboard_deadkey_code
+                inc a
+keyboard_deadkey_code:
+                bit 4,d                         ; Code held? (active-low)
+                jr nz,keyboard_deadkey_latch
+                add a,2
 keyboard_deadkey_latch:
                 ld (DEADST),a
                 xor a

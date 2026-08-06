@@ -340,32 +340,46 @@ proc pinlin_right_killed {} {
 
 proc beep_done {} {
     record_keyboard "BEEP=OK"
-    # M3 dead keys: grave ` + 'a' -> 0x85, acute ' + 'e' -> 0x82,
-    # grave ` + 'b' -> 0x62 (not combinable), acute ' + 'y' -> 0x79
-    # Hold each accent key long enough for a scan, then release before the
-    # next key so DEADST latches before the letter edge arrives.
-    after time 0.10 {keymatrixdown 2 0x02}
-    after time 0.16 {keymatrixup 2 0x02}
+    # M3 dead keys use the dedicated dead-key key (matrix row 2, column 5):
+    # grave (dead key alone) + 'a' -> 0x85, acute (Shift+dead) + 'e' -> 0x82,
+    # grave + 'b' -> 0x62 (not combinable). The accent glyphs themselves are
+    # literal: " (Shift+'), ' alone, ` alone, and ^ (Shift+6) pass straight
+    # through to the buffer. Hold each accent key long enough for a scan,
+    # then release before the next key so DEADST latches before the letter
+    # edge arrives.
+    after time 0.10 {keymatrixdown 2 0x20}
+    after time 0.16 {keymatrixup 2 0x20}
     after time 0.24 {keymatrixdown 2 0x40}
     after time 0.30 {keymatrixup 2 0x40}
-    after time 0.38 {keymatrixdown 2 0x01}
-    after time 0.44 {keymatrixup 2 0x01}
-    after time 0.52 {keymatrixdown 3 0x04}
-    after time 0.58 {keymatrixup 3 0x04}
-    after time 0.66 {keymatrixdown 2 0x02}
-    after time 0.72 {keymatrixup 2 0x02}
-    after time 0.80 {keymatrixdown 2 0x80}
-    after time 0.86 {keymatrixup 2 0x80}
-    after time 0.94 {keymatrixdown 2 0x01}
-    after time 1.00 {keymatrixup 2 0x01}
-    after time 1.08 {keymatrixdown 5 0x40}
-    after time 1.14 {keymatrixup 5 0x40}
-    after time 1.22 deadkey_done
+    after time 0.38 {keymatrixdown 6 0x01}
+    after time 0.44 {keymatrixdown 2 0x20}
+    after time 0.50 {keymatrixup 2 0x20}
+    after time 0.56 {keymatrixup 6 0x01}
+    after time 0.64 {keymatrixdown 3 0x04}
+    after time 0.70 {keymatrixup 3 0x04}
+    after time 0.78 {keymatrixdown 2 0x20}
+    after time 0.84 {keymatrixup 2 0x20}
+    after time 0.92 {keymatrixdown 2 0x80}
+    after time 0.98 {keymatrixup 2 0x80}
+    after time 1.06 {keymatrixdown 6 0x01}
+    after time 1.12 {keymatrixdown 2 0x01}
+    after time 1.18 {keymatrixup 2 0x01}
+    after time 1.24 {keymatrixup 6 0x01}
+    after time 1.32 {keymatrixdown 2 0x01}
+    after time 1.38 {keymatrixup 2 0x01}
+    after time 1.46 {keymatrixdown 2 0x02}
+    after time 1.52 {keymatrixup 2 0x02}
+    after time 1.60 {keymatrixdown 6 0x01}
+    after time 1.66 {keymatrixdown 0 0x40}
+    after time 1.72 {keymatrixup 0 0x40}
+    after time 1.78 {keymatrixup 6 0x01}
+    after time 1.86 deadkey_done
 }
 
 proc deadkey_done {} {
-    record_keyboard [format "DEADKEY=%02X,%02X,%02X,%02X" \
-        [peek 0xFBF0] [peek 0xFBF1] [peek 0xFBF2] [peek 0xFBF3]]
+    record_keyboard [format "DEADKEY=%02X,%02X,%02X,%02X,%02X,%02X,%02X" \
+        [peek 0xFBF0] [peek 0xFBF1] [peek 0xFBF2] [peek 0xFBF3] \
+        [peek 0xFBF4] [peek 0xFBF5] [peek 0xFBF6]]
     # M3 key click: with CLIKSW on, a key press drives the PPI click bit high
     # for a few frames, then low.
     poke 0xF3DB 1
