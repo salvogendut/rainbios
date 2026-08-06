@@ -38,7 +38,7 @@ EXPECTED = {
     "PINLINMID": "04,0,5A,61,62,64",
     "PINLINRIGHT": "03,0,61,62,58",
     "BEEP": "OK",
-    "DEADKEY": "85,82,62,79",
+    "DEADKEY": "85,82,62,22,27,60,5E",
     "CLICK1": "F8",
     "CLICK2": "78",
     "CURSOR00": "20",
