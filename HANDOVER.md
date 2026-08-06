@@ -487,7 +487,8 @@ openMSX is installed as a Flatpak on the current workstation. Use:
 
 ```sh
 make test-openmsx-audio test-openmsx-slots test-openmsx-expanded-slots \
-  test-openmsx-mapper test-openmsx-services test-openmsx-keyboard \
+  test-openmsx-mapper test-openmsx-services test-openmsx-vram \
+  test-openmsx-keyboard \
   test-openmsx-controller \
   test-openmsx-embedded-basic test-openmsx-bbcbasic-quote \
   test-openmsx-msx2 \
@@ -520,7 +521,7 @@ is:
 | --- | --- | --- |
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
 | M1 reset/slots/RAM/interrupts | In progress | Hardware cartridge test |
-| M2 MSX1 display/console | In progress | Remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
+| M2 MSX1 display/console | In progress | Port-ordering and VRAM-boundary hardening done (`test-openmsx-vram` wrap/crossing tests + interrupt-atomicity host tests); remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Pointing/trackball/touch-panel, printer, remaining character services |
 | M4 cartridge compatibility | In progress | Startup-state contracts, mapper arrangements, redistributable compatibility corpus |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
