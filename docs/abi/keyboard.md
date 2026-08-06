@@ -83,18 +83,24 @@ append.
 
 ## Dead keys (M3F)
 
-The international accent glyphs are dead keys: pressing `` ` `` (grave), `'`
-(acute), `^` (circumflex), or `"` (umlaut) latches `DEADST` (`FCACh`) and
-emits nothing. The next key combines with the accent when it is a, e, i, o, u,
-or y, producing the standard MSX international accented character (for example
-`` ` `` + a gives à, `'` + e gives é, `^` + e gives ê, `"` + u gives ü, `"` + y
-gives ÿ). A letter with no accented form, any other key, or Ctrl emits the
-plain character and clears `DEADST`. The accented byte codes follow the MSX
-international character set (0x80-0xA3); the project font glyphs for those
-codes are part of the M2 character-set work.
+Accented characters use the dedicated international dead-key key between the
+`/` and `A` keys (matrix row 2, column 5), matching the official international
+BIOS: the key latches `DEADST` (`FCACh`) as 1 = grave, 2 = acute (Shift),
+3 = circumflex (Code), 4 = umlaut (Shift+Code), and emits nothing. The next
+key combines with the accent when it is a, e, i, o, u, or y, producing the
+standard MSX international accented character (for example the dead key + `a`
+gives à, Shift+dead key + `e` gives é, Code+dead key + `e` gives ê, Shift+Code
++dead key + `u` gives ü). A letter with no accented form, any other key, or
+Ctrl emits the plain character and clears `DEADST`. The accented byte codes
+follow the MSX international character set (0x80-0xA3); the project font
+glyphs for those codes are part of the M2 character-set work.
 
-The keyboard probe covers grave+`a`, acute+`e`, a non-combinable letter, and
-a letter with no accented form.
+The accent glyphs themselves are literal printable characters, not dead keys:
+`` ` `` and `'` on their own keys, `^` on Shift+6, and `"` on Shift+the `'`
+key all reach the key buffer directly, so programs such as BBC BASIC that need
+`"` for string literals receive it on the first press. The keyboard probe
+covers grave+`a`, acute+`e`, a non-combinable letter, and the literal `"`,
+`'`, `` ` ``, and `^`.
 
 With `CLIKSW` (`F3DBh`) nonzero, each new key press drives the 1-bit click
 line (PPI port-C bit 7) high for a couple of frames. The keyboard probe
@@ -126,9 +132,8 @@ does not run BASIC's PLAY interpreter, but the work area matches the
 published MSX layout so a caller can install a music player or interpreter
 over a clean state.
 
-Dead-key+Shift is not yet distinguished (each accent glyph maps to one accent
-type), Code lock, and CAPS behavior beyond the implemented state/LED remain
-future compatibility work.
+Code lock and CAPS behavior beyond the implemented state/LED remain future
+compatibility work.
 
 ## Text cursor movement (M2)
 
