@@ -121,6 +121,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-embedded-basic` | No-cartridge automatic launch, internal header/descriptor, slot state, ROM write guard, arithmetic, and clean top-of-screen banner/prompt |
 | `test-openmsx-payload-state` | Payload-launch register and work-area state at the descriptor entry: `SP=F380h`, A/BC/DE/HL/IX/IY zeroed, page 0 on the MAIN-ROM slot with pages 1-3 on contiguous RAM, empty key buffer, and a live `JIFFY` proving the interrupt source and IM1/EI are active |
 | `test-openmsx-printer` | `LPTSTT` reports busy with no printer and ready once a printer is attached, and `LPTOUT` sends bytes through the data port with a clear carry, verified by the openMSX printer logger capturing the exact output |
+| `test-openmsx-gtpad` | Touch-panel GTPAD selectors: returns 00h without a device and exercises the UPD7001 serial protocol against openMSX's touchpad without hanging; the touched-coordinate read is documented per the reference (headless openMSX cannot deliver host touch) |
 | `test-openmsx-bbcbasic-quote` | The double-quote key pressed through the physical matrix reaches the BBC BASIC console line editor as a literal `"` (regression: the key used to latch the umlaut dead key and drop the character) |
 
 ### Cassette and disk

@@ -70,7 +70,7 @@ address,name,kind,status,milestone,notes
 00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display; verified by test-1983-fnkey (Screen 0, CNSDFG preserved)
 00D5,GTSTCK,jump,implemented,M1,Cursor keys read live and joystick ports 1/2 return standard directions 0-8 from the per-frame interrupt snapshot
 00D8,GTTRIG,jump,implemented,M1,Space reads live and both connector buttons return 00h/FFh from the per-frame interrupt snapshot, preserving non-AF registers
-00DB,GTPAD,jump,partial,M3,Mouse selectors 12-19 implemented; touch panel light pen and explicit trackball detection remain pending
+00DB,GTPAD,jump,implemented,M3,Mouse selectors 12-19 latch/cache axes; touch-panel selectors 0-7 read the UPD7001 touchpad through the PSG IOB serial clock/data and IOA SENSE/SO lines (0/4 fetch into PADX/PADY, 1/5 X, 2/6 Y, 3/7 trigger) per the reference; the touched-coordinate path cannot be exercised headlessly (openMSX needs host touch), so the serial protocol is verified against openMSX and the no-device/no-sense cases are gated
 00DE,GTPDL,jump,partial,M3,Reads paddle 1-8 by firing the pin-8 trigger and measuring the one-shot low pulse on the PSG port-A pin; 0 with no paddle, unsupported paddles return 0, R15 restored
 00E1,TAPION,jump,implemented,M3,
 00E4,TAPIN,jump,implemented,M3,
