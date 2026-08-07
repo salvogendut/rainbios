@@ -72,6 +72,7 @@ MENU_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_input.sym
 GRAPHICS_INPUT_CART := $(BUILD_DIR)/cartridges/graphics_input.rom
 GRAPHICS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/graphics_input.sym
 SCROLL_INPUT_CART := $(BUILD_DIR)/cartridges/scroll_input.rom
+EDIT_INPUT_CART := $(BUILD_DIR)/cartridges/edit_input.rom
 DISK_BASELINE_CART := $(BUILD_DIR)/cartridges/disk_baseline_input.rom
 DISK_BASELINE_CART_SYM := $(BUILD_DIR)/cartridges/disk_baseline_input.sym
 DISK_ROM_BOOT_CART := $(BUILD_DIR)/cartridges/disk_rom_boot_input.rom
@@ -283,6 +284,10 @@ EMULATOR_1983_EMBEDDED_BASIC_SCREEN := \
  	$(EMULATOR_1983_DIR)/bbcbasic-scroll.ppm
  EMULATOR_1983_EMBEDDED_BASIC_SCROLL_SCREEN := \
  	$(EMULATOR_1983_DIR)/embedded-basic-scroll.ppm
+ EMULATOR_1983_BBC_EDIT_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/bbcbasic-edit.ppm
+ EMULATOR_1983_EMBEDDED_BASIC_EDIT_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/embedded-basic-edit.ppm
 EMULATOR_1983_BBC_TAPE_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-tape.ppm
 EMULATOR_1983_DISK_BASELINE_SCREEN := \
@@ -384,6 +389,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
 	test-1983-embedded-basic-graphics test-1983-embedded-basic-tape \
 	test-1983-bbcbasic-scroll test-1983-embedded-basic-scroll \
+	test-1983-bbcbasic-edit test-1983-embedded-basic-edit \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot \
@@ -496,6 +502,10 @@ $(GRAPHICS_INPUT_CART): tests/cartridges/graphics_input.asm | $(BUILD_DIR)
 $(SCROLL_INPUT_CART): tests/cartridges/scroll_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(SCROLL_INPUT_CART:.rom=.sym)
+
+$(EDIT_INPUT_CART): tests/cartridges/edit_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(EDIT_INPUT_CART:.rom=.sym)
 
 $(CLS_INPUT_CART): tests/cartridges/cls_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1693,6 +1703,24 @@ test-1983-embedded-basic-scroll: \
 		--bios "$(MSX1_ROM)" \
 		--input-cartridge "$(SCROLL_INPUT_CART)" \
 		--screenshot "$(EMULATOR_1983_EMBEDDED_BASIC_SCROLL_SCREEN)"
+
+test-1983-bbcbasic-edit: \
+		$(MSX1_ROM) $(BBC_BASIC_ROM) $(EDIT_INPUT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bbcbasic_edit.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(BBC_BASIC_ROM)" \
+		--input-cartridge "$(EDIT_INPUT_CART)" \
+		--screenshot "$(EMULATOR_1983_BBC_EDIT_SCREEN)"
+
+test-1983-embedded-basic-edit: \
+		$(MSX1_ROM) $(EDIT_INPUT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_embedded_basic_edit.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" \
+		--input-cartridge "$(EDIT_INPUT_CART)" \
+		--screenshot "$(EMULATOR_1983_EMBEDDED_BASIC_EDIT_SCREEN)"
 
 test-1983-bbcbasic-graphics: \
 		$(MSX1_ROM) $(BBC_BASIC_ROM) $(GRAPHICS_INPUT_CART)
