@@ -165,6 +165,8 @@ OPENMSX_EMBEDDED_BASIC_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/embedded-basic.txt
 OPENMSX_BBC_QUOTE_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/bbcbasic-quote.txt
+OPENMSX_PAYLOAD_STATE_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/payload-state.txt
 OPENMSX_EMBEDDED_BASIC_SCREEN := \
 	$(OPENMSX_ROOT)/embedded-basic.png
 OPENMSX_BBC_GRAPHICS_REPORT := \
@@ -344,7 +346,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-disk-fault \
 	test-openmsx-expanded-cartridge \
 	test-1983-expanded test-openmsx-embedded-basic \
-	test-openmsx-bbcbasic-quote \
+	test-openmsx-bbcbasic-quote test-openmsx-payload-state \
 	test-openmsx-msx2 test-1983-msx2 \
 	test-openmsx-msx2-subrom test-1983-msx2-subrom \
 	test-openmsx-msx2-services test-1983-msx2-subrom-services \
@@ -1255,6 +1257,16 @@ test-openmsx-bbcbasic-quote: $(OPENMSX_MACHINE)
 		-script "$(abspath tests/openmsx/bbcbasic_quote_probe.tcl)"
 	$(PYTHON) tools/check_bbcbasic_quote_probe.py \
 		$(OPENMSX_BBC_QUOTE_REPORT)
+
+test-openmsx-payload-state: $(OPENMSX_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX1 \
+		-command "set payload_state_output {$(abspath $(OPENMSX_PAYLOAD_STATE_REPORT))}" \
+		-script "$(abspath tests/openmsx/payload_state_probe.tcl)"
+	$(PYTHON) tools/check_payload_state_probe.py \
+		$(OPENMSX_PAYLOAD_STATE_REPORT)
 
 test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
