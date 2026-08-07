@@ -39,6 +39,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #102 | M6 | INIFNK default function-key strings gated |
 | #103 | M6 | ISCNTC/CKCNTC break-consumption contract gated |
 | #104 | M6 | CHGMOD screen-mode dispatch gated |
+| #105 | M6 | KEYINT VBlank bookkeeping gated |
 
 ## Issue matrix
 
