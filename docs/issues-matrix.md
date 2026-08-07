@@ -20,6 +20,15 @@ milestone percentages are estimates derived from the roadmap slices
 | M6 completeness/optional | ~60% | Remaining ABI gaps + flag/clobber characterization, FORMAT/ISFLIO/OUTDLP/GETVCP/GETVC2, loader inputs HL/DE, GeoBench rendering gap, payload-workload promotion, real-hardware timing |
 | M7 disk/IDE boot | ~60% | Filesystem services, formatting, drive B, writable media, other controllers, loader inputs, real-hardware timing |
 
+## Pull request log
+
+| PR | Milestone | Impact |
+| --- | --- | --- |
+| #90 | M3 | Implement CHGCAP/CHGSND basic-device entries; drop them from the M6 stub gate (23 stubs) |
+| #91 | M3 | Restore literal `"`/`'`/`` ` ``/`^` keys; move the accent latch to the dedicated dead-key key; gate with `test-openmsx-bbcbasic-quote` |
+| #92 | M2 | VDP port-ordering + VRAM-boundary hardening: DI-atomic pairs, 14-bit wrap, crossing transfers |
+| #93 | M4 | Gate the payload-launch register/work-area state with `test-openmsx-payload-state` |
+
 ## Issue matrix
 
 | # | State | Milestone | Title |
