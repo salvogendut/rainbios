@@ -12,7 +12,7 @@ milestone percentages are estimates derived from the roadmap slices
 | Milestone | Est. | Remaining focus |
 | --- | --- | --- |
 | M0 ROM contract/build | 100% | Deterministic build, ABI metadata |
-| M1 reset/slots/RAM/interrupts | ~95% | Hardware cartridge test; disk ROM adopting the motor-arm helper |
+| M1 reset/slots/RAM/interrupts | ~95% | Hardware cartridge test (deferred); disk ROM now adopts the motor-arm helper |
 | M2 MSX1 display/console | ~95% | Remaining VRAM-limit hardening; hardware test |
 | M3 keyboard/PSG/basic devices | ~95% | Printer calls (LPTOUT/LPTSTT) and touch-panel GTPAD implemented; light-pen/trackball unemulable in openMSX; remaining: selectable frequency/locale |
 | M4 cartridge compatibility | ~70% | Redistributable compatibility corpus deferred (TBD) — the only remaining M4 item, gated on sourcing and clearing ROMs for redistribution |

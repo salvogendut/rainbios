@@ -521,7 +521,7 @@ is:
 | Milestone | Status | Remaining focus |
 | --- | --- | --- |
 | M0 ROM contract/build | Complete | Preserve deterministic build and truthful ABI metadata |
-| M1 reset/slots/RAM/interrupts | In progress | Hardware cartridge test |
+| M1 reset/slots/RAM/interrupts | In progress | Hardware cartridge test; disk ROM now adopts the motor-arm helper |
 | M2 MSX1 display/console | In progress | Port-ordering and VRAM-boundary hardening done (`test-openmsx-vram` wrap/crossing tests + interrupt-atomicity host tests); remaining boundary behavior and VRAM-limit hardening; MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Printer calls and touch-panel GTPAD implemented (`test-openmsx-printer`, `test-openmsx-gtpad`); light-pen/trackball detection unemulable in openMSX; remaining: selectable frequency/locale |
 | M4 cartridge compatibility | In progress | Payload-launch, cartridge-INIT, and page-2 INIT (mapper-style) arrangements gated; the redistributable compatibility corpus is deferred (TBD) |

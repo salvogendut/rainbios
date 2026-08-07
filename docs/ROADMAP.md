@@ -103,8 +103,10 @@ FDC motor-off value to the drive register when `DISK_PRESENT` (set at boot
 when a disk device is selected). The `disk_motor_arm` helper and the work
 bytes let the NMS 8250 disk ROM keep the motor running briefly after an
 access and hand the stop to the interrupt instead of stopping it inline. The
-services probe verifies the armed timer clears after the timeout; the disk
-ROM adoption of the arm helper remains a follow-up.
+services probe verifies the armed timer clears after the timeout. The disk ROM
+adopts the helper: `disk_phydio` now arms the timer on success and error, and
+`test-1983-disk-read` verifies the motor is left on after the access and then
+stopped by the IM 1 handler (reaching `disk_phydio_motor_pass`).
 
 - run the original diagnostic cartridge on hardware;
 
