@@ -15,7 +15,7 @@ milestone percentages are estimates derived from the roadmap slices
 | M1 reset/slots/RAM/interrupts | ~95% | Hardware cartridge test; disk ROM adopting the motor-arm helper |
 | M2 MSX1 display/console | ~95% | Remaining VRAM-limit hardening; hardware test |
 | M3 keyboard/PSG/basic devices | ~85% | Touch-panel/light-pen/trackball, printer + remaining basic-device calls, selectable freq/locale; interactive diag exit gate |
-| M4 cartridge compatibility | ~70% | Payload-launch, cartridge-INIT, and page-2 INIT (mapper-style) arrangements gated; remaining: redistributable compatibility corpus + smoke matrix |
+| M4 cartridge compatibility | ~70% | Redistributable compatibility corpus deferred (TBD) — the only remaining M4 item, gated on sourcing and clearing ROMs for redistribution |
 | M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns, gated on MSX2 storage boot (M6/M7) |
 | M6 completeness/optional | ~60% | Remaining ABI gaps + flag/clobber characterization, FORMAT/ISFLIO/OUTDLP/GETVCP/GETVC2, loader inputs HL/DE, GeoBench rendering gap, payload-workload promotion, real-hardware timing |
 | M7 disk/IDE boot | ~60% | Filesystem services, formatting, drive B, writable media, other controllers, loader inputs, real-hardware timing |

@@ -374,10 +374,15 @@ config forces the ROM with `Normal4000` because the plain-ROM position
 guesser cannot place a ROM whose INIT points to page 2.
 
 - create a compatibility corpus of redistributable homebrew and original test
-  ROMs.
+  ROMs. Deferred (TBD): assembling and publishing a legally redistributable
+  corpus and its automated smoke-test matrix is later work once more real-world
+  ROMs can be sourced and cleared for redistribution. The existing
+  Arkanoid/MSX Diagnostics entries in `docs/CARTRIDGE_COMPATIBILITY.md` remain
+  the seed corpus until then.
 
 Exit criterion: a published set of redistributable MSX1 cartridges boots and
-passes a documented smoke-test matrix.
+passes a documented smoke-test matrix. The corpus portion of this criterion is
+deferred with the item above.
 
 ## M5 — MSX2 main BIOS and SUB-ROM
 
