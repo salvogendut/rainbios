@@ -20,6 +20,13 @@ GEOBENCH_IMAGE ?= ../geobench/QA/GBMSX.IMG
 OPENMSX_GEOBENCH_CAPTURE_TIME ?= 15
 
 BUILD_DIR := build
+# Output layout: the four production ROMs (and their symbol files, which the
+# release bundle ships) build directly into $(BUILD_DIR) so `ls build` stays
+# readable. Every ancillary fixture -- probe cartridges, boot-sector images,
+# disk/cassette media, emulator reports, the payload, logo stamps -- builds
+# into a per-purpose subdirectory so `make clean-ancillary` can drop it in one
+# move without touching the real ROMs.
+FIXTURES_DIR := $(BUILD_DIR)/fixtures
 MSX1_ROM := $(BUILD_DIR)/rainbios_msx1.rom
 MSX1_SYM := $(BUILD_DIR)/rainbios_msx1.sym
 MSX2_ROM := $(BUILD_DIR)/rainbios_msx2.rom
@@ -64,13 +71,9 @@ OPENMSX_COLOR_REPORT := $(OPENMSX_M1_REPORT_DIR)/color.txt
 OPENMSX_SCREEN3_REPORT := $(OPENMSX_M1_REPORT_DIR)/screen3.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
-DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
 PAGE2_CART := $(BUILD_DIR)/cartridges/page2_init.rom
-PAGE2_CART_SYM := $(BUILD_DIR)/cartridges/page2_init.sym
 MENU_INPUT_CART := $(BUILD_DIR)/cartridges/menu_input.rom
-MENU_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_input.sym
 GRAPHICS_INPUT_CART := $(BUILD_DIR)/cartridges/graphics_input.rom
-GRAPHICS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/graphics_input.sym
 SCROLL_INPUT_CART := $(BUILD_DIR)/cartridges/scroll_input.rom
 EDIT_INPUT_CART := $(BUILD_DIR)/cartridges/edit_input.rom
 DISK_BASELINE_CART := $(BUILD_DIR)/cartridges/disk_baseline_input.rom
@@ -111,16 +114,16 @@ DISK_PRODUCTION_INIT_CART := \
 DISK_PRODUCTION_INIT_CART_SYM := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.sym
 DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
-DISK_BOOT_SECTOR_BIN := $(BUILD_DIR)/disk_boot_sector.bin
-DISK_BOOT_SECTOR_SYM := $(BUILD_DIR)/disk_boot_sector.sym
+DISK_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_boot_sector.bin
+DISK_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_boot_sector.sym
 DISK_BOOT_IMAGE := $(BUILD_DIR)/disks/disk-boot.dsk
 IDE_BOOT_SECTOR := tests/cartridges/ide_boot_sector.asm
-IDE_BOOT_SECTOR_BIN := $(BUILD_DIR)/ide_boot_sector.bin
-IDE_BOOT_SECTOR_SYM := $(BUILD_DIR)/ide_boot_sector.sym
+IDE_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/ide_boot_sector.bin
+IDE_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/ide_boot_sector.sym
 IDE_BOOT_IMAGE := $(BUILD_DIR)/disks/ide-boot.img
 SD_BOOT_SECTOR := tests/cartridges/sd_boot_sector.asm
-SD_BOOT_SECTOR_BIN := $(BUILD_DIR)/sd_boot_sector.bin
-SD_BOOT_SECTOR_SYM := $(BUILD_DIR)/sd_boot_sector.sym
+SD_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/sd_boot_sector.bin
+SD_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/sd_boot_sector.sym
 SD_BOOT_IMAGE := $(BUILD_DIR)/disks/sd-boot.img
 NEXTOR_IMAGE := $(BUILD_DIR)/disks/nextor.img
 DISK_FAULT_TEST_ROM := $(BUILD_DIR)/cartridges/disk_fault_rom.rom
@@ -128,23 +131,15 @@ DISK_FAULT_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_fault_rom.sym
 DISK_FAULT_TEST_SOURCES := tests/cartridges/disk_fault_rom.asm \
 	src/disk_nms8250_driver.asm
 TAPE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_input.rom
-TAPE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_input.sym
 TAPE_PROBE_IMAGE := $(BUILD_DIR)/cassettes/tape-probe.cas
 TAPE_LOAD_INPUT_CART := $(BUILD_DIR)/cartridges/tape_load_input.rom
-TAPE_LOAD_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_load_input.sym
 TAPE_SAVE_INPUT_CART := $(BUILD_DIR)/cartridges/tape_save_input.rom
-TAPE_SAVE_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/tape_save_input.sym
 BBC_TAPE_IMAGE := $(BUILD_DIR)/cassettes/bbcbasic-tape.cas
 INVALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/invalid_payload.rom
-INVALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/invalid_payload.sym
 CLS_INPUT_CART := $(BUILD_DIR)/cartridges/cls_input.rom
-CLS_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/cls_input.sym
 VALID_PAYLOAD_CART := $(BUILD_DIR)/cartridges/payload_valid.rom
-VALID_PAYLOAD_CART_SYM := $(BUILD_DIR)/cartridges/payload_valid.sym
 MENU_DISK2_INPUT_CART := $(BUILD_DIR)/cartridges/menu_disk2_input.rom
-MENU_DISK2_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_disk2_input.sym
 MENU_DISK3_INPUT_CART := $(BUILD_DIR)/cartridges/menu_disk3_input.rom
-MENU_DISK3_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_disk3_input.sym
 OPENMSX_CART_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_CARTRIDGE.xml
 OPENMSX_CART_REPORT := $(OPENMSX_M1_REPORT_DIR)/cartridge.txt
@@ -416,8 +411,8 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
-	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom \
-	check-manifest check-release clean
+ 	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom \
+ 	check-manifest check-release clean clean-ancillary
 
 all: $(MSX1_ROM)
 
@@ -440,7 +435,7 @@ $(ZX0_TOOL): $(ZX0_TOOL_SOURCES) | $(BUILD_DIR)
 $(LOGO_DIR)/%.zx0: $(LOGO_STAMP) $(ZX0_TOOL)
 	$(ZX0_TOOL) -f $(patsubst %.zx0,%.bin,$@) $@
 
-bbcbasic-payload:
+bbcbasic-payload: $(ZX0_TOOL)
 	$(PYTHON) tools/check_bbcbasic_dependency.py \
 		--repository $(BBC_BASIC_DIR) --skip-artifact
 	$(MAKE) -C $(BBC_BASIC_DIR) check
@@ -485,31 +480,31 @@ check-release: release
 
 $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(DIAGNOSTIC_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(PAGE2_CART): tests/cartridges/page2_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(PAGE2_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(MENU_INPUT_CART): tests/cartridges/menu_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(MENU_INPUT_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(GRAPHICS_INPUT_CART): tests/cartridges/graphics_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(GRAPHICS_INPUT_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(SCROLL_INPUT_CART): tests/cartridges/scroll_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SCROLL_INPUT_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(EDIT_INPUT_CART): tests/cartridges/edit_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(EDIT_INPUT_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(CLS_INPUT_CART): tests/cartridges/cls_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(CLS_INPUT_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(DISK_BASELINE_CART): tests/cartridges/disk_baseline_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -610,33 +605,15 @@ $(DISK_PRODUCTION_INIT_CART_SYM): $(DISK_PRODUCTION_INIT_CART)
 
 $(VALID_PAYLOAD_CART): tests/cartridges/payload_valid.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $(VALID_PAYLOAD_CART) -s -os $(VALID_PAYLOAD_CART_SYM)
-
-$(VALID_PAYLOAD_CART_SYM): $(VALID_PAYLOAD_CART)
-	@if test ! -f "$@"; then \
-		$(RASM) tests/cartridges/payload_valid.asm \
-			-ob $(VALID_PAYLOAD_CART) -s -os $@; \
-	fi
+	$(RASM) $< -ob $(VALID_PAYLOAD_CART)
 
 $(MENU_DISK2_INPUT_CART): tests/cartridges/menu_disk2_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $(MENU_DISK2_INPUT_CART) -s -os $(MENU_DISK2_INPUT_CART_SYM)
-
-$(MENU_DISK2_INPUT_CART_SYM): $(MENU_DISK2_INPUT_CART)
-	@if test ! -f "$@"; then \
-		$(RASM) tests/cartridges/menu_disk2_input.asm \
-			-ob $(MENU_DISK2_INPUT_CART) -s -os $@; \
-	fi
+	$(RASM) $< -ob $(MENU_DISK2_INPUT_CART)
 
 $(MENU_DISK3_INPUT_CART): tests/cartridges/menu_disk3_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $(MENU_DISK3_INPUT_CART) -s -os $(MENU_DISK3_INPUT_CART_SYM)
-
-$(MENU_DISK3_INPUT_CART_SYM): $(MENU_DISK3_INPUT_CART)
-	@if test ! -f "$@"; then \
-		$(RASM) tests/cartridges/menu_disk3_input.asm \
-			-ob $(MENU_DISK3_INPUT_CART) -s -os $@; \
-	fi
+	$(RASM) $< -ob $(MENU_DISK3_INPUT_CART)
 
 $(DISK_PHYDIO_IMAGE): tools/make_test_disk.py | $(BUILD_DIR)
 	$(PYTHON) $< $@
@@ -694,25 +671,25 @@ $(NEXTOR_IMAGE): $(NEXTOR_SYS) $(NEXTOR_COMMAND) | $(BUILD_DIR)
 
 $(TAPE_INPUT_CART): tests/cartridges/tape_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(TAPE_INPUT_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(TAPE_PROBE_IMAGE): tools/make_test_cassette.py | $(BUILD_DIR)
 	$(PYTHON) $< $@
 
 $(TAPE_LOAD_INPUT_CART): tests/cartridges/tape_load_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(TAPE_LOAD_INPUT_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(TAPE_SAVE_INPUT_CART): tests/cartridges/tape_save_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(TAPE_SAVE_INPUT_CART_SYM)
+	$(RASM) $< -ob $@
 
 $(BBC_TAPE_IMAGE): $(BBC_BASIC_DIR)/tools/make_msx_tape_fixture.py | $(BUILD_DIR)
 	$(PYTHON) $< $@
 
 $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(INVALID_PAYLOAD_CART_SYM)
+	$(RASM) $< -ob $@
 
 test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
 	$(DISK_BOOT_SECTOR_BIN) $(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) \
@@ -857,26 +834,24 @@ $(OPENMSX_MSX2_64K_MACHINE): \
 
 $(SUBROM_PROBE_ROM): tests/subroms/subrom_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SUBROM_PROBE_ROM:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(SUBROM_PROBE_CART): tests/cartridges/subrom_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SUBROM_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 SUBROM_SERVICES_PROBE_CART := \
 	$(BUILD_DIR)/cartridges/subrom_services_probe.rom
-SUBROM_SERVICES_PROBE_SYM := \
-	$(BUILD_DIR)/cartridges/subrom_services_probe.sym
 
 $(SUBROM_SERVICES_PROBE_CART): \
 		tests/cartridges/subrom_services_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SUBROM_SERVICES_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(SUBROM_CMDCLOCK_PROBE_CART): \
 		tests/cartridges/subrom_cmdclock_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SUBROM_CMDCLOCK_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 SUBROM_64K_PROBE_CART := \
 	$(BUILD_DIR)/cartridges/subrom_64k_probe.rom
@@ -884,13 +859,13 @@ SUBROM_64K_PROBE_CART := \
 $(SUBROM_64K_PROBE_CART): \
 		tests/cartridges/subrom_64k_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SUBROM_64K_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 STUB_PROBE_CART := $(BUILD_DIR)/cartridges/stub_probe.rom
 
 $(STUB_PROBE_CART): tests/cartridges/stub_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(STUB_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 ABI_CLOBBER_PROBE_CART := $(BUILD_DIR)/cartridges/abi_clobber_probe.rom
 DISK_ABI_PROBE_CART := $(BUILD_DIR)/cartridges/disk_abi_probe.rom
@@ -902,53 +877,51 @@ KEYINT_PROBE_CART := $(BUILD_DIR)/cartridges/keyint_probe.rom
 
 $(ABI_CLOBBER_PROBE_CART): tests/cartridges/abi_clobber_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(ABI_CLOBBER_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(DISK_ABI_PROBE_CART): tests/cartridges/disk_abi_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(DISK_ABI_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(GTPDL_CLOBBER_PROBE_CART): tests/cartridges/gtpdl_clobber_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(GTPDL_CLOBBER_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(INIFNK_PROBE_CART): tests/cartridges/inifnk_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(INIFNK_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(ISCNTC_PROBE_CART): tests/cartridges/iscntc_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(ISCNTC_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(CHGMOD_PROBE_CART): tests/cartridges/chgmod_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(CHGMOD_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 $(KEYINT_PROBE_CART): tests/cartridges/keyint_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(KEYINT_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 FNKEY_PROBE_CART := $(BUILD_DIR)/cartridges/fnkey_probe.rom
 
 $(FNKEY_PROBE_CART): tests/cartridges/fnkey_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(FNKEY_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 KBD_PROBE_CART := $(BUILD_DIR)/cartridges/kbd_probe.rom
 
 $(KBD_PROBE_CART): tests/cartridges/kbd_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(KBD_PROBE_CART:.rom=.sym)
+	$(RASM) $< -ob $@
 
 SUBROM_CMDCLOCK_PROBE_CART := \
 	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.rom
-SUBROM_CMDCLOCK_PROBE_SYM := \
-	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.sym
 
 $(SUBROM_CMDCLOCK_PROBE_CART): \
 		tests/cartridges/subrom_cmdclock_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
-	$(RASM) $< -ob $@ -s -os $(SUBROM_CMDCLOCK_PROBE_SYM)
+	$(RASM) $< -ob $@
 
 $(OPENMSX_SUNRISE_SYSTEM_ROM): $(SUNRISE_ROM)
 	mkdir -p $(@D)
@@ -2186,3 +2159,11 @@ check-manifest: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) bbcbasic-payload
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+# Drop every ancillary fixture and emulator output while keeping the four
+# production ROMs and their symbol files in $(BUILD_DIR).
+clean-ancillary:
+	rm -rf $(FIXTURES_DIR) $(BUILD_DIR)/cartridges $(BUILD_DIR)/cassettes \
+		$(BUILD_DIR)/disks $(BUILD_DIR)/1983 $(BUILD_DIR)/openmsx \
+		$(BUILD_DIR)/payload $(BUILD_DIR)/release $(BUILD_DIR)/logo \
+		$(BUILD_DIR)/subroms $(BUILD_DIR)/tools

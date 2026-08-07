@@ -35,19 +35,19 @@ DISK_ROM_PATH = Path(
 BOOT_SECTOR_PATH = Path(
     os.environ.get(
         "RAINBIOS_DISK_BOOT_SECTOR",
-        ROOT / "build" / "disk_boot_sector.bin",
+        ROOT / "build" / "fixtures" / "disk_boot_sector.bin",
     )
 )
 IDE_BOOT_SECTOR_PATH = Path(
     os.environ.get(
         "RAINBIOS_IDE_BOOT_SECTOR",
-        ROOT / "build" / "ide_boot_sector.bin",
+        ROOT / "build" / "fixtures" / "ide_boot_sector.bin",
     )
 )
 SD_BOOT_SECTOR_PATH = Path(
     os.environ.get(
         "RAINBIOS_SD_BOOT_SECTOR",
-        ROOT / "build" / "sd_boot_sector.bin",
+        ROOT / "build" / "fixtures" / "sd_boot_sector.bin",
     )
 )
 
