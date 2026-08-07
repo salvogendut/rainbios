@@ -3,8 +3,9 @@
 # Cartridge startup state
 
 The state RainBIOS presents to an ordinary MSX1 cartridge at its `INIT` entry,
-characterized end to end by `test-openmsx-cartridge` and
-`test-openmsx-expanded-cartridge`.
+characterized end to end by `test-openmsx-cartridge`,
+`test-openmsx-expanded-cartridge`, and the page-2 INIT fixtures
+(`test-openmsx-page2-cartridge` / `test-1983-page2-cartridge`).
 
 ## INIT entry
 
@@ -26,6 +27,13 @@ Flags are unspecified. A, B, C, DE, and HL pass through `CALSLT` unchanged,
 matching the documented slot-calling contract. An `INIT` that returns is
 treated as a conventional application cartridge: it suppresses automatic
 embedded BASIC and may continue through hooks or interrupt-driven code.
+
+The contract holds when the `INIT` routine lives in page 2 as well — the
+layout a mapper-style cartridge uses before installing its own bank switching.
+The 32 KiB page-2 fixture keeps the `AB` header at `4000h` with the `INIT`
+pointer at `8000h`; RainBIOS maps the page through `CALSLT` and the entry
+state is identical (IX/DE = `8000h`, A/B = slot, C = 0, IY = slot in the high
+byte, page-3 `SP`), with page 2 left on the cartridge slot after the transfer.
 
 ## Work area at boot
 
