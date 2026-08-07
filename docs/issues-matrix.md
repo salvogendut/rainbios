@@ -45,6 +45,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #108 | M6 | Scrolling text workload gated (external + embedded) |
 | #109 | M6 | Editing workload gated (external + embedded) |
 | #110 | M6 | openMSX GeoBench promoted to full desktop-geometry gate |
+| #111 | M6 | Loader inputs HL/DE (DISKVE/ENAKRN) provided and gated |
 
 ## Issue matrix
 
