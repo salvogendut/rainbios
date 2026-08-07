@@ -8,6 +8,8 @@
 
 VDP_DATA        equ #98
 VDP_CONTROL     equ #99
+PRINTER_DATA    equ #91
+PRINTER_CTRL    equ #90
 PSG_ADDRESS     equ #a0
 PSG_WRITE       equ #a1
 PSG_READ        equ #a2
@@ -116,6 +118,9 @@ H_ISFL          equ #fedf
 H_OUTD          equ #fee4
 H_RUNC          equ #fecb
 H_STKE          equ #feda
+H_LPTO          equ #ffb6
+H_LPTS          equ #ffbb
+LPTPOS          equ #f415
 DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
 NEXTOR_BOOT_DRIVE equ #f2fd
@@ -219,8 +224,8 @@ ASSET_BUFFER    equ #c000
                 jp chsns                        ; 009C CHSNS
                 jp chget                        ; 009F CHGET
                 jp chput                        ; 00A2 CHPUT
-                jp unsupported_call             ; 00A5 LPTOUT
-                jp unsupported_call             ; 00A8 LPTSTT
+                jp lptout                       ; 00A5 LPTOUT
+                jp lptstt                       ; 00A8 LPTSTT
                 jp unsupported_call             ; 00AB CNVCHR
                 jp pinlin                        ; 00AE PINLIN
                 jp inlin                         ; 00B1 INLIN
@@ -1126,8 +1131,53 @@ cold_boot_select_internal_payload:
 ; Ordinary unimplemented calls return carry set. This is a bring-up contract,
 ; not an assertion about compatible error behavior.
 unsupported_call:
-                scf
-                ret
+                 scf
+                 ret
+
+; $00A8 LPTSTT: return the printer status. Reads the busy line from the
+; printer control port (bit 1 = status, low = ready, high = busy): returns
+; A = FFh with Z clear when ready, A = 00h with Z set while busy, matching
+; the official BIOS.
+lptstt:
+                 call H_LPTS                    ; printer status hook
+                 in a,(PRINTER_CTRL)
+                 rrca
+                 rrca                            ; status bit into carry
+                 ccf
+                 sbc a,a
+                 ret
+
+; $00A5 LPTOUT: write the character in A to the printer. Polls the printer
+; status until it is ready or a break is detected, then latches the byte on
+; the data port and pulses the strobe. On a break, writes CR, resets the
+; printer position, and returns with carry set; otherwise carry is clear.
+lptout:
+                 call H_LPTO                    ; printer output hook
+                 push af                        ; store byte
+lptout_wait:
+                 call breakx
+                 jr c,lptout_abort
+                 call lptstt
+                 jr z,lptout_wait               ; printer busy, keep waiting
+                 pop af                         ; restore byte
+lptout_write:
+                 push af
+                 out (PRINTER_DATA),a           ; latch the byte on the data port
+                 xor a
+                 out (PRINTER_CTRL),a           ; strobe on
+                 dec a
+                 out (PRINTER_CTRL),a           ; strobe off
+                 pop af
+                 and a                          ; clear carry (ok)
+                 ret
+lptout_abort:
+                 xor a
+                 ld (LPTPOS),a                  ; printer position = 0
+                 ld a,13
+                 call lptout_write              ; write carriage return
+                 pop af
+                 scf                            ; carry set (aborted)
+                 ret
 
 ; MSX1 mass-storage callouts.
 ; These call into hook vectors when a disk ROM provides them; safe defaults are
