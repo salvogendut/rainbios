@@ -22,8 +22,6 @@ OUTDO           equ #0018
 GETYPR          equ #0028
 INITIO          equ #003b
 STRTMS          equ #0099
-LPTOUT          equ #00a5
-LPTSTT          equ #00a8
 CNVCHR          equ #00ab
 LFTQ            equ #00f6
 PUTQ            equ #00f9
@@ -41,7 +39,7 @@ SCANR           equ #012c
 SCANL           equ #012f
 CALBAS          equ #0159
 
-ENTRY_COUNT     equ 23
+ENTRY_COUNT     equ 21
 
                 org #4000
 
@@ -149,8 +147,6 @@ entry_table:
                 dw GETYPR
                 dw INITIO
                 dw STRTMS
-                dw LPTOUT
-                dw LPTSTT
                 dw CNVCHR
                 dw LFTQ
                 dw PUTQ

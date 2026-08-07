@@ -120,6 +120,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-payload-invalid` | Claimed-but-invalid descriptor fails closed without running `INIT` |
 | `test-openmsx-embedded-basic` | No-cartridge automatic launch, internal header/descriptor, slot state, ROM write guard, arithmetic, and clean top-of-screen banner/prompt |
 | `test-openmsx-payload-state` | Payload-launch register and work-area state at the descriptor entry: `SP=F380h`, A/BC/DE/HL/IX/IY zeroed, page 0 on the MAIN-ROM slot with pages 1-3 on contiguous RAM, empty key buffer, and a live `JIFFY` proving the interrupt source and IM1/EI are active |
+| `test-openmsx-printer` | `LPTSTT` reports busy with no printer and ready once a printer is attached, and `LPTOUT` sends bytes through the data port with a clear carry, verified by the openMSX printer logger capturing the exact output |
 | `test-openmsx-bbcbasic-quote` | The double-quote key pressed through the physical matrix reaches the BBC BASIC console line editor as a literal `"` (regression: the key used to latch the umlaut dead key and drop the character) |
 
 ### Cassette and disk
@@ -148,7 +149,7 @@ make test-1983 \
 | `test-1983` | MSX1 stack, RAM page map, and rendered boot frame |
 | `test-1983-expanded` | NMS 8250 expanded-slot RAM layout |
 | `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
-| `test-1983-stubs` | BIOS stub safe-return contract: all 23 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/LPTOUT/LPTSTT/CNVCHR/LFTQ/PUTQ and the SCALXY..SCANL group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
+| `test-1983-stubs` | BIOS stub safe-return contract: all 21 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/CNVCHR/LFTQ/PUTQ and the SCALXY..SCANL group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
 | `test-1983-abi-clobber` | DCOMPR flag/carry contract (HL<DE, HL==DE, HL>DE) and BC preservation; WRTPSG/RDPSG round trip through the PSG ports |
 | `test-1983-fnkey` | POSIT cursor positioning, ERAFNK erase (CNSDFG=0, spaces), DSPFNK render (CNSDFG=FF, cursor to last row), FNKSB toggle, and TOTEXT text-mode refresh |
 | `test-1983-kbd` | CHSNS empty/data reporting, CHGET char read with BC/DE/HL preserved and GETPNT advance, KILBUF buffer reset, CHGCAP Caps-Lock lamp on with BC/DE/HL preserved (PPI port-C bit 6 read back), and CHGSND click on/off switch with BC/DE/HL preserved |

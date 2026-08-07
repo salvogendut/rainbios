@@ -323,8 +323,16 @@ voice static data and the three voice queues are cleared (`MUSICF`/`PLYCNT`
 zero). The keyboard probe covers the mid-line insert/Backspace/Delete/Home
 sequence, cursor-right append, and the initialized `GICINI` work area.
 
+M3I implements the printer basic-device calls. `LPTOUT` (`00A5`) polls the
+printer status via the `H.LPTS` hook until ready or a break, latches the byte
+on data port `91h`, and pulses the strobe on control port `90h`, returning
+carry clear or, after a break with `LPTPOS` reset, carry set. `LPTSTT`
+(`00A8`) reads the status line (port `90h` bit 1) via the `H.LPTO` hook and
+returns `FFh`/Z clear when ready or `00h`/Z set while busy, matching the
+official BIOS. Both entries drop out of the M6 stub gate (21 stubs remain),
+gated by `test-openmsx-printer` using the openMSX printer port and logger.
+
 - implement touch-panel, light-pen, and trackball-detection calls;
-- implement or explicitly classify printer and remaining basic-device calls;
 - make interrupt frequency and locale selectable build properties.
 
 Exit criterion: interactive cartridge diagnostics pass for keyboard, sound,
@@ -492,8 +500,8 @@ below `3000h`, so substantial new page-0 work must be a deliberate, documented
 step rather than an accidental boundary erosion.
 
 The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
-all 23 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
-LPTOUT, LPTSTT, CNVCHR, LFTQ, PUTQ, the SCALXY..SCANL group, and CALBAS)
+all 21 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
+CNVCHR, LFTQ, PUTQ, the SCALXY..SCANL group, and CALBAS)
 through CALSLT with known register inputs and verifies the documented
 safe-return contract — `scf; ret` sets carry and preserves A/BC/DE/HL. NMI
 (0066h) is excluded: it is an interrupt return (`retn`), not a callable stub.
