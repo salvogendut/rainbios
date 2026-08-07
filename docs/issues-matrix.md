@@ -30,6 +30,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #93 | M4 | Gate the payload-launch register/work-area state with `test-openmsx-payload-state` |
 | #94 | M4 | Characterize and gate the cartridge INIT entry state (`test-openmsx-cartridge`/`-expanded-cartridge`) |
 | #95 | M4 | Gate the page-2 INIT (mapper-style) cartridge arrangement (`test-openmsx-page2-cartridge`/`test-1983-page2-cartridge`) |
+| #96 | M3 | Implement the printer calls LPTOUT/LPTSTT; M6 stub gate now 21 |
 
 ## Issue matrix
 
