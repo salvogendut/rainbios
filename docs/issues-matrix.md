@@ -38,6 +38,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #101 | M6 | GTPDL clobber contract characterized + gated |
 | #102 | M6 | INIFNK default function-key strings gated |
 | #103 | M6 | ISCNTC/CKCNTC break-consumption contract gated |
+| #104 | M6 | CHGMOD screen-mode dispatch gated |
 
 ## Issue matrix
 
