@@ -111,6 +111,8 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | --- | --- |
 | `test-openmsx-cartridge` | Original primary-slot `AB` cartridge discovery and `INIT` transfer, including the characterized INIT entry state (IX/DE = INIT pointer, A/B = slot, C = 0, IY = slot in the high byte, page-3 SP) cross-checked against the fixture's in-ROM snapshot |
 | `test-openmsx-expanded-cartridge` | The same discovery path and INIT entry state in an expanded secondary slot |
+| `test-openmsx-page2-cartridge` | Cartridge discovery and INIT entry state when the `INIT` routine lives in page 2 (the mapper-style arrangement): a 32 KiB fixture whose header at `4000h` points to `8000h`, forced onto slot 1 with an explicit `Normal4000` mapping |
+| `test-1983-page2-cartridge` | The same 32 KiB page-2 INIT fixture on the independent 1983 emulator, validating the `D0h` slot map and page-2 loop PC |
 | `test-openmsx-bbcbasic-menu` | Descriptor discovery and enabled menu state |
 | `test-openmsx-expanded-bbcbasic-menu` | Descriptor discovery and launch from an expanded slot |
 | `test-openmsx-bbcbasic` | Complete console/editing/language/error/timing workload |

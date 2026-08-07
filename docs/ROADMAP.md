@@ -364,8 +364,15 @@ slot ID, C = 0, IY = the slot in the high byte, and SP on a RainBIOS page-3
 stack, with the fixture's in-ROM snapshot cross-checked against the breakpoint
 capture. See `docs/abi/cartridge-startup.md`.
 
-- support common slot and mapper arrangements needed before cartridge code
-  installs its own mapper;
+M4D covers the slot arrangements a cartridge needs before it installs its own
+mapper. `test-openmsx-page2-cartridge` and `test-1983-page2-cartridge` boot a
+32 KiB fixture whose `INIT` lives in page 2 (the mapper-style layout): the
+header at `4000h` points to `8000h`, RainBIOS maps the page through `CALSLT`,
+and the same INIT entry contract holds (IX/DE = `8000h`, A/B = slot, C = 0,
+IY = slot in the high byte) with page 2 on the cartridge slot. The openMSX
+config forces the ROM with `Normal4000` because the plain-ROM position
+guesser cannot place a ROM whose INIT points to page 2.
+
 - create a compatibility corpus of redistributable homebrew and original test
   ROMs.
 
