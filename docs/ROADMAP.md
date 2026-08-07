@@ -590,6 +590,10 @@ M6C characterizes the `GTPDL` clobber contract. `test-1983-gtpdl-clobber`
 verifies the paddle read returns 0 with no paddle, preserves HL/IX/IY, and
 restores the PSG IOB (R15); BC/DE are clobbered per the reference.
 
+M6D gates `INIFNK`. `test-1983-inifnk` calls `INIFNK` (`003E`) and verifies
+`FNKSTR` receives the ten default 16-byte strings (starting `LIST`, ending
+`SCREEN 0`) while `FNKFLG` is left untouched.
+
 ## M7 — Disk boot
 
 Status: in progress.

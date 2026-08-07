@@ -18,7 +18,7 @@ address,name,kind,status,milestone,notes
 0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs; page-0/page-3 targets follow the CALSLT paths
 0038,KEYINT,jump,partial,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY
 003B,INITIO,jump,stub,M1,
-003E,INIFNK,jump,partial,M3,Fills FNKSTR with the ten default function-key strings
+003E,INIFNK,jump,implemented,M3,Fills FNKSTR with the ten default 16-byte function-key strings (LIST/RUN/LOAD/SAVE/CONT/,LPT1:/TRON/TROFF/KEY LIST/SCREEN 0) without touching FNKFLG; verified by test-1983-inifnk
 0041,DISSCR,jump,implemented,M2,Clears the TMS9918 R1 display-enable bit through the shadowed WRTVDP path
 0044,ENASCR,jump,implemented,M2,Sets the TMS9918 R1 display-enable bit through the shadowed WRTVDP path
 0047,WRTVDP,jump,implemented,M2,Accepts B=data and C=register; updates MSX1 register shadows 0 through 7 atomically
