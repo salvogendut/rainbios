@@ -332,7 +332,16 @@ returns `FFh`/Z clear when ready or `00h`/Z set while busy, matching the
 official BIOS. Both entries drop out of the M6 stub gate (21 stubs remain),
 gated by `test-openmsx-printer` using the openMSX printer port and logger.
 
-- implement touch-panel, light-pen, and trackball-detection calls;
+M3J implements the touch-panel GTPAD selectors. `GTPAD` (`00DB`) selectors 0-7
+read the UPD7001 touchpad (connectors 1 and 2) through the PSG IOB serial
+clock/data lines and the IOA SENSE/SO lines: 0/4 fetch the coordinates into
+`PADX`/`PADY`, 1/5 return X, 2/6 return Y, and 3/7 return the trigger,
+matching the reference implementation. The serial bit-bang is verified against
+openMSX's UPD7001 touchpad model; because a headless openMSX run cannot deliver
+host touch input, the touched-coordinate read is documented per the reference
+while the no-device and not-touched (no-sense) cases are gated by
+`test-openmsx-gtpad`.
+
 - make interrupt frequency and locale selectable build properties.
 
 Exit criterion: interactive cartridge diagnostics pass for keyboard, sound,
