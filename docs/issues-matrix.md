@@ -34,6 +34,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #97 | M3 | Implement the touch-panel GTPAD selectors (UPD7001 serial protocol) |
 | #98 | M1 | Disk ROM adopts the motor-arm helper (IM 1 handler stops the motor) |
 | #99 | M2 | Full-wraparound VRAM boundary coverage (FULLWRAP/WRAPFILL/LDIRVMW/LDIRMVW) |
+| #100 | M6 | Hook-dispatching disk ABI baseline gated (PHYDIO/FORMAT/ISFLIO/OUTDLP/GETVCP/GETVC2) |
 
 ## Issue matrix
 
