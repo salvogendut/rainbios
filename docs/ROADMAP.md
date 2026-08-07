@@ -607,6 +607,12 @@ M6G gates the `KEYINT` VBlank bookkeeping. `test-1983-keyint` enables the VDP
 interrupt, waits for a tick, and verifies `JIFFY` (`FC9E`) advanced by one and
 `STATFL` (`F3E7`) holds the VDP status byte.
 
+M6H promotes the external graphics workload to the internal mapping.
+`test-1983-embedded-basic-graphics` boots the source-embedded BASIC payload,
+runs the same POINT-checking Graphics II program the external cartridge test
+uses, and validates the payload RAM slot (`FC`), VDP registers (`R0=02`,
+`R1=E0`), and the rendered three-colour pattern.
+
 ## M7 — Disk boot
 
 Status: in progress.
