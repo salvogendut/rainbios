@@ -36,6 +36,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #99 | M2 | Full-wraparound VRAM boundary coverage (FULLWRAP/WRAPFILL/LDIRVMW/LDIRMVW) |
 | #100 | M6 | Hook-dispatching disk ABI baseline gated (PHYDIO/FORMAT/ISFLIO/OUTDLP/GETVCP/GETVC2) |
 | #101 | M6 | GTPDL clobber contract characterized + gated |
+| #102 | M6 | INIFNK default function-key strings gated |
 
 ## Issue matrix
 
