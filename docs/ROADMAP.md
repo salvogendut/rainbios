@@ -226,8 +226,9 @@ M2N hardens the VDP control-port ordering and VRAM boundaries. The address
 and register pairs in `SETRD`/`SETWRT`/`WRTVDP` are interrupt-atomic (host
 tests lock the DI/14-bit-mask/EI byte pattern), and the boot menu renderer
 runs its VDP pairs under DI. The VRAM probe verifies the 14-bit address wrap
-at `4000h`, top/bottom writes, and `FILVRM`/`LDIRVM`/`LDIRMV` transfers
-crossing the boundary, and drives thousands of `WRTVDP` calls while an H.TIMI
+at `4000h`, top/bottom writes, `FILVRM`/`LDIRVM`/`LDIRMV` transfers crossing
+the boundary (including a full double-wraparound `FILVRM` and large crossing
+fills and copies), and drives thousands of `WRTVDP` calls while an H.TIMI
 hook writes register 0 every VBlank to prove no interrupt can split a pair.
 
 - initialize TMS9918-compatible VDP state;

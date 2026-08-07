@@ -192,6 +192,55 @@ proc ldir_mv_cross_done {} {
     lappend ::vram_lines [format "WRAPTOP=%02X" $::wrap_high]
     lappend ::vram_lines [format "WRAPBASE=%02X" $::wrap_base]
     lappend ::vram_lines [format "WRAPZERO=%02X" $::wrap_zero]
+    # Full-wraparound: FILVRM 0x8000 bytes from 0x0000 wraps the 16 KiB
+    # twice, so every byte of VRAM becomes 0x3C.
+    reg HL 0x0000
+    reg BC 0x8000
+    reg A 0x3C
+    invoke_bios 0x0056 fullwrap_done
+}
+
+proc fullwrap_done {} {
+    lappend ::vram_lines [format "FULLWRAP=%02X,%02X,%02X,%02X" \
+        [debug read VRAM 0x0000] [debug read VRAM 0x1FFF] \
+        [debug read VRAM 0x2000] [debug read VRAM 0x3FFF]]
+    # Large crossing fill: 0x1000 bytes at 0x3800 wraps into 0x0000-0x07FF.
+    reg HL 0x3800
+    reg BC 0x1000
+    reg A 0x5D
+    invoke_bios 0x0056 wrapfill_done
+}
+
+proc wrapfill_done {} {
+    lappend ::vram_lines [format "WRAPFILL=%02X,%02X,%02X,%02X,%02X" \
+        [debug read VRAM 0x3800] [debug read VRAM 0x3FFF] \
+        [debug read VRAM 0x0000] [debug read VRAM 0x07FF] \
+        [debug read VRAM 0x0800]]
+    # LDIRVM crossing the boundary: seed RAM and copy into 0x3FF0-0x3FFF
+    # then 0x0000-0x000F.
+    for {set i 0} {$i < 32} {incr i} {
+        poke [expr {0xFC00 + $i}] [expr {0x70 + $i}]
+    }
+    reg HL 0xFC00
+    reg DE 0x3FF0
+    reg BC 32
+    invoke_bios 0x005C ldirvm_wrap_done
+}
+
+proc ldirvm_wrap_done {} {
+    lappend ::vram_lines [format "LDIRVMW=%02X,%02X,%02X,%02X" \
+        [debug read VRAM 0x3FF0] [debug read VRAM 0x3FFF] \
+        [debug read VRAM 0x0000] [debug read VRAM 0x000F]]
+    # LDIRMV crossing: read the same wrapped range back.
+    reg HL 0x3FF0
+    reg DE 0xFC80
+    reg BC 32
+    invoke_bios 0x0059 ldir_mv_wrap_done
+}
+
+proc ldir_mv_wrap_done {} {
+    lappend ::vram_lines [format "LDIRMVW=%02X,%02X,%02X,%02X" \
+        [peek 0xFC80] [peek 0xFC8F] [peek 0xFC90] [peek 0xFC9F]]
     install_vdp_hook
 }
 
