@@ -594,6 +594,11 @@ M6D gates `INIFNK`. `test-1983-inifnk` calls `INIFNK` (`003E`) and verifies
 `FNKSTR` receives the ten default 16-byte strings (starting `LIST`, ending
 `SCREEN 0`) while `FNKFLG` is left untouched.
 
+M6E gates the `ISCNTC`/`CKCNTC` break-consumption contract.
+`test-1983-iscntc` latches `INTFLG` break values (03h Ctrl-STOP, 04h STOP),
+seeds a pending key, and verifies the entries clear `INTFLG` and the key
+buffer and return carry set, then return carry clear on a subsequent call.
+
 ## M7 — Disk boot
 
 Status: in progress.
