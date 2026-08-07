@@ -1879,8 +1879,8 @@ test-1983-disk-read: \
 		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
 		--disk-rom "$(DISK_PHYDIO_TEST_ROM)" \
 		--symbols "$(DISK_PHYDIO_TEST_ROM_SYM)" \
-		--expected-pass-label disk_phydio_read_pass \
-		--expected-slot FC --exit-after 1200 \
+		--expected-pass-label disk_phydio_motor_pass \
+		--expected-slot FC --exit-after 1600 \
 		--disk-a "$(DISK_PHYDIO_IMAGE)" --floppy-mode read-only \
 		--screenshot "$(EMULATOR_1983_DISK_PHYDIO_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
@@ -1939,8 +1939,8 @@ test-1983-disk-write-guard: \
 		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
 		--disk-rom "$(DISK_PHYDIO_TEST_ROM)" \
 		--symbols "$(DISK_PHYDIO_TEST_ROM_SYM)" \
-		--expected-pass-label disk_phydio_read_pass \
-		--expected-slot FC --exit-after 1200 \
+		--expected-pass-label disk_phydio_motor_pass \
+		--expected-slot FC --exit-after 1600 \
 		--disk-a "$(DISK_PHYDIO_IMAGE)" --floppy-mode read-write \
 		--expect-disk-unchanged \
 		--screenshot "$(EMULATOR_1983_DISK_WRITE_GUARD_SCREEN)"

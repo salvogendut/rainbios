@@ -36,6 +36,13 @@ DISK_RAM_LIMIT  equ #f000
 DISK_SECTOR_SIZE equ 512
 DISK_CLUSTER_SIZE equ 2
 DISK_FAT_SIZE   equ 3
+
+; The RainBIOS IM 1 handler owns the motor-off timer. DISK_MOTOR is the
+; armed flag and DISK_MOTOR_TIMER counts frames down to zero, after which the
+; handler writes the motor-off value to the FDC drive register.
+DISK_MOTOR      equ #f3bc
+DISK_MOTOR_TIMER equ #f3bd
+DISK_MOTOR_FRAMES equ 120
 DISK_FAT_COUNT  equ 2
 DISK_ROOT_ENTRIES equ 112
 DISK_RESERVED   equ 1
@@ -126,7 +133,7 @@ disk_phydio_select_side_one:
                 jr disk_phydio_read_loop
 
 disk_phydio_success:
-                call disk_motor_off
+                call disk_motor_arm
                 ld b,c
                 xor a
                 ret
@@ -135,7 +142,7 @@ disk_phydio_runtime_error:
                 push af
                 ld a,#d0                       ; force interrupt
                 ld (FDC_COMMAND),a
-                call disk_motor_off
+                call disk_motor_arm
                 pop af
                 ld b,c
                 scf
@@ -162,6 +169,16 @@ disk_unsupported:
 disk_motor_off:
                 xor a
                 ld (FDC_DRIVE),a
+                ret
+
+; Arm the RainBIOS motor-off timer instead of stopping the drive inline, so
+; the IM 1 handler keeps the motor running briefly after the access and then
+; writes the motor-off value to the FDC drive register.
+disk_motor_arm:
+                ld a,1
+                ld (DISK_MOTOR),a
+                ld a,DISK_MOTOR_FRAMES
+                ld (DISK_MOTOR_TIMER),a
                 ret
 
 ; Allow a cold drive approximately one second to reach operating speed at the

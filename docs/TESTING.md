@@ -176,7 +176,7 @@ make test-1983 \
 | `test-1983-disk-boot-fallback` | Empty/non-bootable media returns to the menu |
 | `test-1983-disk-boot-menu` | Menu option 2 reaches the production bootstrap |
 | `test-1983-disk-menu-stub` | Option 3 without a storage cartridge remains in the menu |
-| `test-1983-disk-read` | Multi-sector, side/track, and boundary reads |
+| `test-1983-disk-read` | Multi-sector, side/track, and boundary reads, and the motor-arm adoption: after the access the drive stays on until the RainBIOS IM 1 handler stops it (reaches `disk_phydio_motor_pass`) |
 | `test-1983-disk-no-media` | No-media error behavior |
 | `test-1983-disk-dskchg-getdpb` | Media-change state and DPB publication with media |
 | `test-1983-disk-dskchg-no-media` | Media-change/DPB behavior without media |
