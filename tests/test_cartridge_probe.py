@@ -8,10 +8,25 @@ from tools.check_cartridge_probe import validate_report
 
 
 VALID_REPORT = """\
+ENTRYPC=4010
+ENTRYSP=F088
+ENTRYAF=01,33
+ENTRYBC=0100
+ENTRYDE=4010
+ENTRYHL=4003
+ENTRYIX=4010
+ENTRYIY=0100
 PC=402B
-SP=F376
+SP=F088
 SLOT=F4
 SIGNATURE=52,41,49,4E,5E
+INITAF=01,33
+INITBC=01,00
+INITDE=40,10
+INITHL=40,03
+INITIX=40,10
+INITIY=01,00
+INITSP=F0,88
 """
 
 
@@ -36,6 +51,42 @@ class CartridgeProbeTests(unittest.TestCase):
     def test_wrong_slot_map_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "SLOT"):
             validate_report(VALID_REPORT.replace("SLOT=F4", "SLOT=F0"))
+
+    def test_a_and_b_must_carry_the_same_slot_id(self) -> None:
+        with self.assertRaisesRegex(ValueError, "A .* and B"):
+            validate_report(
+                VALID_REPORT.replace("ENTRYAF=01,33", "ENTRYAF=02,33")
+            )
+
+    def test_c_must_be_zero_at_init(self) -> None:
+        with self.assertRaisesRegex(ValueError, "C must be zero"):
+            validate_report(
+                VALID_REPORT.replace("ENTRYBC=0100", "ENTRYBC=0105")
+            )
+
+    def test_de_and_ix_must_be_the_init_pointer(self) -> None:
+        with self.assertRaisesRegex(ValueError, "DE .* and IX"):
+            validate_report(
+                VALID_REPORT.replace("ENTRYDE=4010", "ENTRYDE=4020")
+            )
+
+    def test_iy_must_hold_the_slot_in_its_high_byte(self) -> None:
+        with self.assertRaisesRegex(ValueError, "IY .* high byte"):
+            validate_report(
+                VALID_REPORT.replace("ENTRYIY=0100", "ENTRYIY=0101")
+            )
+
+    def test_sp_must_be_on_a_page3_stack(self) -> None:
+        with self.assertRaisesRegex(ValueError, "SP .* page-3"):
+            validate_report(
+                VALID_REPORT.replace("ENTRYSP=F088", "ENTRYSP=F000")
+            )
+
+    def test_fixture_snapshot_must_match_breakpoint_capture(self) -> None:
+        with self.assertRaisesRegex(ValueError, "INITAF"):
+            validate_report(
+                VALID_REPORT.replace("INITAF=01,33", "INITAF=10,33")
+            )
 
     def test_running_expanded_cartridge_is_accepted(self) -> None:
         report = VALID_REPORT.replace("SLOT=F4", "SLOT=F8")
