@@ -211,15 +211,14 @@ occupies page 1.
 ## GeoBench Boot Status
 
 GeoBench (`GBMSX.IMG`) is user-confirmed to boot under RainBIOS through both
-Sunrise IDE and SD Mapper V2. That claim now has three explicit integration
-targets instead of relying on an ordinary Nextor prompt. The two 1983 targets
-require the full rendered Screen 7 desktop through Sunrise and SD Mapper. The
-openMSX Sunrise target requires GeoBench's desktop segment to be active in
-page 1 with Screen 7 and visible UI output. The
-instantaneous PC is diagnostic only because capture can occur in a kernel or
-frame-pacing routine. The target does not yet claim the same exact desktop
-geometry because the current GeoBench image contains timing-sensitive VDP
-access sites under openMSX.
+Sunrise IDE and SD Mapper V2. That claim has three explicit integration
+targets instead of relying on an ordinary Nextor prompt. All three targets
+require the full rendered Screen 7 desktop: 1983 through Sunrise and SD
+Mapper, and openMSX through Sunrise against the byte-verified unmodified
+image. The instantaneous PC is diagnostic only because capture can occur in a
+kernel or frame-pacing routine. `test-openmsx-geobench-sunrise` now applies
+the same full desktop-geometry gate as both 1983 targets, so the openMSX
+rendering gap is closed.
 
 ### Fixed and verified
 
@@ -323,8 +322,9 @@ font, VDP-state, color, Screen 3, services (including the IM 1 controller
 snapshot and the cassette/floppy motor auto-stops), and startup-audio probes
 pass; Sunrise Nextor
 and SD Mapper card A, card B, and dual-card paths pass; the adjacent 1983 PSG
-and MSX component tests pass; both 2,502-frame 1983 GeoBench storage paths
-render the Screen 7 desktop, and the openMSX Sunrise boot-state gate passes.
+and MSX component tests pass; all three GeoBench storage paths (1983 Sunrise,
+1983 SD Mapper, and openMSX Sunrise) render the full Screen 7 desktop, with
+the openMSX gate applying the same desktop-geometry check as the 1983 targets.
 The automated openMSX mouse case verifies idle requests and
 button lines; deterministic non-zero host-motion injection remains a test
 harness gap rather than a committed test. A separate temporary focused-X11
@@ -543,14 +543,11 @@ storage-precedence matrix. Add the combined machine-readable component
 manifest and resolve `BBC BASIC` branding before any public combined-ROM
 release.
 
-The GeoBench storage boot matrix is now automated. The next emulator
-compatibility slice is to close the narrower openMSX rendering gap: reproduce
-the current image's timing-sensitive VDP writes without enabling openMSX's
-diagnostic helper, correct the responsible public-interface timing in the
-appropriate open-source component, and then promote
-`test-openmsx-geobench-sunrise` from a boot-state gate to the same exact
-desktop-geometry gate used by both 1983 targets. Do not weaken the 1983 gates
-or treat a timing-altered diagnostic run as acceptance evidence.
+The GeoBench storage boot matrix is now automated. `test-openmsx-geobench-sunrise`
+applies the same full-desktop geometry gate as both 1983 targets against the
+byte-verified unmodified GeoBench image, closing the openMSX rendering gap.
+Any future change that would weaken the 1983 gates or treat a timing-altered
+diagnostic run as acceptance evidence must be rejected.
 
 The M5 first slice now produces a distinct MSX2 main-ROM build
 (`build/rainbios_msx2.rom`) via `make msx2-main-rom`. It is validated by
