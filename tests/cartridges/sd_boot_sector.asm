@@ -10,6 +10,8 @@ SD_MAPPER_DATA  equ #7b00
 SD_FLAGS        equ #f30a
 SD_FLAG_BLOCK   equ #02
 BOOT_BUF        equ #c200
+LOADER_HL       equ #f3cc
+LOADER_DE       equ #f3ce
 CHPUT           equ #00a2
 POSIT           equ #00c6
 
@@ -31,6 +33,8 @@ POSIT           equ #00c6
                 dw 0                           ; hidden sectors
 
 sd_boot_entry:
+                ld (LOADER_HL),hl
+                ld (LOADER_DE),de
                 call sd_boot_read_lba1
                 jr c,sd_boot_fail
                 ld hl,BOOT_BUF

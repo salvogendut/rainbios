@@ -43,6 +43,9 @@ DISK_FAT_SIZE   equ 3
 DISK_MOTOR      equ #f3bc
 DISK_MOTOR_TIMER equ #f3bd
 DISK_MOTOR_FRAMES equ 120
+; DISKVE is the documented disk-error-handler pointer address the MSX-DOS
+; loader receives in HL when control transfers to C000h+1Eh.
+DISKVE          equ #f323
 DISK_FAT_COUNT  equ 2
 DISK_ROOT_ENTRIES equ 112
 DISK_RESERVED   equ 1
@@ -570,6 +573,8 @@ disk_boot_go:
                 ld sp,#e000
                 xor a                          ; A = cold-boot flag
                 scf                            ; carry set
+                ld hl,DISKVE                   ; HL = disk-error-handler pointer
+                ld de,0                        ; DE = ENAKRN entry (no kernel yet)
                 jp #c01e
 
 ; Install the cold-boot bootstrap hook H_RUNC. Called by the production ROM

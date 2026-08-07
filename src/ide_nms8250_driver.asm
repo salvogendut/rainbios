@@ -79,6 +79,8 @@ ide_boot_go:
                 ld sp,#e000
                 xor a                          ; A = cold-boot flag
                 scf                            ; carry set
+                ld hl,#f323                   ; HL = DISKVE (error-handler pointer)
+                ld de,0                       ; DE = ENAKRN entry (no kernel yet)
                 jp #c01e
 
 ; Enable the Sunrise register window and select bank 0. Called with the
