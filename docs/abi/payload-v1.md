@@ -53,3 +53,8 @@ Selecting option 1 produces this non-returning transfer:
 RainBIOS pushes the descriptor entry temporarily and uses `RET` only as an
 indirect jump, leaving `SP=F380h` at the target. There is no payload return
 address: a version-1 entry must not return. Flags are unspecified.
+
+The entry contract is gated end to end by `test-openmsx-payload-state`, which
+breaks at the descriptor entry and verifies `SP=F380h`, A/BC/DE/HL/IX/IY zero,
+page 0 on the MAIN-ROM slot with pages 1-3 on the contiguous RAM slot, an
+empty key buffer, and a live `JIFFY` (interrupt source and IM1/EI active).

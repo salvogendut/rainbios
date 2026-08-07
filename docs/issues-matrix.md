@@ -1,0 +1,68 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
+# RainBIOS issue and milestone matrix
+
+Living tracking document. Updated after every merged pull request: new
+milestone progress and any issue moved to closed are recorded here. The
+milestone percentages are estimates derived from the roadmap slices
+(`docs/ROADMAP.md`); the issue table maps every GitHub issue to its milestone.
+
+## Milestone progress
+
+| Milestone | Est. | Remaining focus |
+| --- | --- | --- |
+| M0 ROM contract/build | 100% | Deterministic build, ABI metadata |
+| M1 reset/slots/RAM/interrupts | ~95% | Hardware cartridge test; disk ROM adopting the motor-arm helper |
+| M2 MSX1 display/console | ~95% | Remaining VRAM-limit hardening; hardware test |
+| M3 keyboard/PSG/basic devices | ~85% | Touch-panel/light-pen/trackball, printer + remaining basic-device calls, selectable freq/locale; interactive diag exit gate |
+| M4 cartridge compatibility | ~60% | Payload-launch register/work-area state gated by `test-openmsx-payload-state`; remaining startup-state contracts (cartridge INIT), slot/mapper arrangements, redistributable compatibility corpus + smoke matrix |
+| M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns, gated on MSX2 storage boot (M6/M7) |
+| M6 completeness/optional | ~60% | Remaining ABI gaps + flag/clobber characterization, FORMAT/ISFLIO/OUTDLP/GETVCP/GETVC2, loader inputs HL/DE, GeoBench rendering gap, payload-workload promotion, real-hardware timing |
+| M7 disk/IDE boot | ~60% | Filesystem services, formatting, drive B, writable media, other controllers, loader inputs, real-hardware timing |
+
+## Issue matrix
+
+| # | State | Milestone | Title |
+| --- | --- | --- | --- |
+| 1 | OPEN | M7 | missing feature floppies support |
+| 2 | CLOSED | M3 | Keyboard has no CAPS state; SHIFT+letter yields lowercase, breaking typed/pasted text |
+| 4 | CLOSED | M2 | Add proper lowercase glyphs to the early console font |
+| 6 | CLOSED | M2 | Refine j, k, l, m, t lowercase glyphs for readability |
+| 8 | CLOSED | M2 | Redraw lowercase m as the vertically flipped w glyph |
+| 10 | CLOSED | M2 | Diagnostics cartridge: Screen 3 and Monitor Color tests fail (CHGCLR/INIMLT stubbed) |
+| 12 | CLOSED | M2 | Arkanoid sprites are halved: INITGRP ignores the RG1SAV sprite-size bit |
+| 18 | CLOSED | M3 | GeoBench pointer cannot be moved with mouse, joystick, or keyboard |
+| 22 | CLOSED | M3 | Complete M3 keyboard input: auto-repeat, break, function keys |
+| 24 | CLOSED | M4 | Document embedded Z80 BASIC feasibility and licensing |
+| 26 | CLOSED | M3 | Implement M3 line input: INLIN, PINLIN, QINLIN, and BEEP |
+| 28 | CLOSED | M3 | Implement M3 international dead-key input |
+| 30 | CLOSED | M3 | Implement M3 key click and paddle input (GTPDL) |
+| 32 | CLOSED | M3 | Implement M3 mid-line cursor editing and GICINI PLAY init |
+| 34 | CLOSED | M2 | Implement M2 cursor movement calls |
+| 36 | CLOSED | M2 | Implement M2 VRAM transfer calls with port-ordering conformance |
+| 38 | CLOSED | M2 | Implement M2 screen-mode switch calls |
+| 40 | CLOSED | M2 | Implement M2 sprite utility calls |
+| 42 | CLOSED | M2 | Implement M2 GRPPRT graphics character print |
+| 44 | CLOSED | M2 | Implement M2 remaining CHPUT text control characters |
+| 46 | CLOSED | M2 | Complete the MSX international character set glyphs |
+| 48 | CLOSED | M2 | Initialize TMS9918-compatible VDP state at boot |
+| 50 | CLOSED | M2 | Complete M2 color-call conformance |
+| 52 | CLOSED | M2 | Complete remaining M2 partials: RDVDP and Screen 3 |
+| 56 | CLOSED | M1 | Process broader IM 1 interrupt sources |
+| 58 | CLOSED | M1 | Service the disk in the IM 1 handler |
+| 60 | CLOSED | M4 | Embed a source-rebuilt Z80 BASIC payload in the main ROM |
+| 62 | CLOSED | M4 | Investigate Arkanoid sprite and Sunrise IDE boot regressions after embedded BASIC integration |
+| 64 | CLOSED | M5 | M5: MSX2 main-ROM build with V9938 detection and EXBRSA |
+| 66 | CLOSED | M5 | M5: SUB-ROM calling contract (SUBROM/EXTROM/CHKSLZ) |
+| 68 | CLOSED | M5 | M5: RainBIOS-built SUB-ROM with bitmap modes and palette |
+| 69 | CLOSED | M5 | M5: SUB-ROM VDP command transfers and real-time clock |
+| 71 | CLOSED | M5 | M5: validate MSX2 firmware at 64 KiB and 128 KiB VRAM |
+| 73 | CLOSED | M6 | M6: machine-readable component manifest |
+| 75 | CLOSED | M6 | M6: lower-bank headroom size gate |
+| 76 | CLOSED | M6 | M6: characterize BIOS stub safe-return contract |
+| 78 | CLOSED | M6 | M6: cover all callable BIOS stub entries |
+| 80 | CLOSED | M6 | M6: reproducible release bundle |
+| 82 | CLOSED | M6 | M6: SPDX 2.3 JSON export |
+| 84 | CLOSED | M6 | M6: characterize DCOMPR and PSG clobber/flag contracts |
+| 86 | CLOSED | M6 | M6: characterize function-key and text-cursor contracts |
+| 88 | CLOSED | M6 | M6: characterize keyboard buffer contracts |

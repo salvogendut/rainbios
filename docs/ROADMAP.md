@@ -353,6 +353,14 @@ because such cartridges may continue through hooks. A compatible external
 payload remains the upgrade override. Dedicated 1983 and openMSX probes cover
 the no-cartridge automatic path.
 
+M4C defines and gates the payload-launch startup state. `test-openmsx-payload-state`
+breaks at the descriptor entry and verifies the documented transfer contract:
+`SP=F380h`, A/BC/DE/HL/IX/IY zero, page 0 on the MAIN-ROM slot with pages 1-3
+on the contiguous RAM slot, an empty key buffer, and a live `JIFFY` proving the
+interrupt source and IM1/EI state. Host tests cover the checker. The ordinary
+cartridge `INIT` entry (IX = INIT pointer, IY = slot via `CALSLT`) remains to
+be characterized.
+
 - define and test startup register and work-area state;
 - support common slot and mapper arrangements needed before cartridge code
   installs its own mapper;
