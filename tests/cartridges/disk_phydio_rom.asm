@@ -8,6 +8,8 @@ PHYDIO          equ #0144
 H_RUNC          equ #fecb
 DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
+JIFFY           equ #fc9e
+DISK_MOTOR_DEADLINE equ #f310
 
                 org #4000
 
@@ -189,8 +191,40 @@ disk_phydio_test_run:
                 call disk_phydio_check_sequence
                 jp c,disk_phydio_fail_final_data
 
-disk_phydio_read_pass:
-                jp disk_phydio_read_pass
+disk_phydio_motor_check:
+                ; The final access armed the motor-off timer: the drive must
+                ; still report the motor on, then the RainBIOS IM 1 handler
+                ; must stop it after the timeout instead of the driver doing
+                ; so inline. Re-enable interrupts so JIFFY and the timer run.
+                ei
+                ld a,(DISK_MOTOR)
+                or a
+                jp z,disk_phydio_fail_motor_not_armed
+                ld hl,(JIFFY)
+                ld de,#0080
+                add hl,de
+                ld (DISK_MOTOR_DEADLINE),hl
+disk_phydio_motor_wait:
+                ld hl,(JIFFY)
+                ld de,(DISK_MOTOR_DEADLINE)
+                or a
+                sbc hl,de
+                jr c,disk_phydio_motor_wait
+                ld a,(DISK_MOTOR)
+                or a
+                jp nz,disk_phydio_fail_motor_timeout
+                ld a,(FDC_DRIVE)
+                and #80
+                jp nz,disk_phydio_fail_motor_on
+disk_phydio_motor_pass:
+                jp disk_phydio_motor_pass
+
+disk_phydio_fail_motor_not_armed:
+                jp disk_phydio_fail_motor_not_armed
+disk_phydio_fail_motor_timeout:
+                jp disk_phydio_fail_motor_timeout
+disk_phydio_fail_motor_on:
+                jp disk_phydio_fail_motor_on
 
 ; Input HL points to B sectors whose first logical sector is DE.
 disk_phydio_check_sequence:
