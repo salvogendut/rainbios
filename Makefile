@@ -65,6 +65,8 @@ OPENMSX_SCREEN3_REPORT := $(OPENMSX_M1_REPORT_DIR)/screen3.txt
 OPENMSX_FONT_REPORT := $(OPENMSX_M1_REPORT_DIR)/font.txt
 DIAGNOSTIC_CART := $(BUILD_DIR)/cartridges/primary_init.rom
 DIAGNOSTIC_CART_SYM := $(BUILD_DIR)/cartridges/primary_init.sym
+PAGE2_CART := $(BUILD_DIR)/cartridges/page2_init.rom
+PAGE2_CART_SYM := $(BUILD_DIR)/cartridges/page2_init.sym
 MENU_INPUT_CART := $(BUILD_DIR)/cartridges/menu_input.rom
 MENU_INPUT_CART_SYM := $(BUILD_DIR)/cartridges/menu_input.sym
 GRAPHICS_INPUT_CART := $(BUILD_DIR)/cartridges/graphics_input.rom
@@ -157,6 +159,12 @@ OPENMSX_EXPANDED_CART_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/expanded-cartridge.txt
 OPENMSX_EXPANDED_CART_SCREEN := \
 	$(OPENMSX_ROOT)/rainbios_expanded_cartridge.png
+OPENMSX_PAGE2_CART_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_M1_PAGE2_CARTRIDGE.xml
+OPENMSX_PAGE2_CART_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/page2-cartridge.txt
+OPENMSX_PAGE2_CART_SCREEN := \
+	$(OPENMSX_ROOT)/rainbios_page2_cartridge.png
 OPENMSX_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
 OPENMSX_BBC_BASIC_REPORT := \
@@ -250,6 +258,8 @@ EMULATOR_1983_MSX2_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_msx2.ppm
 EMULATOR_1983_CART_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_cartridge.ppm
+EMULATOR_1983_PAGE2_CART_SCREEN := \
+	$(EMULATOR_1983_DIR)/rainbios_page2_cartridge.ppm
 EMULATOR_1983_BBC_BASIC_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-prompt.ppm
 EMULATOR_1983_EMBEDDED_BASIC_SCREEN := \
@@ -342,9 +352,9 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-cls \
 	test-openmsx-tape \
 	test-1983-tape \
-	test-openmsx-cartridge test-1983 \
+	test-openmsx-cartridge test-1983 test-1983-page2-cartridge \
 	test-openmsx-disk-fault \
-	test-openmsx-expanded-cartridge \
+	test-openmsx-expanded-cartridge test-openmsx-page2-cartridge \
 	test-1983-expanded test-openmsx-embedded-basic \
 	test-openmsx-bbcbasic-quote test-openmsx-payload-state \
 	test-openmsx-msx2 test-1983-msx2 \
@@ -449,6 +459,10 @@ check-release: release
 $(DIAGNOSTIC_CART): tests/cartridges/primary_init.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(DIAGNOSTIC_CART_SYM)
+
+$(PAGE2_CART): tests/cartridges/page2_init.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(PAGE2_CART_SYM)
 
 $(MENU_INPUT_CART): tests/cartridges/menu_input.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1186,6 +1200,25 @@ test-openmsx-expanded-cartridge: $(OPENMSX_EXPANDED_CART_MACHINE)
 		$(OPENMSX_EXPANDED_CART_REPORT)
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_EXPANDED_CART_SCREEN)
 
+$(OPENMSX_PAGE2_CART_MACHINE): \
+		tests/openmsx/RainBIOS_M1_PAGE2_CARTRIDGE.xml.in \
+		$(MSX1_ROM) $(PAGE2_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX1_ROM))|' \
+		-e 's|@CARTRIDGE_ROM@|$(abspath $(PAGE2_CART))|' \
+		$< > $@
+
+test-openmsx-page2-cartridge: $(OPENMSX_PAGE2_CART_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_PAGE2_CARTRIDGE \
+		-command "set cartridge_output {$(abspath $(OPENMSX_PAGE2_CART_REPORT))}; set cartridge_screenshot {$(abspath $(OPENMSX_PAGE2_CART_SCREEN))}; set cartridge_entry 0x8000" \
+		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
+	$(PYTHON) tools/check_cartridge_probe.py --expected-slot D0 \
+		--expected-entry 0x8000 $(OPENMSX_PAGE2_CART_REPORT)
+	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_PAGE2_CART_SCREEN)
+
 $(OPENMSX_BBC_BASIC_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
 		$(MSX1_ROM) $(BBC_BASIC_ROM)
@@ -1450,6 +1483,16 @@ test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 		--screenshot "$(EMULATOR_1983_CART_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_CART_SCREEN)
+
+test-1983-page2-cartridge: $(MSX1_ROM) $(PAGE2_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_cartridge.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(PAGE2_CART)" \
+		--expected-slot D0 \
+		--screenshot "$(EMULATOR_1983_PAGE2_CART_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_PAGE2_CART_SCREEN)
 
 test-1983-stubs: $(MSX1_ROM) $(STUB_PROBE_CART)
 	mkdir -p $(EMULATOR_1983_DIR)

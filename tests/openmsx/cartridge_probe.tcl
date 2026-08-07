@@ -8,6 +8,9 @@ if {![info exists cartridge_output]} {
 if {![info exists cartridge_screenshot]} {
     set cartridge_screenshot /tmp/rainbios-cartridge.png
 }
+if {![info exists cartridge_entry]} {
+    set cartridge_entry 0x4010
+}
 
 proc primary_map {} {
     expr {[debug read "ioports" 0xA8] & 0xFF}
@@ -62,6 +65,6 @@ proc finish_cartridge_probe {} {
 }
 
 after time 0.30 {
-    set ::init_breakpoint [debug set_bp 0x4010 {} {init_entry_captured}]
+    set ::init_breakpoint [debug set_bp $::cartridge_entry {} {init_entry_captured}]
 }
 after realtime 15 exit

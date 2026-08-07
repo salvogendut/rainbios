@@ -36,7 +36,7 @@ class CartridgeProbeTests(unittest.TestCase):
         self.assertEqual(values["SLOT"], "F4")
 
     def test_bios_pc_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "outside cartridge"):
+        with self.assertRaisesRegex(ValueError, "outside the cartridge"):
             validate_report(VALID_REPORT.replace("PC=402B", "PC=0600"))
 
     def test_missing_signature_is_rejected(self) -> None:
@@ -87,6 +87,24 @@ class CartridgeProbeTests(unittest.TestCase):
             validate_report(
                 VALID_REPORT.replace("INITAF=01,33", "INITAF=10,33")
             )
+
+    def test_entry_pc_must_match_the_configured_entry(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ENTRYPC"):
+            validate_report(VALID_REPORT.replace("ENTRYPC=4010", "ENTRYPC=4020"))
+
+    def test_page2_init_entry_is_accepted(self) -> None:
+        # A page-2 cartridge INIT (mapper-style arrangement): entry and the
+        # sampled loop PC live in page 2, and the slot map keeps page 2 on the
+        # cartridge slot.
+        report = VALID_REPORT.replace("PC=402B", "PC=805F")
+        report = report.replace("ENTRYPC=4010", "ENTRYPC=8000")
+        report = report.replace("ENTRYDE=4010", "ENTRYDE=8000")
+        report = report.replace("ENTRYIX=4010", "ENTRYIX=8000")
+        report = report.replace("INITDE=40,10", "INITDE=80,00")
+        report = report.replace("INITIX=40,10", "INITIX=80,00")
+        report = report.replace("SLOT=F4", "SLOT=D0")
+        values = validate_report(report, expected_slot="D0", expected_entry=0x8000)
+        self.assertEqual(values["SLOT"], "D0")
 
     def test_running_expanded_cartridge_is_accepted(self) -> None:
         report = VALID_REPORT.replace("SLOT=F4", "SLOT=F8")

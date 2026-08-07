@@ -20,6 +20,7 @@ def validate_report(
     expected_slot: str = "F4",
     expected_exptbl: str | None = None,
     expected_slttbl: str | None = None,
+    expected_entry: int = 0x4010,
 ) -> dict[str, str]:
     values = {}
     for line in text.splitlines():
@@ -30,14 +31,17 @@ def validate_report(
         pc = int(values["PC"], 16)
     except (KeyError, ValueError) as error:
         raise ValueError("missing or invalid PC") from error
-    if not 0x4000 <= pc < 0x8000:
-        raise ValueError(f"PC {pc:04X} is outside cartridge page 1")
+    # The sampled PC is the cartridge loop, in page 1 (0x4000) or page 2
+    # (0x8000) depending on where the INIT entry lives.
+    if not (0x4000 <= pc < 0x8000 or 0x8000 <= pc < 0xC000):
+        raise ValueError(f"PC {pc:04X} is outside the cartridge pages")
 
     # Cartridge INIT entry contract (authoritative breakpoint capture):
     # A and B both carry the slot ID, C is zero, DE and IX are the INIT
     # pointer from the AB header, HL is the scan's header address, IY holds
     # the slot in the high byte, and SP is on a RainBIOS page-3 stack.
     try:
+        entry_pc = int(values["ENTRYPC"], 16)
         a, f = _parse_bytes(values["ENTRYAF"])
         bc = int(values["ENTRYBC"], 16)
         de = int(values["ENTRYDE"], 16)
@@ -47,6 +51,11 @@ def validate_report(
         sp = int(values["ENTRYSP"], 16)
     except (KeyError, ValueError) as error:
         raise ValueError(f"missing or invalid ENTRY state: {error}") from error
+    if entry_pc != expected_entry:
+        raise ValueError(
+            f"ENTRYPC {entry_pc:04X} must be the configured INIT entry "
+            f"{expected_entry:04X}"
+        )
     b, c = bc >> 8, bc & 0xFF
     if a != b:
         raise ValueError(f"A {a:02X} and B {b:02X} must both carry the slot ID")
@@ -101,6 +110,7 @@ def main() -> int:
     parser.add_argument("--expected-slot", default="F4")
     parser.add_argument("--expected-exptbl")
     parser.add_argument("--expected-slttbl")
+    parser.add_argument("--expected-entry", type=lambda v: int(v, 16), default=0x4010)
     arguments = parser.parse_args()
     try:
         values = validate_report(
@@ -108,6 +118,7 @@ def main() -> int:
             arguments.expected_slot,
             arguments.expected_exptbl,
             arguments.expected_slttbl,
+            arguments.expected_entry,
         )
     except (OSError, ValueError) as error:
         parser.error(str(error))
