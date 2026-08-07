@@ -78,7 +78,35 @@ class VramProbeTests(unittest.TestCase):
                                            "FILLX=5C,5C,5C,00")
             )
 
+    def test_full_wrap_fill_must_cover_every_byte(self) -> None:
+        with self.assertRaisesRegex(ValueError, "FULLWRAP"):
+            validate_report(
+                self.make_report().replace("FULLWRAP=3C,3C,3C,3C",
+                                           "FULLWRAP=3C,3C,3C,00")
+            )
+
+    def test_large_crossing_fill_must_wrap_into_low_memory(self) -> None:
+        with self.assertRaisesRegex(ValueError, "WRAPFILL"):
+            validate_report(
+                self.make_report().replace("WRAPFILL=5D,5D,5D,5D,3C",
+                                           "WRAPFILL=5D,5D,5D,00,3C")
+            )
+
+    def test_ldirvm_must_wrap_across_the_boundary(self) -> None:
+        with self.assertRaisesRegex(ValueError, "LDIRVMW"):
+            validate_report(
+                self.make_report().replace("LDIRVMW=70,7F,80,8F",
+                                           "LDIRVMW=70,7F,80,00")
+            )
+
     def test_ldirmv_must_wrap_across_the_boundary(self) -> None:
+        with self.assertRaisesRegex(ValueError, "LDIRMVW"):
+            validate_report(
+                self.make_report().replace("LDIRMVW=70,7F,80,8F",
+                                           "LDIRMVW=70,7F,00,8F")
+            )
+
+    def test_ldirmv_must_wrap_across_the_boundary_small(self) -> None:
         with self.assertRaisesRegex(ValueError, "LDIRMVX"):
             validate_report(
                 self.make_report().replace("LDIRMVX=71,74,75,78",
