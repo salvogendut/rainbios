@@ -24,6 +24,8 @@ CHPUT           equ #00a2
 POSIT           equ #00c6
 
 BOOT_BUF        equ #c200
+LOADER_HL       equ #f3cc
+LOADER_DE       equ #f3ce
 
                 org #c000
 
@@ -42,8 +44,12 @@ BOOT_BUF        equ #c200
                 dw 2                           ; heads
                 dw 0                           ; hidden sectors
 
-; Entry point, matching the MSX-DOS kernel convention C000h+1Eh.
+; Entry point, matching the MSX-DOS kernel convention C000h+1Eh. HL (disk
+; error handler pointer) and DE (ENAKRN entry) are captured for the host
+; runner before the loader clobbers them.
 ide_boot_entry:
+                ld (LOADER_HL),hl
+                ld (LOADER_DE),de
                 call ide_read_lba1
                 jr c,ide_boot_fail
                 ld hl,BOOT_BUF

@@ -639,7 +639,12 @@ Status: in progress.
 The production NMS 8250 disk extension now installs a `H.RUNC` bootstrap hook.
 At cold boot RainBIOS selects the disk device and the hook reads the boot
 sector into `C000h`, validates the MSX-DOS `EBh`/`E9h` signature, and enters the
-loader at `C000h+1Eh` with the cold-boot flag and carry set. A deterministic
+loader at `C000h+1Eh` with the cold-boot flag and carry set. The loader
+receives the documented MSX-DOS inputs `HL` = `F323h` (`DISKVE`, the address of
+the disk-error-handler pointer) and `DE` = `0000h` (`ENAKRN`, the kernel
+re-entry, zero until a real kernel provides one) from both the floppy
+(`disk_boot`) and the IDE/SD (`ide_boot`) transfer paths; the boot-sector
+fixtures capture the pair and the 1983 gates verify it. A deterministic
 720 KiB F9 boot fixture (a two-sector loader plus marker) is verified end to end
 by 1983: the boot sector runs in page-3 RAM, calls `DSKIO` for a further
 sector, and reaches a labelled spin; a separate probe confirms that a missing or
@@ -684,8 +689,6 @@ target.
 
 - boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
   contract (requires provenance-cleared DOS files);
-- provide the documented loader inputs `HL`/`DE` (disk error handler and
-  `ENAKRN` entry) once a real kernel consumes them;
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
 - filesystem services, formatting, floppy drive B, other controllers, writable

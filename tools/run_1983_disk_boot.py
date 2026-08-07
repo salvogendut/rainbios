@@ -19,6 +19,44 @@ except ModuleNotFoundError:
     from run_1983_disk_baseline import parse_symbols
 
 
+RAM_RE = re.compile(r"^([0-9A-F]{4}):(.*)$", re.MULTILINE)
+LOADER_HL = 0xF3CC
+LOADER_DE = 0xF3CE
+EXPECTED_LOADER_HL = 0xF323
+EXPECTED_LOADER_DE = 0x0000
+
+
+def parse_loader_inputs(text: str) -> dict[int, int]:
+    values: dict[int, int] = {}
+    for match in RAM_RE.finditer(text):
+        address = int(match.group(1), 16)
+        for index, token in enumerate(match.group(2).split()):
+            candidate = address + index
+            if candidate in (LOADER_HL, LOADER_HL + 1, LOADER_DE, LOADER_DE + 1):
+                values[candidate] = int(token, 16)
+    return values
+
+
+def check_loader_inputs(text: str) -> None:
+    markers = parse_loader_inputs(text)
+    hl = markers.get(LOADER_HL)
+    if hl is None or markers.get(LOADER_HL + 1) is None:
+        raise ValueError("loader HL marker not present in the RAM dump")
+    de = markers.get(LOADER_DE)
+    if de is None or markers.get(LOADER_DE + 1) is None:
+        raise ValueError("loader DE marker not present in the RAM dump")
+    hl_value = hl | (markers[LOADER_HL + 1] << 8)
+    de_value = de | (markers[LOADER_DE + 1] << 8)
+    if hl_value != EXPECTED_LOADER_HL:
+        raise ValueError(
+            f"loader HL={hl_value:04X}, expected DISKVE {EXPECTED_LOADER_HL:04X}"
+        )
+    if de_value != EXPECTED_LOADER_DE:
+        raise ValueError(
+            f"loader DE={de_value:04X}, expected ENAKRN {EXPECTED_LOADER_DE:04X}"
+        )
+
+
 def validate_boot_pass(
     text: str,
     *,
@@ -45,6 +83,7 @@ def validate_boot_pass(
             f"disk boot stopped at {pc:04X}, expected "
             f"{expected_pass_label} ({expected_pc:04X})"
         )
+    check_loader_inputs(text)
     return fields
 
 
@@ -116,6 +155,8 @@ def main() -> int:
         "--exit-after",
         str(arguments.exit_after),
         "--dump-state",
+        "--dump-ram",
+        "0xF3CC:0x4",
         "--screenshot",
         str(arguments.screenshot),
         "--disk-rom",

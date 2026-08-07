@@ -135,7 +135,12 @@ class BootSectorLayoutTests(unittest.TestCase):
 
     def test_boot_sector_entry_is_at_the_kernel_c01e_contract(self) -> None:
         self.assertEqual(self.boot_sector[0x1D], 0)
-        self.assertEqual(self.boot_sector[0x1E], 0x3A)  # LD A,(FFA8h): disk slot
+        # LD (F3CCh),HL then LD (F3CEh),DE: the loader captures the documented
+        # HL (DISKVE) and DE (ENAKRN) inputs before clobbering them.
+        self.assertEqual(self.boot_sector[0x1E], 0x22)
+        self.assertEqual(self.boot_sector[0x1F:0x21], b"\xcc\xf3")
+        self.assertEqual(self.boot_sector[0x21], 0xED)
+        self.assertEqual(self.boot_sector[0x22], 0x53)
 
     def test_sector_one_holds_the_verified_marker(self) -> None:
         self.assertEqual(self.boot_sector[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
@@ -177,7 +182,11 @@ class IdeBootSectorLayoutTests(unittest.TestCase):
         self.assertEqual(self.boot_sector[0], 0xEB)
         self.assertEqual(self.boot_sector[2], 0x90)
         self.assertEqual(self.boot_sector[0x1D], 0)
-        self.assertEqual(self.boot_sector[0x1E], 0xCD)  # CALL sector-1 read
+        # LD (F3CCh),HL then LD (F3CEh),DE capture the loader inputs first.
+        self.assertEqual(self.boot_sector[0x1E], 0x22)
+        self.assertEqual(self.boot_sector[0x1F:0x21], b"\xcc\xf3")
+        self.assertEqual(self.boot_sector[0x21], 0xED)
+        self.assertEqual(self.boot_sector[0x22], 0x53)
 
     def test_sector_one_holds_the_verified_marker(self) -> None:
         self.assertEqual(self.boot_sector[SECTOR_SIZE : SECTOR_SIZE + 4], b"RB01")
@@ -193,7 +202,11 @@ class SdBootSectorLayoutTests(unittest.TestCase):
         self.assertEqual(self.boot_sector[0], 0xEB)
         self.assertEqual(self.boot_sector[2], 0x90)
         self.assertEqual(self.boot_sector[0x1D], 0)
-        self.assertEqual(self.boot_sector[0x1E], 0xCD)  # CALL sector-1 read
+        # LD (F3CCh),HL then LD (F3CEh),DE capture the loader inputs first.
+        self.assertEqual(self.boot_sector[0x1E], 0x22)
+        self.assertEqual(self.boot_sector[0x1F:0x21], b"\xcc\xf3")
+        self.assertEqual(self.boot_sector[0x21], 0xED)
+        self.assertEqual(self.boot_sector[0x22], 0x53)
 
     def test_raw_image_contains_the_verified_marker(self) -> None:
         image = make_ide_image(self.boot_sector)

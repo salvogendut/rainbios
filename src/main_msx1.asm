@@ -3873,6 +3873,8 @@ cold_boot_phyd_go:
                 ld sp,#e000
                 xor a
                 scf
+                ld hl,#f323                   ; HL = DISKVE (error-handler pointer)
+                ld de,0                       ; DE = ENAKRN entry (no kernel yet)
                 jp #c01e
 
 ; PAYLOAD_SLOT shares the pre-DOS scratch area and can be overwritten by a disk

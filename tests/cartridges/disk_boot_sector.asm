@@ -14,6 +14,8 @@ BOOT_BUF        equ #c200
 DSKIO           equ #4010
 CALSLT          equ #001c
 H_PHYD          equ #ffa7
+LOADER_HL       equ #f3cc
+LOADER_DE       equ #f3ce
 
                 org #c000
 
@@ -32,8 +34,12 @@ H_PHYD          equ #ffa7
                 dw 2                           ; heads
                 dw 0                           ; hidden sectors
 
-; Entry point, matching the MSX-DOS kernel convention C000h+1Eh.
+; Entry point, matching the MSX-DOS kernel convention C000h+1Eh. HL (disk
+; error handler pointer) and DE (ENAKRN entry) are captured for the host
+; runner before the loader clobbers them.
 disk_boot_entry:
+                ld (LOADER_HL),hl
+                ld (LOADER_DE),de
                 ld a,(H_PHYD+1)                ; disk ROM slot ID
                 push af
                 pop iy                         ; IY high byte = slot

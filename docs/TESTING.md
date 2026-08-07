@@ -184,7 +184,7 @@ make test-1983 \
 | --- | --- |
 | `test-1983-disk-baseline` | Safe default disk-hook behavior |
 | `test-1983-disk-boot` | Test disk-ROM bootstrap hook |
-| `test-1983-disk-boot-production` | Production ROM loads a two-sector boot fixture |
+| `test-1983-disk-boot-production` | Production ROM loads a two-sector boot fixture; the fixture captures the loader inputs (HL=DISKVE F323h, DE=ENAKRN 0) at the C000h+1Eh contract |
 | `test-1983-disk-boot-fallback` | Empty/non-bootable media returns to the menu |
 | `test-1983-disk-boot-menu` | Menu option 2 reaches the production bootstrap |
 | `test-1983-disk-menu-stub` | Option 3 without a storage cartridge remains in the menu |
