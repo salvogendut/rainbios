@@ -28,6 +28,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #91 | M3 | Restore literal `"`/`'`/`` ` ``/`^` keys; move the accent latch to the dedicated dead-key key; gate with `test-openmsx-bbcbasic-quote` |
 | #92 | M2 | VDP port-ordering + VRAM-boundary hardening: DI-atomic pairs, 14-bit wrap, crossing transfers |
 | #93 | M4 | Gate the payload-launch register/work-area state with `test-openmsx-payload-state` |
+| #94 | M4 | Characterize and gate the cartridge INIT entry state (`test-openmsx-cartridge`/`-expanded-cartridge`) |
 
 ## Issue matrix
 
