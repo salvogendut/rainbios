@@ -613,6 +613,12 @@ runs the same POINT-checking Graphics II program the external cartridge test
 uses, and validates the payload RAM slot (`FC`), VDP registers (`R0=02`,
 `R1=E0`), and the rendered three-colour pattern.
 
+M6I promotes the cassette workload to the internal mapping.
+`test-1983-embedded-basic-tape` boots the source-embedded BASIC payload, types
+`LOAD`/`RUN` against the same cassette fixture the external cartridge test
+uses, and validates the loaded program reaches `PC=4400` with the same
+page-1 slot (`F8`) and non-blank VRAM as the external path.
+
 ## M7 — Disk boot
 
 Status: in progress.
