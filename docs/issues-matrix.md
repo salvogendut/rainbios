@@ -18,7 +18,7 @@ milestone percentages are estimates derived from the roadmap slices
 | M4 cartridge compatibility | ~70% | Redistributable compatibility corpus deferred (TBD) — the only remaining M4 item, gated on sourcing and clearing ROMs for redistribution |
 | M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns, gated on MSX2 storage boot (M6/M7) |
 | M6 completeness/optional | ~90% | Disk baseline, GTPDL, INIFNK, ISCNTC/CKCNTC, CHGMOD, KEYINT, internal-payload graphics/cassette/scroll/edit workloads, openMSX GeoBench full-desktop gate, loader inputs HL/DE (DISKVE/ENAKRN), RESET ABI documented implemented; remaining: real-hardware timing |
-| M7 disk/IDE boot | ~60% | Filesystem services, formatting, drive B, writable media, other controllers, loader inputs, real-hardware timing |
+| M7 disk/IDE boot | ~65% | DSKIO writes gated; remaining: filesystem services, formatting, drive B, other controllers, real-hardware timing, CALSLT double-call crash in C000 fixture context, openMSX WD2793 data-transfer misalignment (RainBIOS driver vs openMSX read/write byte timing) |
 
 ## Pull request log
 
