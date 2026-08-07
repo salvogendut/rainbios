@@ -527,7 +527,7 @@ is:
 | M4 cartridge compatibility | In progress | Payload-launch, cartridge-INIT, and page-2 INIT (mapper-style) arrangements gated; the redistributable compatibility corpus is deferred (TBD) |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 21 callable BIOS stub entries gated by `test-1983-stubs`; hook-dispatching disk baseline (`PHYDIO`/`FORMAT`/`ISFLIO`/`OUTDLP`/`GETVCP`/`GETVC2`) gated by `test-1983-disk-abi`; GTPDL clobber contract gated by `test-1983-gtpdl-clobber`; INIFNK default strings gated by `test-1983-inifnk`; ISCNTC/CKCNTC break consumption gated by `test-1983-iscntc`; CHGMOD screen-mode dispatch gated by `test-1983-chgmod`; KEYINT VBlank bookkeeping gated by `test-1983-keyint`; internal-payload graphics workload gated by `test-1983-embedded-basic-graphics`; internal-payload cassette workload gated by `test-1983-embedded-basic-tape`; scrolling text workload gated by `test-1983-bbcbasic-scroll`/`test-1983-embedded-basic-scroll`; editing workload gated by `test-1983-bbcbasic-edit`/`test-1983-embedded-basic-edit`; DCOMPR/PSG clobber and flag contracts gated by `test-1983-abi-clobber`; function-key/text contracts gated by `test-1983-fnkey`; keyboard buffer contracts gated by `test-1983-kbd`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export |
-| M7 disk/IDE boot | In progress | Real DOS files, hardware validation; DSKIO writes gated (`test-1983-disk-write`/`-disk-write-protect`) |
+| M7 disk/IDE boot | In progress | Real DOS files, hardware validation; DSKIO writes gated (`test-1983-disk-write`/`-disk-write-protect`). Open issues: a second DSKIO call from a `C000h` fixture context crashes under 1983 (emulator artifact); the RainBIOS WD2793 driver's data transfer misaligns against openMSX's real WD2793 (read/write byte timing), blocking an openMSX write gate |
 
 ## Recommended Next Work
 
@@ -548,6 +548,19 @@ applies the same full-desktop geometry gate as both 1983 targets against the
 byte-verified unmodified GeoBench image, closing the openMSX rendering gap.
 Any future change that would weaken the 1983 gates or treat a timing-altered
 diagnostic run as acceptance evidence must be rejected.
+
+DSKIO writes are implemented and gated in 1983. An openMSX write gate was
+attempted (a custom `RainBIOS_M1_DISK_WRITE` WD2793 machine + cartridge probe)
+but is blocked by a real driver/emulator incompatibility: the RainBIOS WD2793
+data-transfer loop misaligns against openMSX's real WD2793, dropping a read
+byte near sector offset 5 and inserting a `0x00` near write offset 13, so
+sectors arrive byte-shifted. This affects both read and write transfers and
+needs a dedicated timing investigation (compare the driver's per-byte DRQ
+handling against the real NMS 8250 BIOS and openMSX's model) before the
+openMSX write gate can land. A second DSKIO call from a `C000h` boot-fixture
+context also crashes under 1983 (jumps into the fixture buffer); the 1983
+write gate uses a single-call design with host-side image verification to
+avoid it.
 
 The M5 first slice now produces a distinct MSX2 main-ROM build
 (`build/rainbios_msx2.rom`) via `make msx2-main-rom`. It is validated by
