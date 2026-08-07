@@ -43,6 +43,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #106 | M6 | Internal-payload graphics workload gated |
 | #107 | M6 | Internal-payload cassette workload gated |
 | #108 | M6 | Scrolling text workload gated (external + embedded) |
+| #109 | M6 | Editing workload gated (external + embedded) |
 
 ## Issue matrix
 
