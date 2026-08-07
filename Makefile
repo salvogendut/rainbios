@@ -272,8 +272,10 @@ EMULATOR_1983_BBC_BASIC_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-prompt.ppm
 EMULATOR_1983_EMBEDDED_BASIC_SCREEN := \
 	$(EMULATOR_1983_DIR)/embedded-basic-prompt.ppm
-EMULATOR_1983_BBC_GRAPHICS_SCREEN := \
-	$(EMULATOR_1983_DIR)/bbcbasic-graphics.ppm
+ EMULATOR_1983_BBC_GRAPHICS_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/bbcbasic-graphics.ppm
+ EMULATOR_1983_EMBEDDED_BASIC_GRAPHICS_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/embedded-basic-graphics.ppm
 EMULATOR_1983_BBC_TAPE_SCREEN := \
 	$(EMULATOR_1983_DIR)/bbcbasic-tape.ppm
 EMULATOR_1983_DISK_BASELINE_SCREEN := \
@@ -373,6 +375,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-msx2-64k \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
+	test-1983-embedded-basic-graphics \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot \
@@ -1637,6 +1640,17 @@ test-1983-embedded-basic: $(MSX1_ROM)
 		--screenshot "$(EMULATOR_1983_EMBEDDED_BASIC_SCREEN)"
 	$(PYTHON) tools/check_bbcbasic_screenshot.py \
 		$(EMULATOR_1983_EMBEDDED_BASIC_SCREEN)
+
+test-1983-embedded-basic-graphics: \
+		$(MSX1_ROM) $(GRAPHICS_INPUT_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_embedded_basic_graphics.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" \
+		--input-cartridge "$(GRAPHICS_INPUT_CART)" \
+		--screenshot "$(EMULATOR_1983_EMBEDDED_BASIC_GRAPHICS_SCREEN)"
+	$(PYTHON) tools/check_graphics_screenshot.py \
+		$(EMULATOR_1983_EMBEDDED_BASIC_GRAPHICS_SCREEN)
 
 test-1983-bbcbasic-graphics: \
 		$(MSX1_ROM) $(BBC_BASIC_ROM) $(GRAPHICS_INPUT_CART)
