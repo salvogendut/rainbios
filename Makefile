@@ -393,7 +393,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-embedded-basic \
 	test-1983-cartridge test-external-cartridges \
 	test-1983-stubs test-1983-abi-clobber test-1983-disk-abi \
-	test-1983-gtpdl-clobber test-1983-inifnk test-1983-iscntc test-1983-chgmod \
+	test-1983-gtpdl-clobber test-1983-inifnk test-1983-iscntc test-1983-chgmod test-1983-keyint \
 	test-1983-fnkey test-1983-kbd \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
@@ -873,6 +873,7 @@ GTPDL_CLOBBER_PROBE_CART := $(BUILD_DIR)/cartridges/gtpdl_clobber_probe.rom
 INIFNK_PROBE_CART := $(BUILD_DIR)/cartridges/inifnk_probe.rom
 ISCNTC_PROBE_CART := $(BUILD_DIR)/cartridges/iscntc_probe.rom
 CHGMOD_PROBE_CART := $(BUILD_DIR)/cartridges/chgmod_probe.rom
+KEYINT_PROBE_CART := $(BUILD_DIR)/cartridges/keyint_probe.rom
 
 $(ABI_CLOBBER_PROBE_CART): tests/cartridges/abi_clobber_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -897,6 +898,10 @@ $(ISCNTC_PROBE_CART): tests/cartridges/iscntc_probe.asm | $(BUILD_DIR)
 $(CHGMOD_PROBE_CART): tests/cartridges/chgmod_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(CHGMOD_PROBE_CART:.rom=.sym)
+
+$(KEYINT_PROBE_CART): tests/cartridges/keyint_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(KEYINT_PROBE_CART:.rom=.sym)
 
 FNKEY_PROBE_CART := $(BUILD_DIR)/cartridges/fnkey_probe.rom
 
@@ -1595,6 +1600,12 @@ test-1983-chgmod: $(MSX1_ROM) $(CHGMOD_PROBE_CART)
 	$(PYTHON) tools/run_1983_chgmod_probe.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(CHGMOD_PROBE_CART)"
+
+test-1983-keyint: $(MSX1_ROM) $(KEYINT_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_keyint_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(KEYINT_PROBE_CART)"
 
 test-1983-fnkey: $(MSX1_ROM) $(FNKEY_PROBE_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
