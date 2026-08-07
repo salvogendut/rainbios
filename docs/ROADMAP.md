@@ -691,8 +691,17 @@ target.
   contract (requires provenance-cleared DOS files);
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
-- filesystem services, formatting, floppy drive B, other controllers, writable
-  media, and real-hardware timing validation remain pending.
+- filesystem services, formatting, floppy drive B, other controllers, and
+  real-hardware timing validation remain pending.
+
+DSKIO now supports writes: the production NMS 8250 disk ROM writes sectors
+through the WD2793 (`A4h`) and persists them to the medium, reporting the
+write-protect error (`A = 3`) on a read-only disk. `test-1983-disk-write`
+boots a fixture that writes a deterministic 512-byte pattern to logical
+sector 2 and byte-verifies the image; `test-1983-disk-write-protect` verifies
+the read-only rejection with the image untouched. A pre-existing CALSLT
+double-call crash (a second DSKIO call from a `C000h` fixture context corrupts
+the return stack) is noted but not exercised by these gates.
 
 The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
 fixture pass label with the cartridge mapped in page 1 (slot `F8`), and

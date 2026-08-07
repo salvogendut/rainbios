@@ -117,6 +117,10 @@ DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
 DISK_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_boot_sector.bin
 DISK_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_boot_sector.sym
 DISK_BOOT_IMAGE := $(BUILD_DIR)/disks/disk-boot.dsk
+DISK_WRITE_SECTOR := tests/cartridges/disk_write_sector.asm
+DISK_WRITE_SECTOR_BIN := $(FIXTURES_DIR)/disk_write_sector.bin
+DISK_WRITE_SECTOR_SYM := $(FIXTURES_DIR)/disk_write_sector.sym
+DISK_WRITE_IMAGE := $(BUILD_DIR)/disks/disk-write.dsk
 IDE_BOOT_SECTOR := tests/cartridges/ide_boot_sector.asm
 IDE_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/ide_boot_sector.bin
 IDE_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/ide_boot_sector.sym
@@ -299,8 +303,10 @@ EMULATOR_1983_DISK_PARTIAL_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-partial-error.ppm
 EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
 	$(EMULATOR_1983_DIR)/nms8250-disk-rom.ppm
-EMULATOR_1983_DISK_BOOT_SCREEN := \
-	$(EMULATOR_1983_DIR)/disk-boot.ppm
+ EMULATOR_1983_DISK_BOOT_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/disk-boot.ppm
+ EMULATOR_1983_DISK_WRITE_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/disk-write.ppm
 EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot-fallback.ppm
 EMULATOR_1983_DISK_BOOT_MENU_SCREEN := \
@@ -388,7 +394,9 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot \
+	test-1983-disk-write test-1983-disk-write-protect \
 	test-1983-disk-boot-production test-1983-disk-boot-fallback \
+	test-1983-disk-write test-1983-disk-write-protect \
 	test-1983-disk-boot-menu test-1983-disk-menu-stub \
 	test-1983-disk-read test-1983-disk-no-media \
 	test-1983-disk-write-guard \
@@ -633,6 +641,13 @@ $(DISK_BOOT_SECTOR_SYM): $(DISK_BOOT_SECTOR_BIN)
 
 $(DISK_BOOT_IMAGE): tools/make_boot_disk.py $(DISK_BOOT_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_BOOT_SECTOR_BIN) $@
+
+$(DISK_WRITE_SECTOR_BIN): $(DISK_WRITE_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_WRITE_SECTOR_SYM)
+
+$(DISK_WRITE_IMAGE): tools/make_boot_disk.py $(DISK_WRITE_SECTOR_BIN)
+	$(PYTHON) $< --boot-sector $(DISK_WRITE_SECTOR_BIN) $@
 
 $(IDE_BOOT_SECTOR_BIN): $(IDE_BOOT_SECTOR) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1758,6 +1773,24 @@ test-1983-disk-boot-production: \
 		--screenshot "$(EMULATOR_1983_DISK_BOOT_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_BOOT_SCREEN)
+
+test-1983-disk-write: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_WRITE_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_write_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--disk-a "$(DISK_WRITE_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_DISK_WRITE_SCREEN)"
+
+test-1983-disk-write-protect: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_WRITE_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_write_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--disk-a "$(DISK_WRITE_IMAGE)" --write-protect \
+		--screenshot "$(EMULATOR_1983_DISK_WRITE_SCREEN)"
 
 test-1983-disk-boot-fallback: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 	mkdir -p $(EMULATOR_1983_DIR)

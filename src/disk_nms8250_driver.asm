@@ -83,21 +83,21 @@ disk_set_hook:
 ; fully completed sectors. Valid writes report write-protected without touching
 ; the controller; malformed requests report bad parameter.
 disk_phydio:
-                push af                         ; preserve operation carry
-                or a
-                jr nz,disk_phydio_bad_parameter
-                ld a,c
-                cp DISK_MEDIA
-                jr nz,disk_phydio_bad_parameter
-                ld a,b
-                or a
-                jr z,disk_phydio_bad_parameter
-                call disk_validate_sector_range
-                jr c,disk_phydio_bad_parameter
-                call disk_validate_buffer
-                jr c,disk_phydio_bad_parameter
-                pop af
-                jr c,disk_phydio_write_protected
+                 push af                         ; preserve operation carry
+                 or a
+                 jp nz,disk_phydio_bad_parameter
+                 ld a,c
+                 cp DISK_MEDIA
+                 jp nz,disk_phydio_bad_parameter
+                 ld a,b
+                 or a
+                 jp z,disk_phydio_bad_parameter
+                 call disk_validate_sector_range
+                 jp c,disk_phydio_bad_parameter
+                 call disk_validate_buffer
+                 jp c,disk_phydio_bad_parameter
+                 pop af
+                 jr c,disk_phydio_write
 
                 push de
                 pop iy                          ; current logical sector
@@ -132,37 +132,69 @@ disk_phydio_advance_side:
                 jr c,disk_phydio_runtime_error
                 jr disk_phydio_read_loop
 disk_phydio_select_side_one:
-                set 7,d
-                jr disk_phydio_read_loop
+                 set 7,d
+                 jr disk_phydio_read_loop
+
+; DSKIO write path: seek and write B sectors from the validated buffer.
+disk_phydio_write:
+                 push de
+                 pop iy                          ; current logical sector
+                 call disk_lba_to_chs
+                 ld c,0                         ; completed sectors
+                 ld a,#80                       ; drive A, motor on
+                 ld (FDC_DRIVE),a
+                 call disk_motor_spinup
+                 call disk_seek_track
+                 jr c,disk_phydio_runtime_error
+
+disk_phydio_write_loop:
+                 call disk_write_sector
+                 jr c,disk_phydio_runtime_error
+                 inc c
+                 dec b
+                 jr z,disk_phydio_success
+                 inc iy
+                 ld a,e
+                 cp DISK_SIDE_SIZE
+                 jr z,disk_phydio_write_advance_side
+                 inc e
+                 jr disk_phydio_write_loop
+
+disk_phydio_write_advance_side:
+                 ld e,1
+                 bit 7,d
+                 jr z,disk_phydio_write_select_side_one
+                 res 7,d
+                 inc d
+                 call disk_seek_track
+                 jr c,disk_phydio_runtime_error
+                 jr disk_phydio_write_loop
+disk_phydio_write_select_side_one:
+                 set 7,d
+                 jr disk_phydio_write_loop
 
 disk_phydio_success:
-                call disk_motor_arm
-                ld b,c
-                xor a
-                ret
+                 call disk_motor_arm
+                 ld b,c
+                 xor a
+                 ret
 
 disk_phydio_runtime_error:
-                push af
-                ld a,#d0                       ; force interrupt
-                ld (FDC_COMMAND),a
-                call disk_motor_arm
-                pop af
-                ld b,c
-                scf
-                ret
+                 push af
+                 ld a,#d0                       ; force interrupt
+                 ld (FDC_COMMAND),a
+                 call disk_motor_arm
+                 pop af
+                 ld b,c
+                 scf
+                 ret
 
 disk_phydio_bad_parameter:
                 pop af
                 ld a,12
                 ld b,0
                 scf
-                ret
-
-disk_phydio_write_protected:
-                xor a
-                ld b,0
-                scf
-                ret
+                 ret
 
 disk_unsupported:
                 ld a,12
@@ -439,21 +471,132 @@ disk_map_read_status:
                 xor a
                 ret
 disk_map_read_not_ready:
-                ld a,2
-                scf
-                ret
+                 ld a,2
+                 scf
+                 ret
 disk_map_read_data_error:
-                ld a,4
-                scf
-                ret
+                 ld a,4
+                 scf
+                 ret
 disk_map_read_not_found:
-                ld a,8
-                scf
-                ret
+                 ld a,8
+                 scf
+                 ret
 disk_map_read_other:
-                ld a,16
-                scf
-                ret
+                 ld a,16
+                 scf
+                 ret
+
+; Write one 512-byte sector from (HL). D carries the side in bit 7, E the
+; logical sector number. Returns carry clear with A = 0 on success, or carry
+; set with the public DSKIO error number in A.
+disk_write_sector:
+                 push bc
+                 push de
+                 xor a
+                 bit 7,d
+                 jr z,disk_write_sector_side_ready
+                 inc a
+disk_write_sector_side_ready:
+                 ld (FDC_SIDE),a
+                 ld a,e
+                 ld (FDC_SECTOR),a
+                 ld a,#a4                       ; write after head-settling delay
+                 ld (FDC_COMMAND),a
+                 ld de,512
+                 ld bc,#ffff
+
+disk_write_sector_wait_data:
+                 ld a,(FDC_LINES)
+                 bit 7,a                        ; DRQ is active low
+                 jr z,disk_write_sector_data
+                 bit 6,a                        ; early completion is an error
+                 jr z,disk_write_sector_early_irq
+                 dec bc
+                 ld a,b
+                 or c
+                 jr nz,disk_write_sector_wait_data
+                 jr disk_write_sector_timeout
+
+disk_write_sector_data:
+                 ld a,(hl)
+                 ld (FDC_DATA),a
+                 inc hl
+                 dec de
+                 ld a,d
+                 or e
+                 jr nz,disk_write_sector_wait_data
+
+disk_write_sector_wait_complete:
+                 ld a,(FDC_LINES)
+                 bit 6,a
+                 jr z,disk_write_sector_status
+                 dec bc
+                 ld a,b
+                 or c
+                 jr nz,disk_write_sector_wait_complete
+                 jr disk_write_sector_timeout
+
+disk_write_sector_early_irq:
+                 ld a,(FDC_STATUS)
+                 call disk_map_write_status
+                 jr c,disk_write_sector_exit
+                 ld a,4                         ; incomplete sector
+                 scf
+                 jr disk_write_sector_exit
+
+disk_write_sector_status:
+                 ld a,(FDC_STATUS)
+                 call disk_map_write_status
+                 jr disk_write_sector_exit
+
+disk_write_sector_timeout:
+                 ld a,#d0
+                 ld (FDC_COMMAND),a
+                 ld a,16
+                 scf
+
+disk_write_sector_exit:
+                 pop de
+                 pop bc
+                 ret
+
+; Map type-II write status to the public DSKIO error numbers.
+disk_map_write_status:
+                 bit 7,a
+                 jr nz,disk_map_write_not_ready
+                 bit 6,a
+                 jr nz,disk_map_write_protected
+                 bit 3,a
+                 jr nz,disk_map_write_data_error
+                 bit 2,a
+                 jr nz,disk_map_write_data_error
+                 bit 4,a
+                 jr nz,disk_map_write_not_found
+                 and #03                       ; BUSY/DRQ must both be clear
+                 jr nz,disk_map_write_other
+                 xor a
+                 ret
+disk_map_write_not_ready:
+                 ld a,2
+                 scf
+                 ret
+disk_map_write_protected:
+                 ld a,3
+                 scf
+                 ret
+disk_map_write_data_error:
+                 ld a,4
+                 scf
+                 ret
+disk_map_write_not_found:
+                 ld a,8
+                 scf
+                 ret
+disk_map_write_other:
+                 ld a,16
+                 scf
+                 ret
 
 disk_wait_irq:
                 ld bc,#ffff
