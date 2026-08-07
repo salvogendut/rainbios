@@ -670,13 +670,12 @@ decoder at `0D89h`.
 The GeoBench application layer is now an explicit three-target integration
 matrix. Sunrise IDE and SD Mapper V2 in 1983 both require the complete Screen 7
 desktop with R0=`0Ah`, R1=`62h`, `SCRMOD=7`, and mapper pages
-`03h,02h,01h,00h`. The openMSX Sunrise target independently requires the
-desktop segment to be mapped into page 1 with the same Screen 7 baseline and
-active UI output, using an isolated image copy that must remain unchanged. The
-sampled PC is diagnostic only because it can transiently be in a kernel or
-frame-pacing routine. The current GeoBench image still performs timing-sensitive
-VDP accesses in an unmodified openMSX run, so full openMSX desktop-geometry
-parity remains open and is not claimed by that boot-state gate.
+`03h,02h,01h,00h`. The openMSX Sunrise target requires the same complete
+desktop geometry against the unmodified GeoBench image: the top status bar and
+the red UI accents render alongside the dominant blue background plane, and
+the isolated image copy is byte-verified unchanged after the run. The sampled
+PC is diagnostic only because it can transiently be in a kernel or
+frame-pacing routine.
 
 RainBIOS provides the firmware interfaces needed by disk systems; it will not
 bundle or prescribe a DOS. Users supply the system of their choice, while the
@@ -689,8 +688,6 @@ target.
   `ENAKRN` entry) once a real kernel consumes them;
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
-- close the timing-sensitive GeoBench/openMSX rendering gap and promote that
-  boot-state test to the same full-desktop geometry gate used in 1983;
 - filesystem services, formatting, floppy drive B, other controllers, writable
   media, and real-hardware timing validation remain pending.
 

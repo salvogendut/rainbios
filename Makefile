@@ -1124,7 +1124,7 @@ test-openmsx-geobench-sunrise: $(OPENMSX_GEOBENCH_MACHINE) \
 		-command "set geobench_output {$(abspath $(OPENMSX_GEOBENCH_REPORT))}; set geobench_screenshot {$(abspath $(OPENMSX_GEOBENCH_SCREEN))}; set geobench_capture_time $(OPENMSX_GEOBENCH_CAPTURE_TIME)" \
 		-script "$(abspath tests/openmsx/geobench_probe.tcl)"
 	cmp "$(GEOBENCH_IMAGE)" "$(OPENMSX_GEOBENCH_IMAGE)"
-	$(PYTHON) tools/check_geobench.py --boot-state $(OPENMSX_GEOBENCH_REPORT) \
+	$(PYTHON) tools/check_geobench.py $(OPENMSX_GEOBENCH_REPORT) \
 		$(OPENMSX_GEOBENCH_SCREEN)
 
 test-openmsx-msx2: $(OPENMSX_MSX2_MACHINE)
