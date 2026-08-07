@@ -625,6 +625,13 @@ published key buffer and validate the completion marker (`F3C8` = `A5`), the
 BBC BASIC PC/SP window, Screen 0 (`R0=00`, `R1=F0`), and identical non-blank
 VRAM across the external (`F4`) and embedded (`FC`) payloads.
 
+M6K adds the editing workload. `test-1983-bbcbasic-edit` and
+`test-1983-embedded-basic-edit` type a program whose first two lines carry
+deliberate trailing-hex typos corrected with Backspace (`08h`) and Delete
+(`7Fh`); the editor must remove the stray digit so the markers (`F3C8`/
+`F3C9`) evaluate to `5Ah`, discriminating a successful edit from an ignored
+one (`FAh`), across the external and embedded payloads.
+
 ## M7 — Disk boot
 
 Status: in progress.
