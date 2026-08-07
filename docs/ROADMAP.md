@@ -603,6 +603,10 @@ M6F gates the `CHGMOD` screen-mode dispatch. `test-1983-chgmod` calls
 `CHGMOD` (`005F`) with modes 0-3 and verifies `SCRMOD` receives the requested
 mode, then with modes 4/5/9 and verifies carry set with `SCRMOD` untouched.
 
+M6G gates the `KEYINT` VBlank bookkeeping. `test-1983-keyint` enables the VDP
+interrupt, waits for a tick, and verifies `JIFFY` (`FC9E`) advanced by one and
+`STATFL` (`F3E7`) holds the VDP status byte.
+
 ## M7 — Disk boot
 
 Status: in progress.
