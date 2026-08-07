@@ -220,11 +220,18 @@ re-programs the same R0-R6 state from the work-area bases. The Screen 3 probe
 locks in the status mirror, the mode bytes and register programming, the
 published bases, and the hidden-sprite state.
 
+M2N hardens the VDP control-port ordering and VRAM boundaries. The address
+and register pairs in `SETRD`/`SETWRT`/`WRTVDP` are interrupt-atomic (host
+tests lock the DI/14-bit-mask/EI byte pattern), and the boot menu renderer
+runs its VDP pairs under DI. The VRAM probe verifies the 14-bit address wrap
+at `4000h`, top/bottom writes, and `FILVRM`/`LDIRVM`/`LDIRMV` transfers
+crossing the boundary, and drives thousands of `WRTVDP` calls while an H.TIMI
+hook writes register 0 every VBlank to prove no interrupt can split a pair.
+
 - initialize TMS9918-compatible VDP state;
 - finish base VRAM transfer, screen-mode, sprite, and color calls;
 - complete the remaining character set and keep its provenance documented;
 - finish the remaining text control characters and cursor presentation;
-- add host and emulator tests for port ordering and VRAM boundaries.
 
 Exit criterion: diagnostic cartridges can display and update a text UI through
 BIOS calls alone.

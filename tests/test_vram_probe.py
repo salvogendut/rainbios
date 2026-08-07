@@ -59,6 +59,44 @@ class VramProbeTests(unittest.TestCase):
                                            "LDIRVM=41,00,43,44")
             )
 
+    def test_write_at_top_of_window_must_wrap(self) -> None:
+        with self.assertRaisesRegex(ValueError, "WRAPTOP"):
+            validate_report(
+                self.make_report().replace("WRAPTOP=88", "WRAPTOP=00")
+            )
+
+    def test_write_at_window_base_must_wrap(self) -> None:
+        with self.assertRaisesRegex(ValueError, "WRAPBASE"):
+            validate_report(
+                self.make_report().replace("WRAPBASE=77", "WRAPBASE=00")
+            )
+
+    def test_fill_must_wrap_across_the_16k_boundary(self) -> None:
+        with self.assertRaisesRegex(ValueError, "FILLX"):
+            validate_report(
+                self.make_report().replace("FILLX=5C,5C,5C,5C",
+                                           "FILLX=5C,5C,5C,00")
+            )
+
+    def test_ldirmv_must_wrap_across_the_boundary(self) -> None:
+        with self.assertRaisesRegex(ValueError, "LDIRMVX"):
+            validate_report(
+                self.make_report().replace("LDIRMVX=71,74,75,78",
+                                           "LDIRMVX=71,00,75,78")
+            )
+
+    def test_register_pair_must_survive_interleaved_interrupts(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ORDER"):
+            validate_report(
+                self.make_report().replace("ORDER=5A", "ORDER=00")
+            )
+
+    def test_port_ordering_hook_must_fire(self) -> None:
+        with self.assertRaisesRegex(ValueError, "HOOKFIRE"):
+            validate_report(
+                self.make_report().replace("HOOKFIRE=01", "HOOKFIRE=00")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

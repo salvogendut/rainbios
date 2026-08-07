@@ -2155,6 +2155,7 @@ cold_boot_render_logo_color_block:
                 ret
 
 cold_boot_render_options:
+                di                              ; VDP control pairs must be atomic
                 xor a
                 out (VDP_CONTROL),a
                 ld a,#80
@@ -2228,6 +2229,7 @@ cold_boot_render_options_name_block:
                 out (VDP_CONTROL),a
                 ld a,#81
                 out (VDP_CONTROL),a
+                ei
                 ret
 
 cold_boot_select_internal_payload_impl:
