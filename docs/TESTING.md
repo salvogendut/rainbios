@@ -160,6 +160,8 @@ make test-1983 \
 | `test-1983-keyint` | KEYINT VBlank bookkeeping: JIFFY advances by one per tick and STATFL holds the VDP status byte |
 | `test-1983-embedded-basic-graphics` | Internal payload graphics workload: the embedded BASIC runs the Graphics II program in the payload RAM slot (FC) with R0=02/R1=E0 and a rendered three-colour pattern |
 | `test-1983-embedded-basic-tape` | Internal payload cassette workload: the embedded BASIC LOAD/RUNs the tape fixture to PC=4400 in the same page-1 slot (F8) as the external path with non-blank VRAM |
+| `test-1983-bbcbasic-scroll` | External scrolling text workload: the BBC BASIC PRINT loop completes (marker at F3C8), runs in the external slot (F4) on Screen 0 |
+| `test-1983-embedded-basic-scroll` | Internal payload scrolling text workload: same PRINT loop completes with the marker, payload RAM slot (FC), identical VRAM to external |
 | `test-1983-fnkey` | POSIT cursor positioning, ERAFNK erase (CNSDFG=0, spaces), DSPFNK render (CNSDFG=FF, cursor to last row), FNKSB toggle, and TOTEXT text-mode refresh |
 | `test-1983-kbd` | CHSNS empty/data reporting, CHGET char read with BC/DE/HL preserved and GETPNT advance, KILBUF buffer reset, CHGCAP Caps-Lock lamp on with BC/DE/HL preserved (PPI port-C bit 6 read back), and CHGSND click on/off switch with BC/DE/HL preserved |
 | `check-release` | Reproducible release bundle: production ROMs, symbol files, component manifest, notices, and license texts under `build/release/`, with consistent `SHA256SUMS` and `RELEASE-NOTES.md` naming the source commit |

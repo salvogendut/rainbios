@@ -619,6 +619,12 @@ M6I promotes the cassette workload to the internal mapping.
 uses, and validates the loaded program reaches `PC=4400` with the same
 page-1 slot (`F8`) and non-blank VRAM as the external path.
 
+M6J adds the scrolling text workload. `test-1983-bbcbasic-scroll` and
+`test-1983-embedded-basic-scroll` type a forty-line `PRINT` loop through the
+published key buffer and validate the completion marker (`F3C8` = `A5`), the
+BBC BASIC PC/SP window, Screen 0 (`R0=00`, `R1=F0`), and identical non-blank
+VRAM across the external (`F4`) and embedded (`FC`) payloads.
+
 ## M7 — Disk boot
 
 Status: in progress.
