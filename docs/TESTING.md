@@ -155,6 +155,7 @@ make test-1983 \
 | `test-1983-disk-abi` | Hook-dispatching disk baseline: PHYDIO/FORMAT/OUTDLP safe defaults return carry, ISFLIO returns A=0, FORMAT dispatches to an installed H_FORM hook, and GETVCP/GETVC2 return the voice-control-block pointers |
 | `test-1983-gtpdl-clobber` | GTPDL paddle-read clobber contract: returns 0 with no paddle, preserves HL/IX/IY, and restores the PSG IOB (R15) |
 | `test-1983-inifnk` | INIFNK fills FNKSTR with the ten default function-key strings (LIST..SCREEN 0) and leaves FNKFLG untouched |
+| `test-1983-iscntc` | ISCNTC/CKCNTC break consumption: clears INTFLG and the key buffer and returns carry on a latched break (Ctrl-STOP/STOP), then carry clear on a subsequent call |
 | `test-1983-fnkey` | POSIT cursor positioning, ERAFNK erase (CNSDFG=0, spaces), DSPFNK render (CNSDFG=FF, cursor to last row), FNKSB toggle, and TOTEXT text-mode refresh |
 | `test-1983-kbd` | CHSNS empty/data reporting, CHGET char read with BC/DE/HL preserved and GETPNT advance, KILBUF buffer reset, CHGCAP Caps-Lock lamp on with BC/DE/HL preserved (PPI port-C bit 6 read back), and CHGSND click on/off switch with BC/DE/HL preserved |
 | `check-release` | Reproducible release bundle: production ROMs, symbol files, component manifest, notices, and license texts under `build/release/`, with consistent `SHA256SUMS` and `RELEASE-NOTES.md` naming the source commit |

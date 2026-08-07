@@ -59,8 +59,8 @@ address,name,kind,status,milestone,notes
 00B1,INLIN,jump,implemented,M3,PINLIN with AUTFLG set; the buffer is edited the same way but nothing is echoed
 00B4,QINLIN,jump,implemented,M3,Prints a question mark and space then performs INLIN
 00B7,BREAKX,jump,implemented,M3,Tests the physical Ctrl-STOP matrix and returns carry when both keys are held without changing interrupt state
-00BA,ISCNTC,jump,partial,M3,Consumes a latched INTFLG break; carry and a cleared buffer on a break
-00BD,CKCNTC,jump,partial,M3,Shares ISCNTC's break consumption
+00BA,ISCNTC,jump,implemented,M3,Consumes a latched INTFLG break: clears INTFLG and the key buffer and returns carry set; without a break returns carry clear. Verified by test-1983-iscntc
+00BD,CKCNTC,jump,implemented,M3,Shares ISCNTC's break consumption (carry set on a break, INTFLG and key buffer cleared). Verified by test-1983-iscntc
 00C0,BEEP,jump,implemented,M3,Short PSG channel-A tone
 00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
 00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking; verified by test-1983-fnkey (CSRX=H, CSRY=L)
