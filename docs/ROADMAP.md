@@ -586,6 +586,10 @@ that `FORMAT` dispatches to an installed `H_FORM` hook, and that `GETVCP`/
 ABI work is the gated 21-stub set and the flag/clobber characterization of the
 remaining partial entries.
 
+M6C characterizes the `GTPDL` clobber contract. `test-1983-gtpdl-clobber`
+verifies the paddle read returns 0 with no paddle, preserves HL/IX/IY, and
+restores the PSG IOB (R15); BC/DE are clobbered per the reference.
+
 ## M7 — Disk boot
 
 Status: in progress.
