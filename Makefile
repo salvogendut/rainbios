@@ -392,7 +392,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
 	test-1983-embedded-basic \
 	test-1983-cartridge test-external-cartridges \
-	test-1983-stubs test-1983-abi-clobber \
+	test-1983-stubs test-1983-abi-clobber test-1983-disk-abi \
 	test-1983-fnkey test-1983-kbd \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
@@ -867,10 +867,15 @@ $(STUB_PROBE_CART): tests/cartridges/stub_probe.asm | $(BUILD_DIR)
 	$(RASM) $< -ob $@ -s -os $(STUB_PROBE_CART:.rom=.sym)
 
 ABI_CLOBBER_PROBE_CART := $(BUILD_DIR)/cartridges/abi_clobber_probe.rom
+DISK_ABI_PROBE_CART := $(BUILD_DIR)/cartridges/disk_abi_probe.rom
 
 $(ABI_CLOBBER_PROBE_CART): tests/cartridges/abi_clobber_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(ABI_CLOBBER_PROBE_CART:.rom=.sym)
+
+$(DISK_ABI_PROBE_CART): tests/cartridges/disk_abi_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_ABI_PROBE_CART:.rom=.sym)
 
 FNKEY_PROBE_CART := $(BUILD_DIR)/cartridges/fnkey_probe.rom
 
@@ -1539,6 +1544,12 @@ test-1983-abi-clobber: $(MSX1_ROM) $(ABI_CLOBBER_PROBE_CART)
 	$(PYTHON) tools/run_1983_abi_clobber_probe.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(ABI_CLOBBER_PROBE_CART)"
+
+test-1983-disk-abi: $(MSX1_ROM) $(DISK_ABI_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_abi_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(DISK_ABI_PROBE_CART)"
 
 test-1983-fnkey: $(MSX1_ROM) $(FNKEY_PROBE_CART)
 	mkdir -p $(EMULATOR_1983_DIR)

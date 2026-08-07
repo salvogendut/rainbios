@@ -152,6 +152,7 @@ make test-1983 \
 | `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
 | `test-1983-stubs` | BIOS stub safe-return contract: all 21 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/CNVCHR/LFTQ/PUTQ and the SCALXY..SCANL group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
 | `test-1983-abi-clobber` | DCOMPR flag/carry contract (HL<DE, HL==DE, HL>DE) and BC preservation; WRTPSG/RDPSG round trip through the PSG ports |
+| `test-1983-disk-abi` | Hook-dispatching disk baseline: PHYDIO/FORMAT/OUTDLP safe defaults return carry, ISFLIO returns A=0, FORMAT dispatches to an installed H_FORM hook, and GETVCP/GETVC2 return the voice-control-block pointers |
 | `test-1983-fnkey` | POSIT cursor positioning, ERAFNK erase (CNSDFG=0, spaces), DSPFNK render (CNSDFG=FF, cursor to last row), FNKSB toggle, and TOTEXT text-mode refresh |
 | `test-1983-kbd` | CHSNS empty/data reporting, CHGET char read with BC/DE/HL preserved and GETPNT advance, KILBUF buffer reset, CHGCAP Caps-Lock lamp on with BC/DE/HL preserved (PPI port-C bit 6 read back), and CHGSND click on/off switch with BC/DE/HL preserved |
 | `check-release` | Reproducible release bundle: production ROMs, symbol files, component manifest, notices, and license texts under `build/release/`, with consistent `SHA256SUMS` and `RELEASE-NOTES.md` naming the source commit |
