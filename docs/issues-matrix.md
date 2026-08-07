@@ -17,7 +17,7 @@ milestone percentages are estimates derived from the roadmap slices
 | M3 keyboard/PSG/basic devices | ~95% | Printer calls (LPTOUT/LPTSTT) and touch-panel GTPAD implemented; light-pen/trackball unemulable in openMSX; remaining: selectable frequency/locale |
 | M4 cartridge compatibility | ~70% | Redistributable compatibility corpus deferred (TBD) — the only remaining M4 item, gated on sourcing and clearing ROMs for redistribution |
 | M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns, gated on MSX2 storage boot (M6/M7) |
-| M6 completeness/optional | ~60% | Remaining ABI gaps + flag/clobber characterization, FORMAT/ISFLIO/OUTDLP/GETVCP/GETVC2, loader inputs HL/DE, GeoBench rendering gap, payload-workload promotion, real-hardware timing |
+| M6 completeness/optional | ~65% | Hook-dispatching disk baseline gated (`test-1983-disk-abi`); remaining: ABI gaps + flag/clobber characterization, loader inputs HL/DE, GeoBench rendering gap, payload-workload promotion, real-hardware timing |
 | M7 disk/IDE boot | ~60% | Filesystem services, formatting, drive B, writable media, other controllers, loader inputs, real-hardware timing |
 
 ## Pull request log

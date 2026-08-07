@@ -575,11 +575,16 @@ validation remain pending; M7 owns the implemented boot-sector paths.
 - preserve independently testable BASIC and disk component boundaries even
   when the BASIC payload is aggregated into the main ROM;
 - preserve the restored lower-bank reserve as firmware grows;
-- add a read-only-safe, hook-dispatching disk baseline for `PHYDIO`, `FORMAT`,
-  `ISFLIO`, `OUTDLP`, `GETVCP`, and `GETVC2` before adding writable media
-  support;
 - publish reproducible releases, symbols, compatibility results, and known
   deviations.
+
+M6B gates the read-only-safe, hook-dispatching disk baseline. `test-1983-disk-abi`
+calls `PHYDIO`, `FORMAT`, `ISFLIO`, `OUTDLP` through the main BIOS and verifies
+the safe-default returns (carry set for the disk hooks, A=0 for `ISFLIO`),
+that `FORMAT` dispatches to an installed `H_FORM` hook, and that `GETVCP`/
+`GETVC2` return the documented voice-control-block pointers. The remaining M6
+ABI work is the gated 21-stub set and the flag/clobber characterization of the
+remaining partial entries.
 
 ## M7 — Disk boot
 
