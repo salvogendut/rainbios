@@ -49,6 +49,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #112 | M6 | RESET ABI entry documented implemented |
 | #113 | — | Build output layout split (ROMs vs fixtures) + drop unused symbol files |
 | #114 | M7 | DSKIO write path + write-protect gated |
+| #115 | — | Record openMSX WD2793 transfer + 1983 double-call findings |
 
 ## Issue matrix
 
