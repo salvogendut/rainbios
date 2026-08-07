@@ -60,6 +60,7 @@ PUTPNT          equ #f3f8
 GETPNT          equ #f3fa
 CLIKSW          equ #f3db
 CLICKCNT        equ #f559
+TPAD_MASK       equ #f560                 ; touch panel AND/OR masks (2 bytes)
 INLIN_CNT       equ #f558
 CNSDFG          equ #f3de
 BUFFER          equ #f55e
@@ -5629,23 +5630,188 @@ gttrig_done:
 
 ; GTPAD 12/16 latch signed relative mouse movement from connector 1/2 into
 ; the standard PADX/PADY work areas. Selectors 13/14 and 17/18 return the
-; cached axes; 15/19 and unsupported touch-panel/light-pen selectors return 0.
+; cached axes. Touch-panel selectors 0-3 are touchpad connector 1 and 4-7
+; touchpad connector 2: 0/4 fetch the coordinates, 1/5 return X (PADX),
+; 2/6 return Y (PADY), and 3/7 return the trigger (FFh pressed, 00h
+; released). Unsupported selectors return 0.
 gtpad:
                 di
                 cp 12
-                jr z,gtpad_request_port1
+                jp z,gtpad_request_port1
                 cp 16
-                jr z,gtpad_request_port2
+                jp z,gtpad_request_port2
                 cp 13
-                jr z,gtpad_x
+                jp z,gtpad_x
                 cp 17
-                jr z,gtpad_x
+                jp z,gtpad_x
                 cp 14
-                jr z,gtpad_y
+                jp z,gtpad_y
                 cp 18
-                jr z,gtpad_y
+                jp z,gtpad_y
+                cp 8
+                jp nc,gtpad_zero
+                ; Touch panel: port 0 (selectors 0-3) or port 1 (4-7). The
+                ; carry flag set by the cp 4 / sub 4 picks the connector.
+                cp 4
+                ld de,#0cec            ; port 0 masks (D = other-port OR, E = AND)
+                jr c,gtpad_touchpad_sel
+                ld de,#03d3            ; port 1 masks
+                sub 4
+gtpad_touchpad_sel:
+                dec a                   ; fetch data?
+                jp m,gtpad_touchpad_read
+                dec a                   ; X position?
+                ld a,(PADX)
+                ret m                   ; flags kept from the dec
+                ld a,(PADY)
+                ret z                   ; Y position
+                ; Selector 3/7: trigger status, sharing the read setup.
+gtpad_touchpad_read:
+                push af
+                ex de,hl
+                ld (TPAD_MASK),hl       ; TPAD_MASK = AND, +1 = OR
+                sbc a,a                 ; port 0 -> FF, port 1 -> 00 (carry)
+                cpl
+                and #40                 ; R15 bit 6 selects connector 2
+                ld c,a
+                ld a,15
+                call rdpsg
+                and #bf
+                or c
+                out (PSG_WRITE),a
+                pop af
+                jp m,gtpad_touchpad_fetch
+                ; Trigger status: IOA bit 3 (trigger A).
+                call gtpad_ingi
+                ei
+                and #08
+                sub 1
+                sbc a,a                 ; FFh when trigger, else 00h
+                ret
+gtpad_touchpad_fetch:
+                ld c,0                  ; serial data 0, channel 0
+                call gtpad_redpad
+                call gtpad_redpad
+                jr c,gtpad_touchpad_nosense
+                call gtpad_read_xy
+                jr c,gtpad_touchpad_nosense
+                push de
+                call gtpad_read_xy
+                pop bc
+                jr c,gtpad_touchpad_nosense
+                ld a,b
+                sub d
+                jr nc,gtpad_touchpad_dx
+                cpl
+                inc a
+gtpad_touchpad_dx:
+                cp 5
+                jr nc,gtpad_touchpad_fetch
+                ld a,c
+                sub e
+                jr nc,gtpad_touchpad_dy
+                cpl
+                inc a
+gtpad_touchpad_dy:
+                cp 5
+                jr nc,gtpad_touchpad_fetch
+                ld a,d
+                ld (PADX),a
+                ld a,e
+                ld (PADY),a
+gtpad_touchpad_nosense:
+                ei
+                ld a,h
+                sub 1
+                sbc a,a                 ; FFh when data fetched, else 00h
+                ret
+
+; Read the X and Y coordinates from the touchpad into D (X) and E (Y).
+; Carry is set when the chip does not respond.
+gtpad_read_xy:
+                ld c,#0a                ; serial data 1, channel 3
+                call gtpad_redpad
+                ret c
+                ld d,l
+                push de
+                ld c,0
+                call gtpad_redpad
+                pop de
+                ld e,l
                 xor a
-                jr gtpad_done
+                ld h,a                  ; flag data fetched
+                ret
+
+; Read one serial byte from the touchpad: bit-bang the clock on the IOB
+; (pin 6), sample SO from IOA (bit 2), and return the byte in L with the
+; -SENSE line in carry.
+gtpad_redpad:
+                call gtpad_touchpad_select
+                ld b,8
+                ld d,c                  ; OR mask = serial data bits
+gtpad_redpad_bit:
+                res 0,d                 ; pin 6 port 0 clock high
+                res 2,d                 ; pin 6 port 1 clock high
+                call gtpad_outgi
+                call gtpad_ingi
+                ld h,a
+                rra
+                rra
+                rra                     ; SO (IOA bit 2) into carry
+                rl l                    ; shift into the result
+                set 0,d                 ; pin 6 port 0 clock low
+                set 2,d                 ; pin 6 port 1 clock low
+                call gtpad_outgi
+                djnz gtpad_redpad_bit
+                set 4,d                 ; pulse port 0 = 1 (deselect)
+                set 5,d                 ; pulse port 1 = 1 (deselect)
+                call gtpad_outgi
+                ld a,h
+                rra                     ; -SENSE into carry
+                ret
+
+; Wait for the touchpad conversion to finish (EOC high on IOA bit 1) and
+; select the chip by clearing the pulse bits.
+gtpad_touchpad_select:
+                ld a,#35
+                or c
+                ld d,a
+                call gtpad_outgi
+gtpad_eoc_wait:
+                call gtpad_ingi
+                and #02
+                jr z,gtpad_eoc_wait
+                res 4,d
+                res 5,d
+                ; fall through to gtpad_outgi
+
+; Write the touchpad serial bits to the PSG IOB using the stored masks:
+; clear this connector's clock/data/pulse bits, set them from D, and force
+; the other connector's bits high.
+gtpad_outgi:
+                push hl
+                push de
+                ld hl,(TPAD_MASK)
+                ld a,l
+                cpl
+                and d
+                ld d,a
+                ld a,15
+                out (PSG_ADDRESS),a
+                in a,(PSG_READ)
+                and l
+                or d
+                or h
+                out (PSG_WRITE),a
+                pop de
+                pop hl
+                ret
+
+; Read the PSG IOA port (port A).
+gtpad_ingi:
+                ld a,14
+                jp rdpsg
+
 gtpad_request_port1:
                 xor a
                 jr gtpad_request
@@ -5660,6 +5826,9 @@ gtpad_x:
                 jr gtpad_done
 gtpad_y:
                 ld a,(PADY)
+                jr gtpad_done
+gtpad_zero:
+                xor a
 gtpad_done:
                 ei
                 ret

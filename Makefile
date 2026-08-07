@@ -171,6 +171,8 @@ OPENMSX_PRINTER_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/printer.txt
 OPENMSX_PRINTER_LOG := \
 	$(OPENMSX_M1_REPORT_DIR)/printer.log
+OPENMSX_GTPAD_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/gtpad.txt
 OPENMSX_BBC_BASIC_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_BBC_BASIC.xml
 OPENMSX_BBC_BASIC_REPORT := \
@@ -363,7 +365,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-expanded-cartridge test-openmsx-page2-cartridge \
 	test-1983-expanded test-openmsx-embedded-basic \
 	test-openmsx-bbcbasic-quote test-openmsx-payload-state \
-	test-openmsx-printer \
+	test-openmsx-printer test-openmsx-gtpad \
 	test-openmsx-msx2 test-1983-msx2 \
 	test-openmsx-msx2-subrom test-1983-msx2-subrom \
 	test-openmsx-msx2-services test-1983-msx2-subrom-services \
@@ -1323,6 +1325,15 @@ test-openmsx-printer: $(OPENMSX_PRINTER_MACHINE)
 		-script "$(abspath tests/openmsx/printer_probe.tcl)"
 	$(PYTHON) tools/check_printer_probe.py --log $(OPENMSX_PRINTER_LOG) \
 		$(OPENMSX_PRINTER_REPORT)
+
+test-openmsx-gtpad: $(OPENMSX_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX1 \
+		-command "set gtpad_output {$(abspath $(OPENMSX_GTPAD_REPORT))}" \
+		-script "$(abspath tests/openmsx/gtpad_probe.tcl)"
+	$(PYTHON) tools/check_gtpad_probe.py $(OPENMSX_GTPAD_REPORT)
 
 test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
