@@ -1,5 +1,5 @@
 address,name,kind,status,milestone,notes
-0000,RESET,reset,partial,M4,Tests primary and secondary slots for RAM and establishes SP; scans non-BIOS slots for page-1/page-2 AB/INIT cartridges and validated page-1 RBP1 payloads
+0000,RESET,reset,implemented,M4,Tests primary and expanded slots for RAM and establishes SP=F380h; scans non-BIOS slots for page-1/page-2 AB/INIT cartridges and validated page-1 RBP1 payloads. Entry bytes and metadata checked by test_rom; RAM discovery by test-openmsx-m1; cartridge scanning by test-1983-cartridge/test-1983-external-cartridges; payload state and invalid-payload rejection by test-openmsx-payload-state/test-openmsx-payload-invalid
 0004,CGTABL,data,implemented,M2,Points to the project-owned 8x8 boot font covering printable ASCII and the full MSX international character set 0x80-0xA3
 0006,VDP_DR,data,partial,M0,MSX1 VDP data port
 0007,VDP_DW,data,partial,M0,MSX1 VDP data port
