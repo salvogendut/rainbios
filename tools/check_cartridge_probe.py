@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Validate the RainBIOS primary-slot cartridge boot report."""
+"""Validate the RainBIOS cartridge boot report and INIT entry state."""
 
 from __future__ import annotations
 
 import argparse
 import pathlib
+
+
+def _parse_bytes(value: str) -> list[int]:
+    try:
+        return [int(byte, 16) for byte in value.split(",")]
+    except ValueError as error:
+        raise ValueError(f"invalid byte list {value!r}") from error
 
 
 def validate_report(
@@ -25,6 +32,53 @@ def validate_report(
         raise ValueError("missing or invalid PC") from error
     if not 0x4000 <= pc < 0x8000:
         raise ValueError(f"PC {pc:04X} is outside cartridge page 1")
+
+    # Cartridge INIT entry contract (authoritative breakpoint capture):
+    # A and B both carry the slot ID, C is zero, DE and IX are the INIT
+    # pointer from the AB header, HL is the scan's header address, IY holds
+    # the slot in the high byte, and SP is on a RainBIOS page-3 stack.
+    try:
+        a, f = _parse_bytes(values["ENTRYAF"])
+        bc = int(values["ENTRYBC"], 16)
+        de = int(values["ENTRYDE"], 16)
+        hl = int(values["ENTRYHL"], 16)
+        ix = int(values["ENTRYIX"], 16)
+        iy = int(values["ENTRYIY"], 16)
+        sp = int(values["ENTRYSP"], 16)
+    except (KeyError, ValueError) as error:
+        raise ValueError(f"missing or invalid ENTRY state: {error}") from error
+    b, c = bc >> 8, bc & 0xFF
+    if a != b:
+        raise ValueError(f"A {a:02X} and B {b:02X} must both carry the slot ID")
+    if c != 0:
+        raise ValueError(f"C must be zero at INIT, found {c:02X}")
+    if de != ix:
+        raise ValueError(f"DE {de:04X} and IX {ix:04X} must both be the INIT pointer")
+    if iy != (a << 8):
+        raise ValueError(f"IY {iy:04X} must hold the slot ID in its high byte")
+    if not 0xF080 <= sp <= 0xF380:
+        raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
+    if hl != 0x4003:
+        raise ValueError(f"HL {hl:04X} must be the scan header address (4003)")
+
+    # The fixture's in-ROM snapshot must agree with the breakpoint capture,
+    # proving the register values survive the transfer.
+    pairs = (
+        ("INITAF", [a, f]),
+        ("INITBC", [b, c]),
+        ("INITDE", [de >> 8, de & 0xFF]),
+        ("INITHL", [hl >> 8, hl & 0xFF]),
+        ("INITIX", [ix >> 8, ix & 0xFF]),
+        ("INITIY", [iy >> 8, iy & 0xFF]),
+        ("INITSP", [sp >> 8, sp & 0xFF]),
+    )
+    for key, expected in pairs:
+        if _parse_bytes(values.get(key, "")) != expected:
+            raise ValueError(
+                f"{key}: fixture snapshot {values.get(key)!r} does not match "
+                f"the breakpoint capture {expected!r}"
+            )
+
     expected = {
         "SLOT": expected_slot,
         "SIGNATURE": "52,41,49,4E,5E",
@@ -38,15 +92,6 @@ def validate_report(
             raise ValueError(
                 f"{key}: found {values.get(key)!r}, expected {expected_value!r}"
             )
-    try:
-        sp = int(values["SP"], 16)
-    except (KeyError, ValueError) as error:
-        raise ValueError("missing or invalid SP") from error
-    # The cartridge scan runs on the extension stack (F092h), so the sample
-    # catches a non-returning INIT with SP in that region rather than the main
-    # stack top (F380h). Accept either RainBIOS page-3 stack region.
-    if not 0xF080 <= sp <= 0xF380:
-        raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
     return values
 
 

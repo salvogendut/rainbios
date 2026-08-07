@@ -358,10 +358,12 @@ breaks at the descriptor entry and verifies the documented transfer contract:
 `SP=F380h`, A/BC/DE/HL/IX/IY zero, page 0 on the MAIN-ROM slot with pages 1-3
 on the contiguous RAM slot, an empty key buffer, and a live `JIFFY` proving the
 interrupt source and IM1/EI state. Host tests cover the checker. The ordinary
-cartridge `INIT` entry (IX = INIT pointer, IY = slot via `CALSLT`) remains to
-be characterized.
+cartridge `INIT` entry is characterized and gated by `test-openmsx-cartridge`
+and `test-openmsx-expanded-cartridge`: IX/DE = the INIT pointer, A/B = the
+slot ID, C = 0, IY = the slot in the high byte, and SP on a RainBIOS page-3
+stack, with the fixture's in-ROM snapshot cross-checked against the breakpoint
+capture. See `docs/abi/cartridge-startup.md`.
 
-- define and test startup register and work-area state;
 - support common slot and mapper arrangements needed before cartridge code
   installs its own mapper;
 - create a compatibility corpus of redistributable homebrew and original test

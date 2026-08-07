@@ -109,8 +109,8 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 
 | Target | Coverage |
 | --- | --- |
-| `test-openmsx-cartridge` | Original primary-slot `AB` cartridge discovery and `INIT` transfer |
-| `test-openmsx-expanded-cartridge` | The same discovery path in an expanded secondary slot |
+| `test-openmsx-cartridge` | Original primary-slot `AB` cartridge discovery and `INIT` transfer, including the characterized INIT entry state (IX/DE = INIT pointer, A/B = slot, C = 0, IY = slot in the high byte, page-3 SP) cross-checked against the fixture's in-ROM snapshot |
+| `test-openmsx-expanded-cartridge` | The same discovery path and INIT entry state in an expanded secondary slot |
 | `test-openmsx-bbcbasic-menu` | Descriptor discovery and enabled menu state |
 | `test-openmsx-expanded-bbcbasic-menu` | Descriptor discovery and launch from an expanded slot |
 | `test-openmsx-bbcbasic` | Complete console/editing/language/error/timing workload |
