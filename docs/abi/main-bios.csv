@@ -29,7 +29,7 @@ address,name,kind,status,milestone,notes
 0056,FILVRM,jump,implemented,M2,Fills BC bytes at HL in VRAM with A; count and boundary behavior covered by the VRAM probe
 0059,LDIRMV,jump,implemented,M2,Copies BC bytes from VRAM at HL to RAM at DE
 005C,LDIRVM,jump,implemented,M2,Copies BC bytes from RAM at HL to VRAM at DE
-005F,CHGMOD,jump,partial,M2,Dispatches modes 0-3 and provides a guarded partial Screen 7 register handoff when a live standard SUB-ROM signature is found; modes 4-6/8 remain unsupported
+005F,CHGMOD,jump,implemented,M2,Dispatches the screen mode in A: 0-3 to the text/graphics inits and 7 to the guarded partial Screen 7 register handoff; unsupported modes return carry set without changing SCRMOD. Verified by test-1983-chgmod
 0062,CHGCLR,jump,implemented,M2,Screen 0 sets R7 to (FORCLR<<4)|BAKCLR; Screens 1-3 set R7 to BDRCLR; Screen 1 also fills its 32-byte color table with (FORCLR<<4)|BAKCLR; the shadow is updated
 0066,NMI,jump,stub,M1,Safe empty NMI return only
 0069,CLRSPR,jump,implemented,M2,Returns in Screen 0; otherwise clears the complete 2 KiB sprite pattern table and initializes 32 attributes with Y=209/217 X=0 pattern step 1/4 for 8x8/16x16 and foreground color

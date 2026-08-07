@@ -599,6 +599,10 @@ M6E gates the `ISCNTC`/`CKCNTC` break-consumption contract.
 seeds a pending key, and verifies the entries clear `INTFLG` and the key
 buffer and return carry set, then return carry clear on a subsequent call.
 
+M6F gates the `CHGMOD` screen-mode dispatch. `test-1983-chgmod` calls
+`CHGMOD` (`005F`) with modes 0-3 and verifies `SCRMOD` receives the requested
+mode, then with modes 4/5/9 and verifies carry set with `SCRMOD` untouched.
+
 ## M7 — Disk boot
 
 Status: in progress.
