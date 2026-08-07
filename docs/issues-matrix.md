@@ -32,6 +32,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #95 | M4 | Gate the page-2 INIT (mapper-style) cartridge arrangement (`test-openmsx-page2-cartridge`/`test-1983-page2-cartridge`) |
 | #96 | M3 | Implement the printer calls LPTOUT/LPTSTT; M6 stub gate now 21 |
 | #97 | M3 | Implement the touch-panel GTPAD selectors (UPD7001 serial protocol) |
+| #98 | M1 | Disk ROM adopts the motor-arm helper (IM 1 handler stops the motor) |
 
 ## Issue matrix
 
