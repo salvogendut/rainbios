@@ -48,6 +48,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #111 | M6 | Loader inputs HL/DE (DISKVE/ENAKRN) provided and gated |
 | #112 | M6 | RESET ABI entry documented implemented |
 | #113 | — | Build output layout split (ROMs vs fixtures) + drop unused symbol files |
+| #114 | M7 | DSKIO write path + write-protect gated |
 
 ## Issue matrix
 
