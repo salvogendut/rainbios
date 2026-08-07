@@ -393,6 +393,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-embedded-basic \
 	test-1983-cartridge test-external-cartridges \
 	test-1983-stubs test-1983-abi-clobber test-1983-disk-abi \
+	test-1983-gtpdl-clobber \
 	test-1983-fnkey test-1983-kbd \
 	test-openmsx-external-cartridges test-openmsx-external-arkano \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
@@ -868,6 +869,7 @@ $(STUB_PROBE_CART): tests/cartridges/stub_probe.asm | $(BUILD_DIR)
 
 ABI_CLOBBER_PROBE_CART := $(BUILD_DIR)/cartridges/abi_clobber_probe.rom
 DISK_ABI_PROBE_CART := $(BUILD_DIR)/cartridges/disk_abi_probe.rom
+GTPDL_CLOBBER_PROBE_CART := $(BUILD_DIR)/cartridges/gtpdl_clobber_probe.rom
 
 $(ABI_CLOBBER_PROBE_CART): tests/cartridges/abi_clobber_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -876,6 +878,10 @@ $(ABI_CLOBBER_PROBE_CART): tests/cartridges/abi_clobber_probe.asm | $(BUILD_DIR)
 $(DISK_ABI_PROBE_CART): tests/cartridges/disk_abi_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@ -s -os $(DISK_ABI_PROBE_CART:.rom=.sym)
+
+$(GTPDL_CLOBBER_PROBE_CART): tests/cartridges/gtpdl_clobber_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(GTPDL_CLOBBER_PROBE_CART:.rom=.sym)
 
 FNKEY_PROBE_CART := $(BUILD_DIR)/cartridges/fnkey_probe.rom
 
@@ -1550,6 +1556,12 @@ test-1983-disk-abi: $(MSX1_ROM) $(DISK_ABI_PROBE_CART)
 	$(PYTHON) tools/run_1983_disk_abi_probe.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(DISK_ABI_PROBE_CART)"
+
+test-1983-gtpdl-clobber: $(MSX1_ROM) $(GTPDL_CLOBBER_PROBE_CART)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_gtpdl_clobber_probe.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --cartridge "$(GTPDL_CLOBBER_PROBE_CART)"
 
 test-1983-fnkey: $(MSX1_ROM) $(FNKEY_PROBE_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
