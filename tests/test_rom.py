@@ -94,8 +94,10 @@ class MainRomLayoutTest(unittest.TestCase):
                 self.assertGreaterEqual(destination, 0x0200)
                 self.assertLess(destination, len(self.rom))
 
-    def test_msx1_extrom_compatibility_entry_returns(self):
-        self.assertEqual(self.rom[0x015F], 0xC9)  # RET
+    def test_subrom_calling_entries_are_jumps(self):
+        for address in (0x015C, 0x015F, 0x0162):
+            with self.subTest(address=hex(address)):
+                self.assertEqual(self.rom[address], 0xC3)
 
     def test_msx2_subrom_calling_entries_are_jumps(self):
         if not MSX2_ROM_PATH.exists():

@@ -286,14 +286,9 @@ ASSET_BUFFER    equ #c000
                 jp disk_getvc2                  ; 0153 GETVC2
                 jp kilbuf                       ; 0156 KILBUF
                 jp unsupported_call             ; 0159 CALBAS
-                IFDEF MSX2
                 jp subrom                       ; 015C SUBROM
                 jp extrom                       ; 015F EXTROM
                 jp chkslz                       ; 0162 CHKSLZ
-                ELSE
-                defs #015f-$,#ff
-                ret                             ; 015F MSX1 compatibility
-                ENDIF
 
 ; Keep implementation code away from the fixed ABI area.
                 defs #0200-$,#ff
@@ -3605,6 +3600,7 @@ bootstrap_msx2_register_loop:
                 jr nz,bootstrap_msx2_register_loop
 bootstrap_msx2_no_v9938:
                 ret
+ENDIF
 
 ; $015C SUBROM: call a routine in the SUB-ROM, documented as `push IX` then
 ; `jp SUBROM`. The pushed value restores IX after the call, and the final RET
@@ -3665,7 +3661,6 @@ chkslz_not_found:
                 ld (EXBRSA),a
                 or a                            ; clear carry
                 ret
-ENDIF
 
 ; Partial Screen 7 handoff for software that runs this MSX1 ROM on MSX2
 ; hardware. A discovered SUB-ROM is used only as the V9938 capability guard;
