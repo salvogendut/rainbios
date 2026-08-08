@@ -691,8 +691,8 @@ target.
   contract (requires provenance-cleared DOS files);
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
-- filesystem services, formatting, floppy drive B, other controllers, and
-  real-hardware timing validation remain pending.
+- filesystem services, formatting, floppy drive B, other controllers, write
+  services, and real-hardware timing validation remain pending.
 
 DSKIO now supports writes: the production NMS 8250 disk ROM writes sectors
 through the WD2793 (`A4h`) and persists them to the medium, reporting the
@@ -702,6 +702,15 @@ sector 2 and byte-verifies the image; `test-1983-disk-write-protect` verifies
 the read-only rejection with the image untouched. A pre-existing CALSLT
 double-call crash (a second DSKIO call from a `C000h` fixture context corrupts
 the return stack) is noted but not exercised by these gates.
+
+A read-only FAT12 FS.LOAD service is now implemented and gated
+(`test-1983-disk-fat12`). The service parses the boot-sector BPB, walks the
+root directory, resolves a three-cluster FAT12 chain (2→3→4→0xFFF) through a
+resident 3-sector FAT window, and delivers a 3072-byte deterministic-pattern
+file (RAIN.BIN) into page-3 RAM. The boot-sector fixture calls FS.LOAD (4025h)
+through a single CALSLT inter-slot call, the same discipline used by the
+existing boot-sector loaders. The closed-form byte pattern is verified across
+all cluster boundaries from the loaded destination buffer.
 
 The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
 fixture pass label with the cartridge mapped in page 1 (slot `F8`), and
