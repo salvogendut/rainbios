@@ -24,7 +24,7 @@ discard unrelated changes in a dirty worktree.
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
 | MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with a compressed source-built payload container in the upper half |
-| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook implemented |
+| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook + FAT12 FS.LOAD (4025h) implemented |
 | Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | First slice built | `build/rainbios_msx2.rom` | Distinct 32 KiB build sharing the MSX1 source: MSX2 ID byte, V9938 CD-scan detection, EXBRSA publication, R8-R23 shadow baseline and WRTVDP dispatch |
 | MSX2 SUB-ROM | Services + command/clock slices built | `build/rainbios_msx2_sub.rom` | Self-contained 16 KiB extended-VDP ROM: CHGMOD Screens 5/6/7/8, palette, WRTVDP/VDPSTA, 16-bit WRTVRM/RDVRM, BLTVV/BLTVM/BLTMV block transfers, REDCLK/WRTCLK. Disk-file transfers, screens 10-12 pending |
@@ -173,6 +173,10 @@ The optional NMS 8250 disk-ROM layer:
   validates the MSX-DOS `EBh`/`E9h` signature, and enters the loader at
   `C000h+1Eh` with `A = 0` and carry set, or returns so the interactive menu
   continues.
+- provides a read-only FAT12 FS.LOAD service (4025h) that parses the boot-sector
+  BPB, walks the root directory, follows the FAT12 cluster chain, and delivers
+  file bytes through the PHYDIO path using the single inter-slot-call discipline
+  (`test-1983-disk-fat12`).
 
 The Space-key boot menu invokes the same bootstrap on demand: option 2 runs the
 drive-A boot-sector path, while option 3 uses RainBIOS's own Sunrise ATA or SD
@@ -200,8 +204,9 @@ vector jumps to its relocated body.
 
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
-The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector but does not
-itself provide FAT or DOS services. Nextor now boots through Sunrise and SD
+The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector and provides
+a read-only FAT12 FS.LOAD service; it does not provide write services or a full
+DOS. Nextor now boots through Sunrise and SD
 Mapper cartridges, while a provenance-cleared MSX-DOS 1 system, formatting,
 floppy drive B, writes, non-NMS controllers, and real-hardware timing remain
 pending.
@@ -408,6 +413,9 @@ Coverage includes:
   and an unchanged medium (`B=01h`) on the next call;
 - `DSKCHG` reporting an unknown state (`B=00h`) without an error when the drive
   has no media, with `GETDPB` still publishing the DPB.
+- a read-only FAT12 FS.LOAD that resolves a three-cluster chain (2→3→4→0xFFF),
+  delivers a 3072-byte deterministic-pattern file into page-3 RAM, and verifies
+  content across all cluster boundaries (`test-1983-disk-fat12`).
 
 The 1983 emulator models controller state and raw media but idealizes motor,
 seek, and per-byte DRQ timing. Passing emulator tests does not prove real
@@ -453,6 +461,7 @@ make test-1983-disk-dskchg-getdpb
 make test-1983-disk-dskchg-no-media
 make test-1983-disk-partial-error
 make test-1983-disk-write-guard
+make test-1983-disk-fat12
 make test-1983-nms8250-disk-rom
 make test-1983-ide-boot
 make test-1983-ide-menu
@@ -527,7 +536,7 @@ is:
 | M4 cartridge compatibility | In progress | Payload-launch, cartridge-INIT, and page-2 INIT (mapper-style) arrangements gated; the redistributable compatibility corpus is deferred (TBD) |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 21 callable BIOS stub entries gated by `test-1983-stubs`; hook-dispatching disk baseline (`PHYDIO`/`FORMAT`/`ISFLIO`/`OUTDLP`/`GETVCP`/`GETVC2`) gated by `test-1983-disk-abi`; GTPDL clobber contract gated by `test-1983-gtpdl-clobber`; INIFNK default strings gated by `test-1983-inifnk`; ISCNTC/CKCNTC break consumption gated by `test-1983-iscntc`; CHGMOD screen-mode dispatch gated by `test-1983-chgmod`; KEYINT VBlank bookkeeping gated by `test-1983-keyint`; internal-payload graphics workload gated by `test-1983-embedded-basic-graphics`; internal-payload cassette workload gated by `test-1983-embedded-basic-tape`; scrolling text workload gated by `test-1983-bbcbasic-scroll`/`test-1983-embedded-basic-scroll`; editing workload gated by `test-1983-bbcbasic-edit`/`test-1983-embedded-basic-edit`; DCOMPR/PSG clobber and flag contracts gated by `test-1983-abi-clobber`; function-key/text contracts gated by `test-1983-fnkey`; keyboard buffer contracts gated by `test-1983-kbd`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export |
-| M7 disk/IDE boot | In progress | Real DOS files, hardware validation; DSKIO writes gated (`test-1983-disk-write`/`-disk-write-protect`). Open issues: a second DSKIO call from a `C000h` fixture context crashes under 1983 (emulator artifact); the RainBIOS WD2793 driver's data transfer misaligns against openMSX's real WD2793 (read/write byte timing), blocking an openMSX write gate |
+| M7 disk/IDE boot | In progress | FAT12 FS.LOAD implemented and gated (`test-1983-disk-fat12`). Real DOS files, hardware validation; DSKIO writes gated (`test-1983-disk-write`/`-disk-write-protect`). Open issues: a second DSKIO call from a `C000h` fixture context crashes under 1983 (emulator artifact); the RainBIOS WD2793 driver's data transfer misaligns against openMSX's real WD2793 (read/write byte timing), blocking an openMSX write gate |
 
 ## Recommended Next Work
 
@@ -651,6 +660,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/run_1983_kbd_probe.py` | 1983 runner validating the keyboard probe markers |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
+| `src/disk_fat12.asm` | FAT12 FS.LOAD service (BPB parse, directory walk, FAT12 cluster chain) |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
 | `docs/abi/main-bios.csv` | Truthful fixed-entry implementation status |
 | `docs/abi/controllers.md` | Keyboard, joystick, trigger, and mouse contracts |
@@ -690,6 +700,10 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/run_1983_ide_boot.py` | Symbol-based Sunrise IDE integration runner |
 | `tools/run_openmsx_disk_fault.py` | Symbol-based openMSX fault-injection runner |
 | `tests/cartridges/disk_phydio_rom.asm` | General read and validation probe |
+| `tests/cartridges/disk_fat12_boot.asm` | FAT12 FS.LOAD C000h boot-sector fixture |
+| `tools/make_fat12_disk.py` | Deterministic FAT12 720 KiB F9 DSK fixture generator |
+| `tools/run_1983_disk_fat12.py` | 1983 FAT12 FS.LOAD integration runner |
+| `tests/test_1983_disk_fat12.py` | FAT12 marker validation unit tests |
 | `tests/cartridges/disk_no_media_rom.asm` | No-media probe |
 | `tests/cartridges/disk_dskchg_getdpb_rom.asm` | DSKCHG/GETDPB probe with a mounted image |
 | `tests/cartridges/disk_dskchg_no_media_rom.asm` | DSKCHG/GETDPB probe without media |
