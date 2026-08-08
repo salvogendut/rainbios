@@ -18,9 +18,12 @@
                 jp disk_unsupported            ; 401C DSKFMT
                 jp disk_motor_off              ; 401F MTOFF
                 ret                            ; 4022 BASIC
+                defs #4025-$,#ff
+                jp disk_fs_load                ; 4025 FS.LOAD
                 defs #4030-$,#ff
 
                 include "disk_nms8250_driver.asm"
+                include "disk_fat12.asm"
 
 disk_no_choice:
                 ld hl,0

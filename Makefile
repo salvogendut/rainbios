@@ -83,7 +83,8 @@ DISK_ROM_BOOT_CART_SYM := $(BUILD_DIR)/cartridges/disk_rom_boot_input.sym
 NMS8250_DISK_ROM := $(BUILD_DIR)/rainbios_nms8250_disk.rom
 NMS8250_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_nms8250_disk.sym
 NMS8250_DISK_SOURCES := src/disk_nms8250_rom.asm \
-	src/disk_nms8250_driver.asm
+	src/disk_nms8250_driver.asm \
+	src/disk_fat12.asm
 DISK_PHYDIO_TEST_ROM := $(BUILD_DIR)/cartridges/disk_phydio_rom.rom
 DISK_PHYDIO_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_phydio_rom.sym
 DISK_PHYDIO_TEST_SOURCES := tests/cartridges/disk_phydio_rom.asm \
@@ -113,6 +114,10 @@ DISK_PRODUCTION_INIT_CART := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.rom
 DISK_PRODUCTION_INIT_CART_SYM := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.sym
+DISK_FAT12_SECTOR := tests/cartridges/disk_fat12_boot.asm
+DISK_FAT12_SECTOR_BIN := $(FIXTURES_DIR)/disk_fat12_boot.bin
+DISK_FAT12_SECTOR_SYM := $(FIXTURES_DIR)/disk_fat12_boot.sym
+DISK_FAT12_IMAGE := $(BUILD_DIR)/disks/disk-fat12.dsk
 DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
 DISK_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_boot_sector.bin
 DISK_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_boot_sector.sym
@@ -307,6 +312,8 @@ EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-boot.ppm
  EMULATOR_1983_DISK_WRITE_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-write.ppm
+ EMULATOR_1983_DISK_FAT12_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/disk-fat12.ppm
 EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot-fallback.ppm
 EMULATOR_1983_DISK_BOOT_MENU_SCREEN := \
@@ -395,6 +402,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot \
 	test-1983-disk-write test-1983-disk-write-protect \
+	test-1983-disk-fat12 \
 	test-1983-disk-boot-production test-1983-disk-boot-fallback \
 	test-1983-disk-write test-1983-disk-write-protect \
 	test-1983-disk-boot-menu test-1983-disk-menu-stub \
@@ -648,6 +656,13 @@ $(DISK_WRITE_SECTOR_BIN): $(DISK_WRITE_SECTOR) | $(BUILD_DIR)
 
 $(DISK_WRITE_IMAGE): tools/make_boot_disk.py $(DISK_WRITE_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_WRITE_SECTOR_BIN) $@
+
+$(DISK_FAT12_SECTOR_BIN): $(DISK_FAT12_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_FAT12_SECTOR_SYM)
+
+$(DISK_FAT12_IMAGE): tools/make_fat12_disk.py $(DISK_FAT12_SECTOR_BIN)
+	$(PYTHON) $< --boot-sector $(DISK_FAT12_SECTOR_BIN) $@
 
 $(IDE_BOOT_SECTOR_BIN): $(IDE_BOOT_SECTOR) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1791,6 +1806,15 @@ test-1983-disk-write-protect: \
 		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
 		--disk-a "$(DISK_WRITE_IMAGE)" --write-protect \
 		--screenshot "$(EMULATOR_1983_DISK_WRITE_SCREEN)"
+
+test-1983-disk-fat12: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_FAT12_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_fat12.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--disk-a "$(DISK_FAT12_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_DISK_FAT12_SCREEN)"
 
 test-1983-disk-boot-fallback: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 	mkdir -p $(EMULATOR_1983_DIR)
