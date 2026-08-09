@@ -118,6 +118,9 @@ DISK_FAT12_SECTOR := tests/cartridges/disk_fat12_boot.asm
 DISK_FAT12_SECTOR_BIN := $(FIXTURES_DIR)/disk_fat12_boot.bin
 DISK_FAT12_SECTOR_SYM := $(FIXTURES_DIR)/disk_fat12_boot.sym
 DISK_FAT12_IMAGE := $(BUILD_DIR)/disks/disk-fat12.dsk
+DISK_FSDIR_SECTOR := tests/cartridges/disk_fsdir_boot.asm
+DISK_FSDIR_SECTOR_BIN := $(FIXTURES_DIR)/disk_fsdir_boot.bin
+DISK_FSDIR_IMAGE := $(BUILD_DIR)/disks/disk-fsdir.dsk
 DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
 DISK_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_boot_sector.bin
 DISK_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_boot_sector.sym
@@ -314,6 +317,8 @@ EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-write.ppm
  EMULATOR_1983_DISK_FAT12_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-fat12.ppm
+ EMULATOR_1983_DISK_FSDIR_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/disk-fsdir.ppm
 EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot-fallback.ppm
 EMULATOR_1983_DISK_BOOT_MENU_SCREEN := \
@@ -663,6 +668,13 @@ $(DISK_FAT12_SECTOR_BIN): $(DISK_FAT12_SECTOR) | $(BUILD_DIR)
 
 $(DISK_FAT12_IMAGE): tools/make_fat12_disk.py $(DISK_FAT12_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_FAT12_SECTOR_BIN) $@
+
+$(DISK_FSDIR_SECTOR_BIN): $(DISK_FSDIR_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(FIXTURES_DIR)/disk_fsdir_boot.sym
+
+$(DISK_FSDIR_IMAGE): tools/make_fat12_disk.py $(DISK_FSDIR_SECTOR_BIN)
+	$(PYTHON) $< --boot-sector $(DISK_FSDIR_SECTOR_BIN) $@
 
 $(IDE_BOOT_SECTOR_BIN): $(IDE_BOOT_SECTOR) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1815,6 +1827,15 @@ test-1983-disk-fat12: \
 		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
 		--disk-a "$(DISK_FAT12_IMAGE)" \
 		--screenshot "$(EMULATOR_1983_DISK_FAT12_SCREEN)"
+
+test-1983-disk-fsdir: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_FSDIR_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_fsdir.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--disk-a "$(DISK_FSDIR_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_DISK_FSDIR_SCREEN)"
 
 test-1983-disk-boot-fallback: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 	mkdir -p $(EMULATOR_1983_DIR)
