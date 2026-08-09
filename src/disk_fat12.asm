@@ -674,6 +674,48 @@ fat12_store_write:
                 ld (hl), c ; inc hl ; ld (hl), b    ; write word
                 ret
 
+; FAT12 entry-read helper: read the 12-bit value at cluster DE from the
+; resident FAT buffer (IX + FS_FAT).  Returns the value in BC.  Clobbers
+; AF, HL.
+;
+;   IX  work-area base
+;   DE  cluster number
+;   Returns BC = 12-bit value, carry clear on valid (even/odd handled)
+disk_fat12_read:
+                push de
+                ld l, e ; ld h, d                ; HL = cluster
+                ld a, l ; srl a
+                ld e, a ; ld d, 0                ; DE = cluster >> 1
+                add hl, de                       ; HL = (cluster * 3) >> 1
+
+                push ix ; pop de
+                ld de, FS_FAT ; add hl, de
+                ex de, hl ; add hl, de            ; HL = &FAT[offset]
+
+                ld a, (hl) ; inc hl ; ld h, (hl) ; ld l, a
+                ; HL = 16-bit word at position
+
+                pop de                           ; DE = cluster
+                bit 0, e
+                jr nz, fat12_read_odd
+
+                ; Even: value = (H & 0x0F) << 8 | L
+                ld a, h ; and #0f ; ld h, a
+                jr fat12_read_done
+
+fat12_read_odd:
+                ; Odd: value = word >> 4
+                srl h ; rr l
+                srl h ; rr l
+                srl h ; rr l
+                srl h ; rr l
+                ld h, 0
+
+fat12_read_done:
+                ld b, h ; ld c, l                ; BC = value
+                or a                             ; clear carry
+                ret
+
 
 ; FS.WRITE (402Bh) — placeholder.  The full FAT12 write implementation
 ; (free-slot scan, FAT allocation, data/cluster write, directory update)
