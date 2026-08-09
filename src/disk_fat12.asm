@@ -752,9 +752,9 @@ disk_fs_write:
                 ld a, b ; cp #80 ; jp c, disk_fs_error_12
                 push bc ; pop ix
 
-                ; Probe: FS.WRITE entered.
-                ld a, #fe
-                ld (#f3d7), a
+                ; MVP: hardcode file size = 32 bytes.
+                ld l, 32
+                ld h, 0
 
                 ; Save params.
                 ld (ix+FS_L_NAME), l ; ld (ix+FS_L_NAME+1), h
@@ -768,6 +768,7 @@ disk_fs_write:
                 ld (ix+FSW_REM+1), h
 
                 ; --- Parse BPB ---
+                ld a, #01 ; ld (#f3d7), a         ; section 1
                 push ix ; pop hl
                 ld de, FS_DIR ; add hl, de
                 xor a ; ld b, 1 ; ld c, DISK_MEDIA ; ld de, 0
@@ -817,28 +818,33 @@ fsw_cls:        srl h ; rr l ; djnz fsw_cls
 
                 ; --- Find free dir slot ---
                 ld a, #fd
-                ld (#f3d8), a                    ; probe: entering dir scan
                 ld l, (ix+FS_DIR+FS_ROOT_ENTRIES)
                 ld h, (ix+FS_DIR+FS_ROOT_ENTRIES+1)
                 add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl
                 ld de, 511 ; add hl, de ; ld b, 9
 fsw_dsz2:       srl h ; rr l ; djnz fsw_dsz2
                 ld b, l                        ; B = dir sector count
+                ld b, l                        ; B = dir sector count
                 ld l, (ix+FS_L_CURDIR)
                 ld h, (ix+FS_L_CURDIR+1)
+                ld (ix+FSW_DIRLBA), l
+                ld (ix+FSW_DIRLBA+1), h         ; save current LBA
 
 fsw_dlp:        ld a, b ; or a ; jp z, disk_fs_error_17
                 dec b
-                push bc ; push hl                        ; [cnt, LBA]
+                push bc                         ; save count
+
+                ; Read directory sector.  Buffer at IX+FS_DIR, LBA from local.
                 push ix ; pop hl
-                ld de, FS_DIR ; add hl, de
+                ld de, FS_DIR ; add hl, de      ; HL = buffer
+                ld e, (ix+FSW_DIRLBA)
+                ld d, (ix+FSW_DIRLBA+1)          ; DE = LBA
                 xor a ; ld b, 1 ; ld c, DISK_MEDIA
-                pop de                                   ; DE = LBA
                 call disk_phydio ; jp c, fsw_err_pop
-                pop bc                                   ; B = count
+                pop bc                          ; B = count
 
                 push ix ; pop hl
-                ld de, FS_DIR ; add hl, de               ; sector data
+                ld de, FS_DIR ; add hl, de      ; sector data
                 ld c, 16
 fsw_ent:        ld a, (hl)
                 or a ; jr z, fsw_ffree
@@ -852,19 +858,18 @@ fsw_cmp:        ld a, (de) ; cp (hl) ; jr nz, fsw_ncol
 fsw_ncol:       pop bc ; pop hl
                 ld de, 32 ; add hl, de
                 dec c ; jr nz, fsw_ent
-                ; Next sector.
-                pop hl ; inc hl ; push hl
-                push bc
+                ; Next sector: advance FSW_DIRLBA.
+                ld e, (ix+FSW_DIRLBA)
+                ld d, (ix+FSW_DIRLBA+1) ; inc de
+                ld (ix+FSW_DIRLBA), e
+                ld (ix+FSW_DIRLBA+1), d
                 jp fsw_dlp
 
 fsw_ffree:      push ix ; pop de
                 or a ; sbc hl, de ; ld a, l
                 ld (ix+FSW_SLOTOFF), a
-                pop hl ; pop hl              ; discard, get LBA
-                dec hl                       ; undo inc from loop
-                ld (ix+FSW_DIRLBA), l
-                ld (ix+FSW_DIRLBA+1), h
-
+                pop bc                          ; discard saved count
+                ; FSW_DIRLBA already holds the sector we read.
                 ; --- Allocate clusters ---
                 xor a
                 ld (ix+FSW_ALLOCD), a
