@@ -436,3 +436,186 @@ disk_fs_error_20:
                 ld a,20
                 scf
                 ret
+; FS.DIR (4028h) -- copy raw 32-byte FAT12 root-directory entries into a
+; caller-supplied buffer.  The work area (IX) mirrors FS.LOAD so the BPB
+; parse and per-sector reads share the same offsets.
+;
+;  A   drive number (0)
+;  HL  destination buffer (page-2/3 RAM)
+;  BC  buffer size in bytes (multiple of 32; 0 returns BC = 0)
+;  DE  work area, 2080 bytes (page-2/3 RAM)
+;
+; Returns carry clear, A = 0, BC = bytes written (entries * 32).
+; Carry set propagates a PHYDIO error.
+FS_D_SECTOR     equ 18
+
+disk_fs_dir:
+                or a
+                jp nz, disk_fs_error_12
+                ld a, b
+                or c
+                jp z, disk_fs_dir_nop
+                ld a, h
+                cp #80
+                jp c, disk_fs_error_12
+                ld a, d
+                cp #80
+                jp c, disk_fs_error_12
+
+                push de
+                pop ix                      ; IX = work-area base
+
+                ld (ix+FS_L_DEST), l         ; dest low
+                ld (ix+FS_L_DEST+1), h       ; dest high
+                ld (ix+FS_L_SIZE), c         ; buffer size low
+                ld (ix+FS_L_SIZE+1), b       ; buffer size high
+                ld (ix+FS_L_CLUSTER), 0      ; entries-written low
+                ld (ix+FS_L_CLUSTER+1), 0    ; entries-written high
+
+                ; Load boot sector to parse BPB.
+                push ix
+                pop hl
+                ld de, FS_DIR
+                add hl, de
+                xor a
+                ld b, 1
+                ld c, DISK_MEDIA
+                ld de, 0
+                call disk_phydio
+                ret c
+
+                ; Root-directory sectors = ceil(root-entries * 32 / 512).
+                ld l, (ix+FS_DIR+FS_ROOT_ENTRIES)
+                ld h, (ix+FS_DIR+FS_ROOT_ENTRIES+1)
+                add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl
+                ld de, 511
+                add hl, de
+                ld b, 9
+dfd_dirsz:
+                srl h ; rr l
+                djnz dfd_dirsz
+                ld a, l
+                ld (ix+FS_D_SECTOR), a
+
+                ; First directory sector = reserved + FATCNT * FATSZ.
+                ld e, (ix+FS_DIR+FS_RESERVED)
+                ld d, (ix+FS_DIR+FS_RESERVED+1)
+                ld l, (ix+FS_DIR+FS_FAT_SIZE)
+                ld h, (ix+FS_DIR+FS_FAT_SIZE+1)
+                ld b, (ix+FS_DIR+FS_FAT_COUNT)
+dfd_first:
+                add hl, de
+                djnz dfd_first
+                ld (ix+FS_L_CURDIR), l
+                ld (ix+FS_L_CURDIR+1), h
+
+dfd_sector:
+                ld a, (ix+FS_D_SECTOR)
+                or a
+                jp z, dfd_ret
+                dec a
+                ld (ix+FS_D_SECTOR), a
+
+                ; Read one directory sector into IX + FS_DIR.
+                push ix
+                pop hl
+                ld de, FS_DIR
+                add hl, de
+                xor a
+                ld b, 1
+                ld c, DISK_MEDIA
+                ld e, (ix+FS_L_CURDIR)
+                ld d, (ix+FS_L_CURDIR+1)
+                call disk_phydio
+                ret c
+
+                ; Advance current directory sector.
+                ld a, (ix+FS_L_CURDIR)
+                ld h, (ix+FS_L_CURDIR+1)
+                ld l, a
+                inc hl
+                ld (ix+FS_L_CURDIR), l
+                ld (ix+FS_L_CURDIR+1), h
+
+                ; Walk 16 entries at IX+FS_DIR.
+                push ix
+                pop hl
+                ld de, FS_DIR
+                add hl, de               ; HL = sector data start
+                ld b, 16                 ; B = entries remaining in sector
+dfd_entry:
+                ld a, (hl)
+                or a
+                jp z, dfd_ret            ; NUL: logical end
+                cp #e5
+                jr z, dfd_next           ; deleted: skip
+
+                ; Check buffer space: FS_L_SIZE >= 32?
+                ld a, (ix+FS_L_SIZE+1)
+                or a
+                jr nz, dfd_room
+                ld a, (ix+FS_L_SIZE)
+                cp 32
+                jp c, dfd_ret            ; buffer full
+dfd_room:
+                ; Allocate 32 bytes from remaining buffer.
+                ld a, (ix+FS_L_SIZE)
+                sub 32
+                ld (ix+FS_L_SIZE), a
+                jr nc, dfd_nocarry
+                ld a, (ix+FS_L_SIZE+1)
+                dec a
+                ld (ix+FS_L_SIZE+1), a
+dfd_nocarry:
+                ; Copy 32 bytes: source in HL -> dest in FS_L_DEST.
+                push hl                  ; save entry address for advance
+                ld c, 32
+dfd_copy:
+                ld a, (hl)
+                push hl
+                ld l, (ix+FS_L_DEST)
+                ld h, (ix+FS_L_DEST+1)
+                ld (hl), a
+                inc hl
+                ld (ix+FS_L_DEST), l
+                ld (ix+FS_L_DEST+1), h
+                pop hl
+                inc hl
+                dec c
+                jr nz, dfd_copy
+                ; HL = source + 32 = next entry
+
+                ; Increment entries-written counter.
+                ld l, (ix+FS_L_CLUSTER)
+                ld h, (ix+FS_L_CLUSTER+1)
+                inc hl
+                ld (ix+FS_L_CLUSTER), l
+                ld (ix+FS_L_CLUSTER+1), h
+
+                pop hl                   ; HL = entry addr (pre-copy)
+                ld de, 32
+                add hl, de                     ; HL += 32
+dfd_next:
+                dec b
+                jr nz, dfd_entry
+                jp dfd_sector              ; next directory sector
+
+dfd_ret:
+                ld l, (ix+FS_L_CLUSTER)
+                ld h, (ix+FS_L_CLUSTER+1) ; HL = entries written
+                ld b, h
+                ld c, l                    ; BC = entries written
+                ; Multiply BC by 32.
+                sla c ; rl b
+                sla c ; rl b
+                sla c ; rl b
+                sla c ; rl b
+                sla c ; rl b               ; BC = bytes written
+                xor a
+                ret
+
+disk_fs_dir_nop:
+                ld bc, 0
+                xor a
+                ret
+

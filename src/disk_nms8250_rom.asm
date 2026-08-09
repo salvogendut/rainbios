@@ -20,6 +20,7 @@
                 ret                            ; 4022 BASIC
                 defs #4025-$,#ff
                 jp disk_fs_load                ; 4025 FS.LOAD
+                jp disk_fs_dir                 ; 4028 FS.DIR
                 defs #4030-$,#ff
 
                 include "disk_nms8250_driver.asm"
