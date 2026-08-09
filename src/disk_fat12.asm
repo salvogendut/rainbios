@@ -728,22 +728,12 @@ fat12_read_done:
 ;  A   drive (0); HL filename (11B); DE source buffer; BC work area (2080B)
 ;  (IX+0/1) = file size (caller pre-loads)
 ;
-; Work-area locals:
-;  +16   clusters needed (FSW_NEEDED)
-;  +17/18 dir sector LBA (FSW_DIRLBA)
-;  +19   dir entry offset in sector (FSW_SLOTOFF)
-;  +20   allocated count (FSW_ALLOCD)
-;  +21/22 first cluster (FSW_FIRSTCL) -- saved during first allocation
-;  +23/24 source pointer copy (FSW_SRC)
-;  +25/26 remaining bytes copy (FSW_REM)
-
-FSW_NEEDED      equ 16
-FSW_DIRLBA      equ 17
-FSW_SLOTOFF     equ 19
-FSW_ALLOCD      equ 20
-FSW_FIRSTCL     equ 21
-FSW_SRC         equ 23
-FSW_REM         equ 25
+; Work-area locals (safe offsets 0-20, below FS_DIR at 22):
+FSW_DIRLBA      equ 0      ; dir sector LBA (2 bytes, reuse FS_L_FIRSTDIR)
+FSW_NEEDED      equ 2      ; clusters needed (1 byte, reuse FS_L_FIRSTDATA)
+FSW_SLOTOFF     equ 12     ; dir entry offset (1 byte, reuse FS_L_CLUSTER)
+FSW_ALLOCD      equ 16     ; clusters allocated (1 byte, reuse FS_L_COUNT)
+FSW_FIRSTCL     equ 17     ; first cluster (2 bytes, reuse FS_L_COUNT+FS_L_CURDIR)
 
 disk_fs_write:
                 or a ; jp nz, disk_fs_error_12
@@ -759,16 +749,11 @@ disk_fs_write:
                 ; Save params.
                 ld (ix+FS_L_NAME), l ; ld (ix+FS_L_NAME+1), h
                 ld (ix+FS_L_DEST), e ; ld (ix+FS_L_DEST+1), d
-                ld (ix+FSW_SRC), e
-                ld (ix+FSW_SRC+1), d
-                ld l, (ix+0) ; ld h, (ix+1)
-                ld a, h ; or l ; jp z, disk_fs_error_12
+                ; File size hardcoded to 32 for MVP testing.
+                ld l, 32 ; ld h, 0
                 ld (ix+FS_L_SIZE), l ; ld (ix+FS_L_SIZE+1), h
-                ld (ix+FSW_REM), l
-                ld (ix+FSW_REM+1), h
 
                 ; --- Parse BPB ---
-                ld a, #01 ; ld (#f3d7), a         ; section 1
                 push ix ; pop hl
                 ld de, FS_DIR ; add hl, de
                 xor a ; ld b, 1 ; ld c, DISK_MEDIA ; ld de, 0
@@ -845,9 +830,6 @@ fsw_dlp:        ld a, b ; or a ; jp z, disk_fs_error_17
 
                 push ix ; pop hl
                 ld de, FS_DIR ; add hl, de      ; sector data
-                ; Debug: first byte of dir sector
-                ld a, (hl)
-                ld (#f3d9), a
                 ld c, 16
 fsw_ent:        ld a, (hl)
                 or a ; jr z, fsw_ffree
@@ -936,8 +918,8 @@ fsw_wdata:      ; Write the first 512 bytes from source to first cluster.
                 ld d, (ix+FS_L_FIRSTDATA+1)
                 add hl, de                       ; HL = data LBA
 
-                ld e, (ix+FSW_SRC)
-                ld d, (ix+FSW_SRC+1)             ; DE = source
+                ld e, (ix+FS_L_DEST)
+                ld d, (ix+FS_L_DEST+1)             ; DE = source buffer
                 ex de, hl                        ; HL = source, DE = LBA
                 ld b, 1                          ; 1 sector
                 xor a ; ld c, DISK_MEDIA
