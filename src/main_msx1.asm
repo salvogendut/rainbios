@@ -190,7 +190,7 @@ ASSET_BUFFER    equ #c000
                 jp callf                        ; 0030 CALLF
                 defs #0038-$,#ff
                 jp keyint                       ; 0038 KEYINT
-                jp unsupported_call             ; 003B INITIO
+                jp initio                       ; 003B INITIO
                 jp inifnk                        ; 003E INIFNK
                 jp disscr                       ; 0041 DISSCR
                 jp enascr                       ; 0044 ENASCR
@@ -1334,6 +1334,30 @@ keyint_done:
 
 nmi_handler:
                 retn
+
+; $003B INITIO: reset the I/O devices to a known state.  Silence the PSG by
+; writing zero to registers 7-13 (mixer + volume), and clear STATFL so callers
+; see a clean VDP status.  The broader cold-boot init (GICINI, screen setup,
+; keyboard) is separate; this entry provides a lightweight reset.
+initio:
+                push af
+                push bc
+                push de
+                push hl
+                ld b,7
+                xor a
+initio_psg_loop:
+                ld e,a
+                call wrtpsg
+                inc a
+                djnz initio_psg_loop
+                xor a
+                ld (STATFL),a
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
 
 ; Partial: compare HL with DE while preserving both operands.
 dcompr:
