@@ -10,7 +10,7 @@ that missing behavior is visible and testable.
 | MSX1 main ROM | `0000h-7FFFh` | 32 KiB | Lower-bank firmware/assets plus source-built page-1 BASIC payload |
 | MSX2 main ROM | `0000h-7FFFh` | 32 KiB | MSX1 ABI plus MSX2 dispatch and initialization |
 | MSX2 SUB-ROM | normally page 1 | 16 KiB | Extended VDP, clock, palette, and graphics ABI; first slices provide bitmap modes, palette, 16-bit VRAM, block transfers, and the clock |
-| NMS 8250 disk ROM | `4000h-7FFFh` | 16 KiB | Optional read-only WD2793 PHYDIO + DSKCHG/GETDPB extension |
+| NMS 8250 disk ROM | `4000h-7FFFh` | 16 KiB | WD2793 PHYDIO read/write, DSKCHG/GETDPB, CHOICE/DSKFMT, FAT12 FS.LOAD/FS.DIR/FS.WRITE |
 
 The main and SUB-ROM targets will share implementation modules but have
 different fixed-address front ends.
@@ -104,17 +104,19 @@ WD2793 driver. Test shells include the same driver and add only `H.RUNC` probes.
 The production component installs `H.PHYD`, publishes one drive, and returns
 from startup without test behavior.
 
-The read-only driver accepts drive A and 720 KiB `F9h` media. It validates the
-complete logical-sector and RAM-buffer ranges before I/O, converts LBAs to
-80-track/two-side/nine-sector geometry, issues bounded seek and single-sector
-read commands, advances across side and track boundaries, and reports the
-number of fully completed sectors. `DSKCHG` drains the WD2793 drive register
-and probes status without starting the motor to report changed, unchanged, and
-unknown states; `GETDPB` publishes the fixed F9 DPB without touching the
-controller. Integration probes cover LBA 8 through 18,
-a direct seek to LBA 731, the final two sectors, a page-2/page-3 buffer crossing,
-no media, partial record-not-found, write rejection on writable host media,
-and `DSKCHG`/`GETDPB` behavior with and without a mounted image.
+The driver accepts drive A and 720 KiB `F9h` media, supporting both reads and
+writes. It validates the complete logical-sector and RAM-buffer ranges before
+I/O, converts LBAs to 80-track/two-side/nine-sector geometry, issues bounded
+seek and single-sector read/write commands, advances across side and track
+boundaries, and reports the number of fully completed sectors. `DSKCHG` drains
+the WD2793 drive register and probes status without starting the motor to report
+changed, unchanged, and unknown states; `GETDPB` publishes the fixed F9 DPB
+without touching the controller. `CHOICE` (4019h) returns one format choice;
+`DSKFMT` (401Ch) formats all 80 tracks via WD2793 Format Track (F0h).
+Filesystem services provide FAT12 `FS.LOAD` (4025h), `FS.DIR` (4028h), and
+`FS.WRITE` (402Bh). Integration probes cover reads, writes, no media, partial
+record-not-found, write-protect rejection, DSKCHG/GETDPB, DSKFMT, and the
+three FAT12 filesystem services.
 See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
  M2A publishes the eight TMS9918 register shadows and current screen/table work
@@ -304,9 +306,9 @@ The runnable target matrix and emulator setup are maintained in
   load and run a tokenized BBC BASIC program in 1983, and decode the header of
   a BBC BASIC SAVE waveform recorded by openMSX.
 - Disk probes cover safe no-device returns, extension bootstrap context,
-  production hook/drive registration, general read-only WD2793 transfers,
-  controller errors, and host-image immutability through public `PHYDIO` in
-  1983.
+  production hook/drive registration, WD2793 read/write transfers, controller
+  errors, write-protect rejection, DSKFMT formatting, and FAT12 FS.LOAD,
+  FS.DIR, and FS.WRITE filesystem services in 1983.
 - Positive and corrupt descriptor probes check menu state, fail-closed
   handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before

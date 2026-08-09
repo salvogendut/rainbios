@@ -556,8 +556,9 @@ a rename; the local bundle is the reproducible distribution artifact.
 
 Disk bring-up now has safe hook-dispatching defaults, post-extension `H.STKE`
 and `H.RUNC` sequencing, and an optional source-built NMS 8250 disk extension.
-Its bounded read-only `PHYDIO` path handles arbitrary sectors and multi-sector
-side/track crossings on 720 KiB media. Reproducible 1983 probes cover success,
+Its bounded `PHYDIO` path handles arbitrary sectors and multi-sector
+side/track crossings on 720 KiB media for both reads and writes.
+Reproducible 1983 probes cover success,
 no media, partial record-not-found counts, and write rejection without host
 image changes. An openMSX controller test double injects stuck IRQ, stuck DRQ,
 CRC, lost-data, and seek/not-found/not-ready faults to exercise the driver's
@@ -565,9 +566,9 @@ timeout and error-mapping branches. `DSKCHG` reports changed, unchanged, and
 unknown states from the WD2793 drive register and status without ever starting
 the motor, and `GETDPB` publishes the fixed F9 DPB without touching the
 controller; both report error 12 for drives other than A and are validated by
-1983 probes with and without a mounted image. Filesystem services and DSKFMT
-formatting are implemented;
-drive B, other floppy controllers, writable media, and real-hardware timing
+1983 probes with and without a mounted image. Filesystem services, DSKFMT
+formatting, and DSKIO writes are implemented;
+drive B, other floppy controllers, and real-hardware timing
 validation remain pending; M7 owns the implemented boot-sector paths.
 
 - close remaining main BIOS and SUB-ROM ABI gaps;

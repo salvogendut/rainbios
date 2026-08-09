@@ -192,7 +192,8 @@ implementation inputs. They remain quarantined under
   `src/sdcard.c`, and public register-level examples in
   `tests/test_sd_mapper.c` and `tests/test_sdcard.c`
 - Purpose: independent headless execution, CPU/VDP state reporting, final
-  framebuffer capture, read-only NMS 8250 floppy-path validation, and
+  framebuffer capture, NMS 8250 floppy-path validation (read, write,
+  format), and
   black-box Sunrise IDE / SD Mapper bootstrap validation for the RainBIOS MSX1
   ROM
 - RainBIOS use: validation tool and documented hardware-behavior cross-check;
