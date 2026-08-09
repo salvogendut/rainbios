@@ -619,3 +619,13 @@ disk_fs_dir_nop:
                 xor a
                 ret
 
+
+; FS.WRITE (402Bh) — placeholder.  The full FAT12 write implementation
+; (free-slot scan, FAT allocation, data/cluster write, directory update)
+; is pending.  The entry point at 402Bh in the jump table is wired and
+; will be filled in with the production implementation.
+disk_fs_write:
+                ; Not yet implemented — return error
+                ld a, 12
+                scf
+                ret
