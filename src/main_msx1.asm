@@ -559,9 +559,12 @@ bootstrap_empty_hook:
                 ld (CSRX),a
                 ld a,15
                 ld (FORCLR),a
-                ld a,1
+                ld a,5
                 ld (BAKCLR),a
                 ld (BDRCLR),a
+                ld b,#f5
+                ld c,7
+                call wrtvdp
                 ld a,2
                 ld (SCRMOD),a
                 ld hl,#1800
@@ -6341,9 +6344,9 @@ msx2_vdp_registers_8_23:
 ENDIF
 
 text40_vdp_registers:
-                db #00,#b0,#00,#00,#01,#36,#07,#f1
+                db #00,#b0,#00,#00,#01,#36,#07,#f5
 text32_vdp_registers:
-                db #00,#a0,#06,#80,#00,#36,#07,#f1
+                db #00,#a0,#06,#80,#00,#36,#07,#f5
 graphics2_vdp_registers:
                 db #02,#a0,#06,#ff,#03,#36,#07,#01
 
