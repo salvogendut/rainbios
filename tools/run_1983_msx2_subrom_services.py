@@ -94,6 +94,9 @@ def main() -> int:
             "VRAM16": ram.get(0xF36A),
             "PLT_B": ram.get(0xF36B),
             "PLT_C": ram.get(0xF36C),
+            "LOW_VRAM": ram.get(0xF36D),
+            "HIGH_VRAM": ram.get(0xF36E),
+            "CE_FONT": ram.get(0xF36F),
         }
         expected = {
             "SC5": 0x05,
@@ -106,6 +109,9 @@ def main() -> int:
             "VRAM16": 0x5A,
             "PLT_B": 0x00,
             "PLT_C": 0x07,
+            "LOW_VRAM": 0xA5,
+            "HIGH_VRAM": 0x3C,
+            "CE_FONT": 0x38,
         }
         for name, value in expected.items():
             if markers[name] != value:
@@ -125,6 +131,8 @@ def main() -> int:
         "validated 1983 MSX2 SUB-ROM services: "
         f"Screens 5/6/7/8 SCRMOD, SC5 bases 0000/7800/7600, "
         f"16-bit VRAM=0x{markers['VRAM16']:02X}, "
+        f"low-bank reset=0x{markers['LOW_VRAM']:02X}/0x{markers['HIGH_VRAM']:02X}, "
+        f"async INITXT font=0x{markers['CE_FONT']:02X}, "
         f"palette B=0x{markers['PLT_B']:02X} C=0x{markers['PLT_C']:02X}, "
         f"VDP R0={fields['vdp_r0']} R1={fields['vdp_r1']}"
     )

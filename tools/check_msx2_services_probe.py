@@ -30,6 +30,9 @@ def main() -> None:
         "M_VRAM": "5A",
         "M_PLTB": "00",
         "M_PLTC": "07",
+        "M_LOWVR": "A5",
+        "M_HIGHVR": "3C",
+        "M_CEFONT": "38",
     }
     for key, value in expected.items():
         if fields.get(key) != value:
@@ -57,7 +60,8 @@ def main() -> None:
     print(
         f"validated openMSX MSX2 SUB-ROM services: "
         f"SCRMOD=08, VDP R0=0E, Screens 5/6/7/8, "
-        f"16-bit VRAM=5A, palette B=00 C=07"
+        f"16-bit VRAM=5A, low-bank reset=A5/3C, "
+        f"async INITXT font=38, palette B=00 C=07"
     )
 
 
