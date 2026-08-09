@@ -36,6 +36,9 @@ proc finish_msx2_services_probe {} {
     puts $handle [format "M_VRAM=%02X" [peek 0xF36A]]
     puts $handle [format "M_PLTB=%02X" [peek 0xF36B]]
     puts $handle [format "M_PLTC=%02X" [peek 0xF36C]]
+    puts $handle [format "M_LOWVR=%02X" [peek 0xF36D]]
+    puts $handle [format "M_HIGHVR=%02X" [peek 0xF36E]]
+    puts $handle [format "M_CEFONT=%02X" [peek 0xF36F]]
     # Directly verify the 16-bit VRAM marker that the probe wrote.
     set vram [debug read_block VRAM 0x8000 1]
     binary scan $vram cu* vram_bytes

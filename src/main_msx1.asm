@@ -30,6 +30,8 @@ R0SAV           equ #f3df
 RG1SAV          equ #f3e0
 RG8SAV          equ #ffe7
 RG9SAV          equ #ffe8
+RG14SAV         equ #ffed
+RG15SAV         equ #ffee
 STATFL          equ #f3e7
 FORCLR          equ #f3e9
 BAKCLR          equ #f3ea
@@ -55,6 +57,9 @@ MLTATR          equ #f3d7
 MLTPAT          equ #f3d9
 CSRY            equ #f3dc
 CSRX            equ #f3dd
+ESCCNT          equ #fca7
+CSRSW           equ #fca9
+CSTYLE          equ #fcaa
 SCNCNT          equ #f3f6
 REPCNT          equ #f3f7
 PUTPNT          equ #f3f8
@@ -1537,6 +1542,11 @@ write_vdp_register_block_loop:
 
 ; SCREEN 0: 40x24 text, name table at 0000h and font at 0800h.
 initxt:
+                IFDEF MSX2
+                call msx2_wait_command
+                ENDIF
+                xor a
+                ld (ESCCNT),a                  ; cancel any partial ESC sequence
                 ld a,(RG1SAV)
                 and #e7                         ; preserve sprite size/magnify
                 or #50                         ; M1 selects text, display on
@@ -1726,10 +1736,10 @@ setgrp:
                 ld c,1
                 jp wrtvdp
 
-; Minimal Screen 0/1 console output. Cursor coordinates are one-based, as
-; published for POSIT and the CSRX/CSRY work bytes. CHPUT preserves every
-; normal register and handles printable ASCII, CR, LF, line wrapping, and
-; scrolling at the bottom of the 24-row text screen.
+; Screen 0/1 console output. Cursor coordinates are one-based, as published
+; for POSIT and the CSRX/CSRY work bytes. CHPUT preserves every normal
+; register and handles printable ASCII, the standard cursor/edit controls,
+; line wrapping, scrolling, and the escape subset used by MSX-DOS editors.
 chput:
                 push af
                 push bc
@@ -1739,21 +1749,14 @@ chput:
                 call HOOKBASE+10                 ; H.CHPH
                 pop af
                 ld e,a
+                ld a,(ESCCNT)
+                or a
+                jp nz,chput_escape_continue
                 ld a,e
-                cp #0d
-                jr z,chput_carriage_return
-                cp #0a
-                jr z,chput_line_feed
-                cp #08
-                jr z,chput_backspace
-                cp #09
-                jp z,chput_tab
-                cp #0b
-                jp z,chput_cursor_up
-                cp #0c
-                jp z,chput_form_feed
                 cp #20
-                jr c,chput_done
+                jp c,chput_control_character
+                cp #7f
+                jp z,chput_delete
                 ld a,(SCRMOD)
                 cp 2
                 jr z,chput_graphics_character
@@ -2125,6 +2128,7 @@ console_scroll_copy_back:
                 jr nz,console_scroll_copy_back
                 ret
 
+                IFNDEF MSX2
 setrd:
                 di
                 ld a,l
@@ -2145,6 +2149,7 @@ setwrt:
                 out (VDP_CONTROL),a
                 ei
                 ret
+                ENDIF
 
 rdvrm:
                 call setrd
@@ -2177,6 +2182,66 @@ nextor_keyboard_layout_probe:
                 pop bc
                 pop af
                 ret
+
+                IFDEF MSX2
+; V9938 drawing commands continue asynchronously after their caller returns.
+; Wait before INITXT reuses low VRAM for the name and pattern tables, otherwise
+; a final bitmap command can overwrite the freshly uploaded text font.
+msx2_wait_command:
+                di
+                ld a,2
+                out (VDP_CONTROL),a
+                ld a,#8f
+                out (VDP_CONTROL),a
+msx2_wait_command_loop:
+                in a,(VDP_CONTROL)
+                rrca
+                jr c,msx2_wait_command_loop
+                xor a
+                ld (RG15SAV),a
+                out (VDP_CONTROL),a
+                ld a,#8f
+                out (VDP_CONTROL),a
+                ei
+                ret
+                ENDIF
+
+; Main-BIOS VRAM calls address the first 16 KiB. Keep these internal helpers
+; after Nextor's fixed 0D89h probe so MSX2 bank hardening does not move that
+; compatibility entry. Applications using the V9938 directly may leave R14
+; on another bank; select bank zero before applying the legacy 14-bit address.
+                IFDEF MSX2
+setrd:
+                di
+                xor a
+                ld (RG14SAV),a
+                out (VDP_CONTROL),a
+                ld a,#8e
+                out (VDP_CONTROL),a
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                out (VDP_CONTROL),a
+                ei
+                ret
+
+setwrt:
+                di
+                xor a
+                ld (RG14SAV),a
+                out (VDP_CONTROL),a
+                ld a,#8e
+                out (VDP_CONTROL),a
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                or #40
+                out (VDP_CONTROL),a
+                ei
+                ret
+                ENDIF
 
 ; Renderers live after the fixed Nextor 0D89h compatibility entry so changes
 ; to visual asset handling cannot move that published address. ZX0 expansion
@@ -2407,7 +2472,8 @@ cold_boot_internal_expand_failed:
                 ld (PAYLOAD_SLOT),a
                 jp cold_boot_options
 
-; Text control characters handled by CHPUT: tab, cursor up, and form feed.
+; Text-control and escape helpers live below the fixed Nextor compatibility
+; entry so extending the console cannot move that undocumented ABI address.
 chgclr:
                 ld a,(SCRMOD)
                 or a
@@ -2455,6 +2521,86 @@ chgclr_graphics:
 
 ; They live here, after the fixed-address Nextor keyboard probe, so the probe
 ; stays at 0D89h while CHPUT above keeps its short branches.
+chput_control_character:
+                ld a,e
+                cp #08
+                jp z,chput_backspace
+                cp #09
+                jp z,chput_tab
+                cp #0a
+                jp z,chput_line_feed
+                cp #0b
+                jp z,chput_cursor_up
+                cp #0c
+                jp z,chput_form_feed
+                cp #0d
+                jp z,chput_carriage_return
+                cp #1b
+                jp z,chput_escape_start
+                cp #1c
+                jr z,chput_cursor_right_wrap
+                cp #1d
+                jr z,chput_cursor_left_wrap
+                cp #1e
+                jp z,chput_cursor_up
+                cp #1f
+                jr z,chput_cursor_down
+                jp chput_done
+
+; MSX cursor controls 1Ch-1Fh. Horizontal movement wraps between rows, while
+; vertical movement stops at the screen edges. Nextor 2.1 uses 1Dh around a
+; space to erase the character removed by Backspace.
+chput_cursor_right_wrap:
+                ld a,(CSRX)
+                ld b,a
+                ld a,(LINLEN)
+                cp b
+                jr z,chput_cursor_right_next_row
+                inc b
+                ld a,b
+                ld (CSRX),a
+                jp chput_done
+chput_cursor_right_next_row:
+                ld a,(CSRY)
+                ld b,a
+                ld a,(CRTCNT)
+                cp b
+                jp z,chput_done
+                inc b
+                ld a,b
+                ld (CSRY),a
+                ld a,1
+                ld (CSRX),a
+                jp chput_done
+
+chput_cursor_left_wrap:
+                ld a,(CSRX)
+                cp 1
+                jr z,chput_cursor_left_previous_row
+                dec a
+                ld (CSRX),a
+                jp chput_done
+chput_cursor_left_previous_row:
+                ld a,(CSRY)
+                cp 1
+                jp z,chput_done
+                dec a
+                ld (CSRY),a
+                ld a,(LINLEN)
+                ld (CSRX),a
+                jp chput_done
+
+chput_cursor_down:
+                ld a,(CSRY)
+                ld b,a
+                ld a,(CRTCNT)
+                cp b
+                jp z,chput_done
+                inc b
+                ld a,b
+                ld (CSRY),a
+                jp chput_done
+
 chput_tab:
                 ld a,(CSRX)
                 and #f8
@@ -2481,6 +2627,96 @@ chput_cursor_up_done:
                 jp chput_done
 chput_form_feed:
                 call cls
+                jp chput_done
+
+; DEL is the destructive backspace used by MSX-DOS line editors: move one
+; cell left, erase that cell, and leave the cursor there. Plain BS above only
+; moves the cursor, matching the standard separation between BS and DEL.
+chput_delete:
+                ld a,(CSRX)
+                cp 1
+                jp z,chput_done
+                dec a
+                ld (CSRX),a
+                ld a,(SCRMOD)
+                cp 2
+                jr z,chput_delete_graphics
+                call console_cursor_address
+                ld a,#20
+                call wrtvrm
+                jp chput_done
+chput_delete_graphics:
+                ld e,#20
+                call graphics_put_character
+                jp chput_done
+
+; Nextor's buffered line editor uses the standard MSX console escape subset
+; for cursor style and line erasure. Without it, ESC x 4 appears literally as
+; "x4" after Enter and edits leave stale characters on the command line.
+chput_escape_start:
+                ld a,#ff
+                ld (ESCCNT),a
+                jp chput_done
+
+chput_escape_continue:
+                ld b,a                          ; current escape state
+                ld a,e                          ; next sequence byte
+                inc b                           ; FFh identifies command byte
+                jr z,chput_escape_command
+                dec b
+                cp "4"
+                jr z,chput_escape_option_four
+                cp "5"
+                jr z,chput_escape_option_five
+                jr chput_escape_reset
+
+chput_escape_command:
+                cp "K"
+                jr z,chput_escape_clear_eol
+                cp "x"
+                jr z,chput_escape_x
+                cp "y"
+                jr nz,chput_escape_reset
+                ld a,2
+                jr chput_escape_set_state
+chput_escape_x:
+                ld a,1
+chput_escape_set_state:
+                ld (ESCCNT),a
+                jp chput_done
+
+chput_escape_option_four:
+                ld a,b
+                dec a                           ; x4=block, y4=insert cursor
+                ld (CSTYLE),a
+                jr chput_escape_reset
+chput_escape_option_five:
+                ld a,b
+                dec a                           ; x5=hide, y5=show cursor
+                ld (CSRSW),a
+chput_escape_reset:
+                xor a
+                ld (ESCCNT),a
+                jp chput_done
+
+chput_escape_clear_eol:
+                xor a
+                ld (ESCCNT),a
+                ld a,(SCRMOD)
+                cp 2
+                jp nc,chput_done                ; line editor runs in text mode
+                call console_cursor_address
+                ld a,(LINLEN)
+                ld c,a
+                ld a,(CSRX)
+                dec a
+                ld b,a
+                ld a,c
+                sub b                           ; cells including cursor column
+                ld c,a
+                ld b,0
+                ld a,#20
+                call filvrm
                 jp chput_done
 
 ; Test whether Ctrl-STOP is held right now through the physical matrix.; $008D GRPPRT: print one character on the graphic screen at the current
