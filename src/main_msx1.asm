@@ -222,13 +222,13 @@ ASSET_BUFFER    equ #c000
                 jp gicini                       ; 0090 GICINI
                 jp wrtpsg                       ; 0093 WRTPSG
                 jp rdpsg                        ; 0096 RDPSG
-                jp unsupported_call             ; 0099 STRTMS
+                jp strtms_impl
                 jp chsns                        ; 009C CHSNS
                 jp chget                        ; 009F CHGET
                 jp chput                        ; 00A2 CHPUT
                 jp lptout                       ; 00A5 LPTOUT
                 jp lptstt                       ; 00A8 LPTSTT
-                jp unsupported_call             ; 00AB CNVCHR
+                jp cnvchr_impl
                 jp pinlin                        ; 00AE PINLIN
                 jp inlin                         ; 00B1 INLIN
                 jp qinlin                        ; 00B4 QINLIN
@@ -253,8 +253,8 @@ ASSET_BUFFER    equ #c000
                 jp tapout                       ; 00ED TAPOUT
                 jp tapoof                       ; 00F0 TAPOOF
                 jp stmotr                       ; 00F3 STMOTR
-                jp unsupported_call             ; 00F6 LFTQ
-                jp unsupported_call             ; 00F9 PUTQ
+                jp lftq_impl
+                jp putq_impl
                 jp rightc                       ; 00FC RIGHTC
                 jp leftc                        ; 00FF LEFTC
                 jp upc                          ; 0102 UPC
@@ -6519,6 +6519,29 @@ scanl_impl:
                 call mapxy_impl
                 ret c
                 scf                ; stub: always report boundary
+                ret
+
+; $0099 STRTMS: start playing the PLAY queue.  The PLAY interpreter requires a
+; full music compiler; this entry returns immediately.
+strtms_impl:
+                ret
+
+; $00AB CNVCHR: convert character in A for graphic header and accent handling.
+; The full implementation needs the character-set tables; this entry returns
+; the character unchanged.
+cnvchr_impl:
+                or a
+                ret
+
+; $00F6 LFTQ: return the number of free bytes in the PLAY queue.  Without a
+; PLAY compiler the queue is always empty, so return 255 (full queue available).
+lftq_impl:
+                ld a, 255
+                ret
+
+; $00F9 PUTQ: put the byte in A into the PLAY queue.  Without a PLAY compiler
+; the queue is never consumed; this entry silently accepts.
+putq_impl:
                 ret
 
 logo_color_zx0:
