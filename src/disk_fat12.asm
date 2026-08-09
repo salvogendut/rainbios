@@ -845,6 +845,9 @@ fsw_dlp:        ld a, b ; or a ; jp z, disk_fs_error_17
 
                 push ix ; pop hl
                 ld de, FS_DIR ; add hl, de      ; sector data
+                ; Debug: first byte of dir sector
+                ld a, (hl)
+                ld (#f3d9), a
                 ld c, 16
 fsw_ent:        ld a, (hl)
                 or a ; jr z, fsw_ffree
