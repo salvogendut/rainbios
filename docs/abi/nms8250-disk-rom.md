@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 
-# NMS 8250 read-only disk ROM
+# NMS 8250 disk ROM
 
 `build/rainbios_nms8250_disk.rom` is an optional 16 KiB extension ROM for the
 Philips NMS 8250 WD2793 memory layout. It is built separately with
@@ -11,7 +11,7 @@ Philips NMS 8250 WD2793 memory layout. It is built separately with
 The standard `AB` header begins at `4000h`. `INIT` derives its full slot ID from
 `IYH`, publishes one drive in `DRVINF`, installs a five-byte `H.PHYD` hook, and
 installs a five-byte `H.RUNC` bootstrap hook. It does not retain control.
-Standard `DSKIO` entry `4010h` reaches the same read-only implementation.
+Standard `DSKIO` entry `4010h` reaches the same PHYDIO implementation.
 
 ## Bootstrap contract
 
@@ -129,6 +129,54 @@ The published 720 KiB F9 layout is:
 The `MAXCLUS` value is `DISK_CLUSTERS + 1`, so DOS stores the true count minus
 one in the FAT, matching the MSX-DOS `DSKCHG`/`GETDPB` usage.
 
+## FAT12 filesystem services
+
+Three optional inter-slot-call entry points provide FAT12 filesystem operations
+on the same 720 KiB F9 media. The caller provides a 2080-byte work area in
+page-2/3 RAM; the service uses it for a 512-byte sector scratch buffer (offset
+22) and a 1536-byte resident FAT window (offset 534).
+
+### FS.LOAD (4025h)
+
+| Input | Value |
+| --- | --- |
+| A | `00h`, drive A |
+| HL | Pointer to 11-byte space-padded 8.3 filename in page-2/3 RAM |
+| DE | Destination buffer in page-2/3 RAM |
+| BC | Work area, 2080 bytes, in page-2/3 RAM |
+
+Returns carry clear with A = 0 and BC = file size. Error codes: 12 (invalid
+parameter), 17 (file not found), 18 (not a regular file), 19 (malformed
+FAT/cluster), 20 (cluster chain too long). PHYDIO errors propagate with carry
+set.
+
+### FS.DIR (4028h)
+
+| Input | Value |
+| --- | --- |
+| A | `00h`, drive A |
+| HL | Destination buffer in page-2/3 RAM |
+| BC | Buffer size in bytes (multiple of 32; 0 returns BC = 0) |
+| DE | Work area, 2080 bytes, in page-2/3 RAM |
+
+Returns carry clear with A = 0 and BC = bytes written (entries * 32). Carry set
+propagates a PHYDIO error.
+
+### FS.WRITE (402Bh)
+
+| Input | Value |
+| --- | --- |
+| A | `00h`, drive A |
+| HL | Pointer to 11-byte space-padded 8.3 filename in page-2/3 RAM |
+| DE | Source buffer in page-2/3 RAM |
+| BC | Work area, 2080 bytes, in page-2/3 RAM |
+| (BC+0) | File size (word) pre-loaded by caller into first two bytes of work area |
+
+Returns carry clear with A = 0 on success, or carry set with error code (12 =
+invalid parameter, 17 = no free slot or file already exists). PHYDIO errors
+propagate with carry set. Both FAT copies are updated, and the directory entry
+is committed with archive attribute (`0x20`).
+
 ## Error codes
 
 | A | Meaning |
@@ -141,8 +189,8 @@ one in the FAT, matching the MSX-DOS `DSKCHG`/`GETDPB` usage.
 | 12 | Drive, media, count, logical range, or buffer was invalid |
 | 16 | Read or controller completion timed out, or status was inconsistent |
 
-Writes are rejected before any WD2793 write command. Error codes 10 and 14 are
-not produced because the component neither writes nor allocates memory.
+Writes are accepted and persisted to the medium. Error codes 10 and 14 are
+not produced because the component does not allocate memory.
 
 ## Geometry and transfer
 
@@ -164,10 +212,15 @@ motor, and reports only the completely validated sector prefix.
 
 ## Limitations
 
-The current component provides a cold-boot bootstrap hook that loads and runs a
-boot-sector loader, but not FAT or DOS services, `DSKCHG` media-change driven
-DOS calls, formatting, drive B, writes, or controllers other than the NMS 8250
-memory-mapped WD2793. The change state is
+The current component provides:
+- a cold-boot bootstrap hook that loads and runs a boot-sector loader;
+- PHYDIO read and write through DSKIO (`4010h`);
+- DSKCHG (`4013h`) and GETDPB (`4016h`);
+- FAT12 filesystem services: FS.LOAD (`4025h`), FS.DIR (`4028h`), and
+  FS.WRITE (`402Bh`).
+  
+It does not provide formatting, drive B, controllers other than the NMS 8250
+memory-mapped WD2793, or a full DOS. The change state is
 synthesized from the WD2793 drive register and controller status rather than a
 mechanical switch, so it cannot distinguish a swapped medium of identical
 geometry from the originally mounted image. Emulator validation does not

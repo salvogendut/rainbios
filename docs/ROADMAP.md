@@ -703,14 +703,19 @@ the read-only rejection with the image untouched. A pre-existing CALSLT
 double-call crash (a second DSKIO call from a `C000h` fixture context corrupts
 the return stack) is noted but not exercised by these gates.
 
-A read-only FAT12 FS.LOAD service is now implemented and gated
-(`test-1983-disk-fat12`). The service parses the boot-sector BPB, walks the
+FAT12 filesystem services are now implemented and gated. FS.LOAD (4025h)
+is gated by `test-1983-disk-fat12`: it parses the boot-sector BPB, walks the
 root directory, resolves a three-cluster FAT12 chain (2→3→4→0xFFF) through a
 resident 3-sector FAT window, and delivers a 3072-byte deterministic-pattern
-file (RAIN.BIN) into page-3 RAM. The boot-sector fixture calls FS.LOAD (4025h)
-through a single CALSLT inter-slot call, the same discipline used by the
-existing boot-sector loaders. The closed-form byte pattern is verified across
-all cluster boundaries from the loaded destination buffer.
+file (RAIN.BIN) into page-3 RAM. FS.DIR (4028h) is gated by
+`test-1983-disk-fsdir`: it reads raw 32-byte root-directory entries into a
+caller-supplied buffer. FS.WRITE (402Bh) is gated by
+`test-1983-disk-fswrite`: it creates a new file (MINI.TXT, 32 bytes), finds a
+free directory slot, allocates a free cluster from the FAT, writes data via
+PHYDIO, updates both FAT copies, and commits the directory entry. All three
+services use the single CALSLT inter-slot-call discipline; the closed-form
+byte pattern for FS.LOAD is verified across all cluster boundaries from the
+loaded destination buffer.
 
 The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
 fixture pass label with the cartridge mapped in page 1 (slot `F8`), and

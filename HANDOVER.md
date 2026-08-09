@@ -24,7 +24,7 @@ discard unrelated changes in a dirty worktree.
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
 | MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with a compressed source-built payload container in the upper half |
-| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | Read-only PHYDIO + DSKCHG/GETDPB + H.RUNC boot hook + FAT12 FS.LOAD (4025h) implemented |
+| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | PHYDIO read/write + DSKCHG/GETDPB + H.RUNC boot hook + FAT12 FS.LOAD (4025h), FS.DIR (4028h), and FS.WRITE (402Bh) implemented |
 | Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | First slice built | `build/rainbios_msx2.rom` | Distinct 32 KiB build sharing the MSX1 source: MSX2 ID byte, V9938 CD-scan detection, EXBRSA publication, R8-R23 shadow baseline and WRTVDP dispatch |
 | MSX2 SUB-ROM | Services + command/clock slices built | `build/rainbios_msx2_sub.rom` | Self-contained 16 KiB extended-VDP ROM: CHGMOD Screens 5/6/7/8, palette, WRTVDP/VDPSTA, 16-bit WRTVRM/RDVRM, BLTVV/BLTVM/BLTMV block transfers, REDCLK/WRTCLK. Disk-file transfers, screens 10-12 pending |
@@ -173,10 +173,16 @@ The optional NMS 8250 disk-ROM layer:
   validates the MSX-DOS `EBh`/`E9h` signature, and enters the loader at
   `C000h+1Eh` with `A = 0` and carry set, or returns so the interactive menu
   continues.
-- provides a read-only FAT12 FS.LOAD service (4025h) that parses the boot-sector
+- provides a FAT12 FS.LOAD service (4025h) that parses the boot-sector
   BPB, walks the root directory, follows the FAT12 cluster chain, and delivers
   file bytes through the PHYDIO path using the single inter-slot-call discipline
-  (`test-1983-disk-fat12`).
+  (`test-1983-disk-fat12`);
+- provides a FAT12 FS.DIR service (4028h) that reads raw 32-byte root-directory
+  entries into a caller-supplied buffer (`test-1983-disk-fsdir`).
+- provides a FAT12 FS.WRITE service (402Bh) that creates a new file: finds a
+  free directory slot, allocates free clusters from the FAT, writes data via
+  PHYDIO, updates both FAT copies, and commits the directory entry
+  (`test-1983-disk-fswrite`).
 
 The Space-key boot menu invokes the same bootstrap on demand: option 2 runs the
 drive-A boot-sector path, while option 3 uses RainBIOS's own Sunrise ATA or SD
@@ -205,11 +211,9 @@ vector jumps to its relocated body.
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
 The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector and provides
-a read-only FAT12 FS.LOAD service; it does not provide write services or a full
-DOS. Nextor now boots through Sunrise and SD
-Mapper cartridges, while a provenance-cleared MSX-DOS 1 system, formatting,
-floppy drive B, writes, non-NMS controllers, and real-hardware timing remain
-pending.
+FAT12 FS.LOAD, FS.DIR, and FS.WRITE services; it does not provide formatting,
+drive B, non-NMS controllers, or a real DOS. Nextor now boots through Sunrise
+and SD Mapper cartridges.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 
@@ -415,7 +419,13 @@ Coverage includes:
   has no media, with `GETDPB` still publishing the DPB.
 - a read-only FAT12 FS.LOAD that resolves a three-cluster chain (2→3→4→0xFFF),
   delivers a 3072-byte deterministic-pattern file into page-3 RAM, and verifies
-  content across all cluster boundaries (`test-1983-disk-fat12`).
+  content across all cluster boundaries (`test-1983-disk-fat12`);
+- a FAT12 FS.DIR that reads raw 32-byte root-directory entries into a
+  caller-supplied buffer and verifies the RAIN.BIN entry name, cluster, and size
+  (`test-1983-disk-fsdir`);
+- a FAT12 FS.WRITE that creates a new file (MINI.TXT, 32 bytes), allocates a
+  free cluster from the FAT, writes data and directory entry via PHYDIO, and
+  updates both FAT copies (`test-1983-disk-fswrite`).
 
 The 1983 emulator models controller state and raw media but idealizes motor,
 seek, and per-byte DRQ timing. Passing emulator tests does not prove real
@@ -462,6 +472,8 @@ make test-1983-disk-dskchg-no-media
 make test-1983-disk-partial-error
 make test-1983-disk-write-guard
 make test-1983-disk-fat12
+make test-1983-disk-fsdir
+make test-1983-disk-fswrite
 make test-1983-nms8250-disk-rom
 make test-1983-ide-boot
 make test-1983-ide-menu
@@ -660,7 +672,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/run_1983_kbd_probe.py` | 1983 runner validating the keyboard probe markers |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
-| `src/disk_fat12.asm` | FAT12 FS.LOAD service (BPB parse, directory walk, FAT12 cluster chain) |
+| `src/disk_fat12.asm` | FAT12 FS.LOAD, FS.DIR, and FS.WRITE services (BPB parse, directory walk, FAT12 cluster chain) |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
 | `docs/abi/main-bios.csv` | Truthful fixed-entry implementation status |
 | `docs/abi/controllers.md` | Keyboard, joystick, trigger, and mouse contracts |
