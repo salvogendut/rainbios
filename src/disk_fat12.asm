@@ -620,6 +620,61 @@ disk_fs_dir_nop:
                 ret
 
 
+; FAT12 entry-write helper: store the 12-bit value in BC at cluster DE in
+; the resident FAT buffer (IX + FS_FAT).  Used by FS.WRITE during cluster
+; allocation to build the chain.
+;
+;   IX  work-area base
+;   DE  cluster number
+;   BC  value to write (C = low 8 bits, bits 11-8 in C bits 3-0: unused)
+disk_fat12_store:
+                push de
+                ld l, e ; ld h, d                ; HL = cluster
+                ld a, l ; srl a
+                ld e, a ; ld d, 0                ; DE = cluster >> 1
+                add hl, de                       ; HL = (cluster * 3) >> 1
+
+                push ix ; pop de
+                ld de, FS_FAT ; add hl, de
+                ex de, hl ; add hl, de            ; HL = &FAT[byte_offset]
+
+                ld a, (hl) ; inc hl ; ld h, (hl) ; ld l, a
+                ; HL = current 16-bit word at the FAT position
+
+                pop de                           ; DE = cluster
+                bit 0, e
+                jr nz, fat12_store_odd
+
+                ; Even: byte[O] = C, byte[O+1] = (H0xF0) | (B0x0F)
+                ld a, h ; and #f0
+                ld h, a ; ld l, c
+                jr fat12_store_write
+
+fat12_store_odd:
+                ; Odd: byte[O] = (L0xF0) | (C0x0F), byte[O+1] = C >> 4
+                ld a, c ; and #0f
+                ld e, a
+                ld a, l ; and #f0 ; or e
+                ld l, a
+                ld a, c ; srl a ; srl a ; srl a ; srl a
+                ld h, a
+
+fat12_store_write:
+                ; Recompute the FAT address and write HL.
+                push hl ; pop bc                   ; BC = new word
+                ex de, hl                          ; HL = cluster
+                ld e, l ; ld d, h
+                ld a, l ; srl a ; ld l, a ; ld h, 0
+                add hl, de                         ; HL = byte offset
+
+                push ix ; pop de
+                ld de, FS_FAT ; add hl, de
+                ex de, hl ; add hl, de              ; HL = &FAT[offset]
+
+                ld (hl), c ; inc hl ; ld (hl), b    ; write word
+                ret
+
+
 ; FS.WRITE (402Bh) — placeholder.  The full FAT12 write implementation
 ; (free-slot scan, FAT allocation, data/cluster write, directory update)
 ; is pending.  The entry point at 402Bh in the jump table is wired and
