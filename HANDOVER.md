@@ -24,7 +24,7 @@ discard unrelated changes in a dirty worktree.
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
 | MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with a compressed source-built payload container in the upper half |
-| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | PHYDIO read/write + DSKCHG/GETDPB + H.RUNC boot hook + FAT12 FS.LOAD (4025h), FS.DIR (4028h), and FS.WRITE (402Bh) implemented |
+| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | PHYDIO read/write + DSKCHG/GETDPB + DSKFMT/CHOICE + H.RUNC boot hook + FAT12 FS.LOAD (4025h), FS.DIR (4028h), FS.WRITE (402Bh) implemented |
 | Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | First slice built | `build/rainbios_msx2.rom` | Distinct 32 KiB build sharing the MSX1 source: MSX2 ID byte, V9938 CD-scan detection, EXBRSA publication, R8-R23 shadow baseline and WRTVDP dispatch |
 | MSX2 SUB-ROM | Services + command/clock slices built | `build/rainbios_msx2_sub.rom` | Self-contained 16 KiB extended-VDP ROM: CHGMOD Screens 5/6/7/8, palette, WRTVDP/VDPSTA, 16-bit WRTVRM/RDVRM, BLTVV/BLTVM/BLTMV block transfers, REDCLK/WRTCLK. Disk-file transfers, screens 10-12 pending |
@@ -164,7 +164,11 @@ The optional NMS 8250 disk-ROM layer:
 - returns standard errors for write protection, no media, data errors, seek
   errors, record-not-found, bad parameters, and timeouts;
 - returns B as the exact number of fully completed sectors on runtime failure;
-- rejects writes before issuing a WD2793 write command;
+- writes sectors through the WD2793 (A4h) and persists them to the medium;
+- reports write-protect (error 3) when the disk is read-only;
+- formats tracks through the WD2793 Format Track command (F0h), writing
+  sector headers and fill bytes for the full 80-track, 2-side, 9-sector
+  geometry (CHOICE returns 1; `test-1983-disk-dskfmt`);
 - reports medium change state from the WD2793 drive register and controller
   status without ever starting the motor or issuing a command;
 - publishes the fixed F9 DPB and preserves the kernel-owned drive and FAT
@@ -211,9 +215,9 @@ vector jumps to its relocated body.
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
 The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector and provides
-FAT12 FS.LOAD, FS.DIR, and FS.WRITE services; it does not provide formatting,
-drive B, non-NMS controllers, or a real DOS. Nextor now boots through Sunrise
-and SD Mapper cartridges.
+FAT12 FS.LOAD, FS.DIR, and FS.WRITE services plus DSKFMT/CHOICE formatting;
+it does not provide drive B, non-NMS controllers, or a real DOS. Nextor now
+boots through Sunrise and SD Mapper cartridges.
 Destination buffers must remain within `8000h-EFFFh` while the extension
 occupies page 1.
 
@@ -425,7 +429,10 @@ Coverage includes:
   (`test-1983-disk-fsdir`);
 - a FAT12 FS.WRITE that creates a new file (MINI.TXT, 32 bytes), allocates a
   free cluster from the FAT, writes data and directory entry via PHYDIO, and
-  updates both FAT copies (`test-1983-disk-fswrite`).
+  updates both FAT copies (`test-1983-disk-fswrite`);
+- CHOICE (4019h) returning 1 and DSKFMT (401Ch) formatting the full 80-track,
+  2-side, 9-sector geometry via WD2793 Format Track (F0h) with sector header
+  writes and fill-byte data (`test-1983-disk-dskfmt`).
 
 The 1983 emulator models controller state and raw media but idealizes motor,
 seek, and per-byte DRQ timing. Passing emulator tests does not prove real
@@ -474,6 +481,7 @@ make test-1983-disk-write-guard
 make test-1983-disk-fat12
 make test-1983-disk-fsdir
 make test-1983-disk-fswrite
+make test-1983-disk-dskfmt
 make test-1983-nms8250-disk-rom
 make test-1983-ide-boot
 make test-1983-ide-menu
