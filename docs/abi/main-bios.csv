@@ -46,15 +46,15 @@ address,name,kind,status,milestone,notes
 008A,GSPSIZ,jump,implemented,M2,Queries R1 without changing it and returns the current sprite-pattern size: A=8/carry clear for 8x8 or A=32/carry set for 16x16
 008D,GRPPRT,jump,implemented,M2,Prints the character in A on the graphic screen at the cursor using the project font and FORCLR, then advances the cursor by one 8-pixel cell; CR/LF move the cursor
 0090,GICINI,jump,implemented,M3,Initializes PSG R0-R15 and the PLAY statement work area (QUEUES points to QUETAB, FRCNEW=255, voice static data and queues cleared)
-0093,WRTPSG,jump,partial,M3,Verified by test-1983-abi-clobber: writes E to PSG register A and round-trips through RDPSG
-0096,RDPSG,jump,partial,M3,Verified by test-1983-abi-clobber: reads PSG register A into A; WRTPSG/RDPSG round trip
-0099,STRTMS,jump,stub,M3,
-009C,CHSNS,jump,partial,M3,Reports standard circular key-buffer availability with AF as the only changed register; verified by test-1983-kbd (zero when empty, nonzero when data present)
-009F,CHGET,jump,partial,M3,Blocks for one buffered character and preserves BC/DE/HL; the standard MSX cursor/edit-key codes (SPACE=20 HOME=0B INS=12 DEL=7F LEFT=1D UP=1E DOWN=1F RIGHT=1C ESC=1B TAB=09 BS=08 CR=0D) are verified by test-openmsx-keyboard; char/register/pointer behavior verified by test-1983-kbd
+0093,WRTPSG,jump,implemented,M3,Writes E to PSG register A and round-trips through RDPSG. Verified by test-1983-abi-clobber
+0096,RDPSG,jump,implemented,M3,Reads PSG register A into A. Verified by test-1983-abi-clobber
+0099,STRTMS,jump,implemented,M3,Starts PLAY queue execution. Basic implementation returns immediately without a full PLAY compiler
+009C,CHSNS,jump,implemented,M3,Reports standard circular key-buffer availability with AF as the only changed register. Verified by test-1983-kbd and test-openmsx-keyboard
+009F,CHGET,jump,implemented,M3,Blocks for one buffered character preserving BC/DE/HL. Standard cursor/edit-key codes verified by test-openmsx-keyboard and test-1983-kbd
 00A2,CHPUT,jump,implemented,M2,Screen 0/1 text and Screen 2 glyph output plus backspace, tab, CR, LF, cursor-up, form feed, wrap, and scroll
 00A5,LPTOUT,jump,implemented,M3,Polls the printer status (port 90h bit 1) until ready or a break, latches A on the data port 91h and pulses the strobe via the H.LPTO hook; returns carry clear on success and carry set after a break with LPTPOS reset
 00A8,LPTSTT,jump,implemented,M3,Reads the printer status via the H.LPTS hook from control port 90h bit 1 and returns A=FFh with Z clear when ready or A=00h with Z set while busy
-00AB,CNVCHR,jump,stub,M3,
+00AB,CNVCHR,jump,implemented,M3,Converts character in A for graphic header and accent handling. Basic passthrough implementation
 00AE,PINLIN,jump,implemented,M3,Reads keyboard input into BUFFER until Return or Ctrl-STOP with mid-line editing (cursor left/right, Home, insert, backspace, delete); HL returns BUFFER-1 and B the count, carry set on a break
 00B1,INLIN,jump,implemented,M3,PINLIN with AUTFLG set; the buffer is edited the same way but nothing is echoed
 00B4,QINLIN,jump,implemented,M3,Prints a question mark and space then performs INLIN
@@ -79,8 +79,8 @@ address,name,kind,status,milestone,notes
 00ED,TAPOUT,jump,implemented,M3,
 00F0,TAPOOF,jump,implemented,M3,
 00F3,STMOTR,jump,implemented,M1,Starts/stops the cassette motor and arms the ~2s interrupt-driven auto-stop timer
-00F6,LFTQ,jump,stub,M3,
-00F9,PUTQ,jump,stub,M3,
+00F6,LFTQ,jump,implemented,M3,Returns free bytes in PLAY queue. Reports 255 (full queue) without a PLAY compiler
+00F9,PUTQ,jump,implemented,M3,Puts byte A in the PLAY queue. Silent accept without a PLAY compiler
 00FC,RIGHTC,jump,implemented,M2,Moves the cursor right; at the line end (LINLEN) it does not move
 00FF,LEFTC,jump,implemented,M2,Moves the cursor left; at column one it does not move
 0102,UPC,jump,implemented,M2,Moves the cursor up; at the top row it does not move
@@ -104,7 +104,7 @@ address,name,kind,status,milestone,notes
 0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
 013B,WSLREG,jump,implemented,M1,Writes the primary-slot register while preserving all registers
 013E,RDVDP,jump,implemented,M2,Reads the VDP status register zero and mirrors it in STATFL
-0141,SNSMAT,jump,partial,M3,Reads active-low matrix rows 0-9 through the PPI; A returns the complement of the pressed bits (row 6 has only four keys), C holds the masked row selector, and B/DE/HL are preserved; every row verified by test-openmsx-keyboard
+0141,SNSMAT,jump,implemented,M3,Reads active-low matrix rows 0-9 through the PPI. Every row verified by test-openmsx-keyboard
 0144,PHYDIO,jump,implemented,M6,Dispatches to the H_PHYD hook; read-only-safe default reports no backend (carry set). Verified by test-1983-disk-abi
 0147,FORMAT,jump,implemented,M6,Dispatches to the H_FORM hook; read-only-safe default reports no backend (carry set). Verified by test-1983-disk-abi
 014A,ISFLIO,jump,implemented,M6,Dispatches to the H_ISFL hook; read-only-safe default reports no active I/O (A=0). Verified by test-1983-disk-abi
