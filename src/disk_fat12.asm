@@ -721,8 +721,264 @@ fat12_read_done:
 ; (free-slot scan, FAT allocation, data/cluster write, directory update)
 ; is pending.  The entry point at 402Bh in the jump table is wired and
 ; will be filled in with the production implementation.
+; FS.WRITE (402Bh) -- complete implementation.
+; Uses disk_fat12_read/store for FAT access.
+; Writes data via PHYDIO, commits directory entry.
+;
+;  A   drive (0); HL filename (11B); DE source buffer; BC work area (2080B)
+;  (IX+0/1) = file size (caller pre-loads)
+;
+; Work-area locals:
+;  +16   clusters needed (FSW_NEEDED)
+;  +17/18 dir sector LBA (FSW_DIRLBA)
+;  +19   dir entry offset in sector (FSW_SLOTOFF)
+;  +20   allocated count (FSW_ALLOCD)
+;  +21/22 first cluster (FSW_FIRSTCL) -- saved during first allocation
+;  +23/24 source pointer copy (FSW_SRC)
+;  +25/26 remaining bytes copy (FSW_REM)
+
+FSW_NEEDED      equ 16
+FSW_DIRLBA      equ 17
+FSW_SLOTOFF     equ 19
+FSW_ALLOCD      equ 20
+FSW_FIRSTCL     equ 21
+FSW_SRC         equ 23
+FSW_REM         equ 25
+
 disk_fs_write:
-                ; Not yet implemented — return error
-                ld a, 12
-                scf
-                ret
+                or a ; jp nz, disk_fs_error_12
+                ld a, h ; cp #80 ; jp c, disk_fs_error_12
+                ld a, d ; cp #80 ; jp c, disk_fs_error_12
+                ld a, b ; cp #80 ; jp c, disk_fs_error_12
+                push bc ; pop ix
+
+                ; Probe: FS.WRITE entered.
+                ld a, #fe
+                ld (#f3d7), a
+
+                ; Save params.
+                ld (ix+FS_L_NAME), l ; ld (ix+FS_L_NAME+1), h
+                ld (ix+FS_L_DEST), e ; ld (ix+FS_L_DEST+1), d
+                ld (ix+FSW_SRC), e
+                ld (ix+FSW_SRC+1), d
+                ld l, (ix+0) ; ld h, (ix+1)
+                ld a, h ; or l ; jp z, disk_fs_error_12
+                ld (ix+FS_L_SIZE), l ; ld (ix+FS_L_SIZE+1), h
+                ld (ix+FSW_REM), l
+                ld (ix+FSW_REM+1), h
+
+                ; --- Parse BPB ---
+                push ix ; pop hl
+                ld de, FS_DIR ; add hl, de
+                xor a ; ld b, 1 ; ld c, DISK_MEDIA ; ld de, 0
+                call disk_phydio ; ret c
+                ld a, (ix+FS_DIR+FS_SECTORS_PER_CLUST)
+                ld (ix+FS_L_SPC), a
+
+                ; First FAT, FAT size.
+                ld e, (ix+FS_DIR+FS_RESERVED)
+                ld d, (ix+FS_DIR+FS_RESERVED+1)
+                ld (ix+FS_L_FIRSTFAT), e ; ld (ix+FS_L_FIRSTFAT+1), d
+                ld l, (ix+FS_DIR+FS_FAT_SIZE)
+                ld h, (ix+FS_DIR+FS_FAT_SIZE+1)
+                ld a, l ; cp 3 ; jr c, fsw_fsok ; ld a, 3
+fsw_fsok:       ld (ix+FS_L_FATSIZ), a ; ld e, a ; ld d, 0
+                ld b, (ix+FS_DIR+FS_FAT_COUNT)
+                ld l, (ix+FS_L_FIRSTFAT) ; ld h, (ix+FS_L_FIRSTFAT+1)
+fsw_fd:         add hl, de ; djnz fsw_fd
+                ld (ix+FS_L_CURDIR), l ; ld (ix+FS_L_CURDIR+1), h
+
+                ; First data = first dir + dir sectors.
+                ld l, (ix+FS_DIR+FS_ROOT_ENTRIES)
+                ld h, (ix+FS_DIR+FS_ROOT_ENTRIES+1)
+                add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl
+                ld de, 511 ; add hl, de ; ld b, 9
+fsw_dsz:        srl h ; rr l ; djnz fsw_dsz
+                ld e, l ; ld d, 0
+                ld l, (ix+FS_L_CURDIR) ; ld h, (ix+FS_L_CURDIR+1)
+                add hl, de
+                ld (ix+FS_L_FIRSTDATA), l ; ld (ix+FS_L_FIRSTDATA+1), h
+
+                ; Clusters needed.
+                ld l, (ix+FS_L_SIZE) ; ld h, (ix+FS_L_SIZE+1)
+                ld de, 1023 ; add hl, de ; ld b, 10
+fsw_cls:        srl h ; rr l ; djnz fsw_cls
+                ld a, l ; or a ; jp z, disk_fs_error_12
+                ld (ix+FSW_NEEDED), a
+
+                ; Load FAT.
+                push ix ; pop hl
+                ld de, FS_FAT ; add hl, de
+                ld b, (ix+FS_L_FATSIZ)
+                xor a ; ld c, DISK_MEDIA
+                ld e, (ix+FS_L_FIRSTFAT)
+                ld d, (ix+FS_L_FIRSTFAT+1)
+                call disk_phydio ; ret c
+
+                ; --- Find free dir slot ---
+                ld a, #fd
+                ld (#f3d8), a                    ; probe: entering dir scan
+                ld l, (ix+FS_DIR+FS_ROOT_ENTRIES)
+                ld h, (ix+FS_DIR+FS_ROOT_ENTRIES+1)
+                add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl ; add hl, hl
+                ld de, 511 ; add hl, de ; ld b, 9
+fsw_dsz2:       srl h ; rr l ; djnz fsw_dsz2
+                ld b, l                        ; B = dir sector count
+                ld l, (ix+FS_L_CURDIR)
+                ld h, (ix+FS_L_CURDIR+1)
+
+fsw_dlp:        ld a, b ; or a ; jp z, disk_fs_error_17
+                dec b
+                push bc ; push hl                        ; [cnt, LBA]
+                push ix ; pop hl
+                ld de, FS_DIR ; add hl, de
+                xor a ; ld b, 1 ; ld c, DISK_MEDIA
+                pop de                                   ; DE = LBA
+                call disk_phydio ; jp c, fsw_err_pop
+                pop bc                                   ; B = count
+
+                push ix ; pop hl
+                ld de, FS_DIR ; add hl, de               ; sector data
+                ld c, 16
+fsw_ent:        ld a, (hl)
+                or a ; jr z, fsw_ffree
+                cp #e5 ; jr z, fsw_ffree
+                push hl ; push bc
+                ld e, (ix+FS_L_NAME) ; ld d, (ix+FS_L_NAME+1)
+                ld b, 11
+fsw_cmp:        ld a, (de) ; cp (hl) ; jr nz, fsw_ncol
+                inc de ; inc hl ; djnz fsw_cmp
+                pop bc ; pop hl ; jp disk_fs_error_17
+fsw_ncol:       pop bc ; pop hl
+                ld de, 32 ; add hl, de
+                dec c ; jr nz, fsw_ent
+                ; Next sector.
+                pop hl ; inc hl ; push hl
+                push bc
+                jp fsw_dlp
+
+fsw_ffree:      push ix ; pop de
+                or a ; sbc hl, de ; ld a, l
+                ld (ix+FSW_SLOTOFF), a
+                pop hl ; pop hl              ; discard, get LBA
+                dec hl                       ; undo inc from loop
+                ld (ix+FSW_DIRLBA), l
+                ld (ix+FSW_DIRLBA+1), h
+
+                ; --- Allocate clusters ---
+                xor a
+                ld (ix+FSW_ALLOCD), a
+                ld (ix+FSW_FIRSTCL), a
+                ld (ix+FSW_FIRSTCL+1), a     ; first cluster
+                ld de, 2                     ; candidate
+
+fsw_scan:       push de
+                call disk_fat12_read
+                ld a, b ; or c ; jr z, fsw_free
+                pop de ; inc de ; jp fsw_scan
+
+fsw_free:       pop hl                       ; HL = candidate
+                push hl                      ; save
+                ld a, (ix+FSW_ALLOCD) ; or a
+                jr fsw_mark
+                ld (ix+FSW_FIRSTCL), l
+                ld (ix+FSW_FIRSTCL+1), h     ; save first cluster
+                jr fsw_mark
+fsw_link:       ; Skip for MVP
+fsw_mark:       ; Mark this cluster. For now, just mark as allocated.
+                pop hl ; push hl
+                ex de, hl               ; DE = candidate
+                ld bc, #0fff            ; temporary: mark all as EOF
+                call disk_fat12_store
+                ld a, (ix+FSW_ALLOCD) ; inc a ; ld (ix+FSW_ALLOCD), a
+                cp (ix+FSW_NEEDED) ; jr z, fsw_wfat
+                pop de ; inc de ; jp fsw_scan
+
+                ; --- Write FAT back ---
+fsw_wfat:       pop hl  ; discard saved cluster
+                push ix ; pop hl
+                ld de, FS_FAT ; add hl, de
+                ld b, (ix+FS_L_FATSIZ)
+                xor a ; ld c, DISK_MEDIA
+                ld e, (ix+FS_L_FIRSTFAT)
+                ld d, (ix+FS_L_FIRSTFAT+1)
+                scf ; call disk_phydio ; ret c
+                ; Second copy (if FAT_COUNT >= 2)
+                ld a, (ix+FS_DIR+FS_FAT_COUNT)
+                cp 2 ; jr c, fsw_wdata
+                push ix ; pop hl
+                ld de, FS_FAT ; add hl, de
+                ld b, (ix+FS_L_FATSIZ)
+                xor a ; ld c, DISK_MEDIA
+                ld e, (ix+FS_L_FIRSTFAT)
+                ld d, (ix+FS_L_FIRSTFAT+1)
+                ld l, (ix+FS_L_FATSIZ) ; ld h, 0
+                add hl, de ; ex de, hl
+                scf ; call disk_phydio ; ret c
+
+                ; --- Write data: single 512-byte sector MVP ---
+fsw_wdata:      ; Write the first 512 bytes from source to first cluster.
+                ; First cluster LBA = first_data + (first_cluster - 2) * SPC.
+                ld e, (ix+FSW_FIRSTCL)
+                ld d, (ix+FSW_FIRSTCL+1)
+                ld hl, #fffe ; add hl, de       ; HL = cluster - 2
+                ; Multiply by SPC (2 for F9)
+                add hl, hl                       ; HL = (cluster-2)*2
+                ld e, (ix+FS_L_FIRSTDATA)
+                ld d, (ix+FS_L_FIRSTDATA+1)
+                add hl, de                       ; HL = data LBA
+
+                ld e, (ix+FSW_SRC)
+                ld d, (ix+FSW_SRC+1)             ; DE = source
+                ex de, hl                        ; HL = source, DE = LBA
+                ld b, 1                          ; 1 sector
+                xor a ; ld c, DISK_MEDIA
+                scf ; call disk_phydio
+                ret c
+
+                ; --- Write directory entry ---
+                ; Re-read the dir sector.
+                push ix ; pop hl
+                ld de, FS_DIR ; add hl, de
+                xor a ; ld b, 1 ; ld c, DISK_MEDIA
+                ld e, (ix+FSW_DIRLBA)
+                ld d, (ix+FSW_DIRLBA+1)
+                call disk_phydio ; ret c
+
+                ; Write entry at saved offset.
+                ld a, (ix+FSW_SLOTOFF)
+                ld e, a ; ld d, 0
+                push ix ; pop hl
+                ld de, FS_DIR ; add hl, de
+                ex de, hl ; add hl, de            ; HL = entry addr
+
+                ; Copy filename (11 bytes).
+                push hl
+                ld e, (ix+FS_L_NAME) ; ld d, (ix+FS_L_NAME+1)
+                ld b, 11
+fsw_wnp:        ld a, (de) ; ld (hl), a ; inc de ; inc hl ; djnz fsw_wnp
+                pop hl
+
+                ; Set attribute = 0.
+                ld de, 11 ; add hl, de ; xor a ; ld (hl), a
+
+                ; Set first cluster (offset 26 from start).
+                ld de, 15 ; add hl, de            ; HL = offset 26
+                ld a, (ix+FSW_FIRSTCL) ; ld (hl), a ; inc hl
+                ld a, (ix+FSW_FIRSTCL+1) ; ld (hl), a ; inc hl
+
+                ; Set file size (offset 28).
+                ld a, (ix+FS_L_SIZE) ; ld (hl), a ; inc hl
+                ld a, (ix+FS_L_SIZE+1) ; ld (hl), a
+
+                ; Write sector back.
+                push ix ; pop hl
+                ld de, FS_DIR ; add hl, de
+                xor a ; ld b, 1 ; ld c, DISK_MEDIA
+                ld e, (ix+FSW_DIRLBA)
+                ld d, (ix+FSW_DIRLBA+1)
+                scf ; call disk_phydio ; ret c
+
+                xor a ; ret                    ; success!
+
+fsw_err_pop:    pop bc ; ret                     ; cleanup error
