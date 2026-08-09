@@ -25,6 +25,7 @@ PPI_KEYBOARD    equ #a9
 PPI_CONTROL_C   equ #aa
 PPI_CONTROL     equ #ab
 
+CALBAS_SAVE     equ #f3e1
 R0SAV           equ #f3df
 RG1SAV          equ #f3e0
 RG8SAV          equ #ffe7
@@ -157,15 +158,15 @@ ASSET_BUFFER    equ #c000
                 db VDP_DATA
 
 ; MSX1 main BIOS ABI.
-                jp unsupported_call             ; 0008 SYNCHR
+                jp synchr                       ; 0008 SYNCHR
                 defs #000c-$,#ff
                 jp rdslt                        ; 000C RDSLT
                 defs #0010-$,#ff
-                jp unsupported_call             ; 0010 CHRGTR
+                jp chrgtr                       ; 0010 CHRGTR
                 defs #0014-$,#ff
                 jp wrslt                        ; 0014 WRSLT
                 defs #0018-$,#ff
-                jp unsupported_call             ; 0018 OUTDO
+                jp outdo                        ; 0018 OUTDO
                 defs #001c-$,#ff
                 jp calslt                       ; 001C CALSLT
                 defs #0020-$,#ff
@@ -173,7 +174,7 @@ ASSET_BUFFER    equ #c000
                 defs #0024-$,#ff
                 jp enaslt                       ; 0024 ENASLT
                 defs #0028-$,#ff
-                jp unsupported_call             ; 0028 GETYPR
+                jp getypr                       ; 0028 GETYPR
 
 ; International character set, D-M-Y date order, 60 Hz, US keyboard/BASIC.
                 db #21                          ; 002B IDBYT1
@@ -285,7 +286,7 @@ ASSET_BUFFER    equ #c000
                 jp disk_getvcp                  ; 0150 GETVCP
                 jp disk_getvc2                  ; 0153 GETVC2
                 jp kilbuf                       ; 0156 KILBUF
-                jp unsupported_call             ; 0159 CALBAS
+                jp calbas                       ; 0159 CALBAS
                 jp subrom                       ; 015C SUBROM
                 jp extrom                       ; 015F EXTROM
                 jp chkslz                       ; 0162 CHKSLZ
@@ -1124,8 +1125,8 @@ cold_boot_payload_expect:
 cold_boot_select_internal_payload:
                 jp cold_boot_select_internal_payload_impl
 
-; Ordinary unimplemented calls return carry set. This is a bring-up contract,
-; not an assertion about compatible error behavior.
+; $0018 OUTDO (also RST 18h): output the character in A to the console. The
+; CHPUT entry already handles Screen 0/1 text and Screen 2 glyph output plus
 unsupported_call:
                  scf
                  ret
@@ -6148,6 +6149,107 @@ logo_pattern_zx0:
                 incbin "logo_pattern.zx0"
 logo_name_zx0:
                 incbin "logo_name.zx0"
+
+; backspace, tab, CR, LF, and scroll, so OUTDO delegates directly.
+outdo:
+                push af
+                push bc
+                push de
+                push hl
+                call chput
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+; $0008 SYNCHR (RST 08h): compare the character at (HL) against the inline byte
+; that follows the RST 08h instruction on the stack.  On a match the return
+; address skips the inline byte and the routine falls through to CHRGTR so the
+; caller can advance past the validated token.  A mismatch returns carry set
+; (the caller's standard 'Syntax error' dispatch is not implemented here).
+synchr:
+                ld a,(hl)                        ; A = current BASIC character
+                ex (sp),hl                       ; HL = return address (inline byte)
+                cp (hl)                          ; compare against expected byte
+                jr nz,synchr_mismatch
+                inc hl                           ; skip inline expected byte
+                ex (sp),hl                       ; restore text pointer to HL
+                ret                              ; carry clear, Z set
+synchr_mismatch:
+                inc hl                           ; skip inline byte anyway
+                ex (sp),hl                       ; restore text pointer
+                scf
+                ret
+
+; $0010 CHRGTR (RST 10h): get the next character from the BASIC text at HL,
+; advance HL past it, and set carry for digits (0-9) and zero for NUL/colon.
+; Spaces are skipped transparently.
+chrgtr:
+                inc hl
+chrgtr_entry:
+                ld a,(hl)
+                or a
+                ret z                            ; Z set for NUL (end of program)
+                cp ':'
+                ret z                            ; Z set for colon (end of statement)
+                jr c,chrgtr_end                  ; control chars: no carry, no digit
+                cp ' '
+                jr z,chrgtr                      ; skip spaces
+                cp '0'
+                ccf                              ; C set for digits, clear otherwise
+                inc hl
+                ret
+chrgtr_end:
+                inc hl
+                ret
+
+; $0028 GETYPR: query the type of a BASIC variable.  Without a compatible
+; Microsoft BASIC ROM active this entry returns carry set so callers can fall
+; back.  The standard MSX contract depends on DAC and the variable table, both
+; of which require a running BASIC interpreter.
+getypr:
+                scf
+                ret
+
+; $0159 CALBAS: call a routine at the caller-specified IX in the active BASIC
+; ROM.  EXPTBL+1 gives the page-1 slot; for expanded slots SLTTBL+1 carries the
+; secondary selector.  The alternate register set is saved, ENASLT maps page 1
+; to the BASIC slot, and a `push target; ret` transfers control to page 1 with
+; a page-0 return trampoline so the original page-1 mapping is restored cleanly.
+calbas:
+                ex af,af'                        ; save caller's AF
+                exx                              ; save caller's BC, DE, HL
+                push ix                          ;   target address
+                push iy                          ;   caller's IY
+
+                in a,(PPI_SLOT)                  ; save current slot map
+                ld (CALBAS_SAVE),a
+                ld a,(EXPTBL+1)                  ; BASIC page-1 slot
+                bit 7,a
+                jr z,calbas_primary
+                ld a,(SLTTBL+1)                  ; expanded slot selector
+calbas_primary:
+                ld h,#40                         ; page 1
+                call enaslt                      ; map BASIC ROM into page 1
+
+                pop iy                           ; restore caller's IY
+                pop ix                           ; IX = target address in page 1
+                exx                              ; restore caller's BC, DE, HL
+                ex af,af'                        ; restore caller's AF
+
+                push ix                          ; [target] on stack
+                ld ix,calbas_return
+                push ix                          ; [return] [target]
+                ret                              ; pop target → jp to page 1
+calbas_return:
+                ld a,(CALBAS_SAVE)
+                out (PPI_SLOT),a                 ; restore old page-1 mapping
+                ret                              ; return to CALBAS caller
+
+; Ordinary unimplemented calls return carry set. This is a bring-up contract,
+; not an assertion about compatible error behavior.
+
 logo_color_zx0:
                 incbin "logo_color.zx0"
 
