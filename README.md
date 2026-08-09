@@ -32,7 +32,6 @@ complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 ## Current limitations
 
 - many BIOS entries remain partial or safe stubs;
-- no MSX2 main ROM or SUB-ROM is built yet;
 - mapper allocation, broad cartridge compatibility, and several keyboard,
   touch-panel, paddle, printer, graphics, and filesystem services remain
   pending;

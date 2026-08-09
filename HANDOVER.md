@@ -555,7 +555,7 @@ is:
 | M2 MSX1 display/console | In progress | Port-ordering and VRAM-boundary hardening done (`test-openmsx-vram` wrap/crossing/full-wraparound tests + interrupt-atomicity host tests); MSX2-only modes out of scope |
 | M3 keyboard/PSG/basic devices | In progress | Printer calls and touch-panel GTPAD implemented (`test-openmsx-printer`, `test-openmsx-gtpad`); light-pen/trackball detection unemulable in openMSX; remaining: selectable frequency/locale |
 | M4 cartridge compatibility | In progress | Payload-launch, cartridge-INIT, and page-2 INIT (mapper-style) arrangements gated; the redistributable compatibility corpus is deferred (TBD) |
-| M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling entries available in both MSX1 and MSX2 builds; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file entries remain documented safe returns pending MSX2 storage boot |
+| M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling entries available in both MSX1 and MSX2 builds; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. 64 KiB VRAM validated (openMSX). Disk-file transfer entries (BLTVD/BLTDV/BLTMD/BLTDV) remain documented safe returns; a real implementation requires DOS API bindings not yet provided. MSX2 storage boot via Nextor is now gated (#137) |
 | M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 21 callable BIOS stub entries gated by `test-1983-stubs`; hook-dispatching disk baseline (`PHYDIO`/`FORMAT`/`ISFLIO`/`OUTDLP`/`GETVCP`/`GETVC2`) gated by `test-1983-disk-abi`; GTPDL clobber contract gated by `test-1983-gtpdl-clobber`; INIFNK default strings gated by `test-1983-inifnk`; ISCNTC/CKCNTC break consumption gated by `test-1983-iscntc`; CHGMOD screen-mode dispatch gated by `test-1983-chgmod`; KEYINT VBlank bookkeeping gated by `test-1983-keyint`; internal-payload graphics workload gated by `test-1983-embedded-basic-graphics`; internal-payload cassette workload gated by `test-1983-embedded-basic-tape`; scrolling text workload gated by `test-1983-bbcbasic-scroll`/`test-1983-embedded-basic-scroll`; editing workload gated by `test-1983-bbcbasic-edit`/`test-1983-embedded-basic-edit`; DCOMPR/PSG clobber and flag contracts gated by `test-1983-abi-clobber`; function-key/text contracts gated by `test-1983-fnkey`; keyboard buffer contracts gated by `test-1983-kbd`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export |
 | M7 disk/IDE boot | In progress | FAT12 FS.LOAD implemented and gated (`test-1983-disk-fat12`). Real DOS files, hardware validation; DSKIO writes gated (`test-1983-disk-write`/`-disk-write-protect`). Open issues: a second DSKIO call from a `C000h` fixture context crashes under 1983 (emulator artifact); the RainBIOS WD2793 driver's data transfer misaligns against openMSX's real WD2793 (read/write byte timing), blocking an openMSX write gate |
 
@@ -620,12 +620,9 @@ the 128 KiB gates cover every address. The disk-file transfer entries
 (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) remain documented safe returns: a real
 implementation streams whole files through the DOS API (BDOS
 open/create/set-DTA/random block I/O/close) and needs the machine to boot a
-disk system such as Nextor. De-risking showed the RainBIOS MSX2 build does not
-yet boot a cartridge/Nextor storage layer (the Sunrise cartridge is found by
-the boot scan but does not take over on MSX2, unlike the NMS 8250 reference);
-that storage boot is separate M6/M7 work and a prerequisite for these entries.
-Screen 10-12 remains out of scope (V9958). Keep the guarded Screen 7 handoff
-in the MSX1 ROM independent until the MSX2 build actually replaces it.
+disk system such as Nextor. MSX2 storage boot via Nextor is now gated (the
+002Dh generation byte reports MSX1 for DOS compatibility while all MSX2
+features remain available). Screen 10-12 remains out of scope (V9958).
 
 The immediate floppy priority is real NMS 8250-compatible hardware validation.
 `docs/HARDWARE_TEST.md` is the concrete checklist; its primary risks are DRQ

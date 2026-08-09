@@ -16,9 +16,9 @@ milestone percentages are estimates derived from the roadmap slices
 | M2 MSX1 display/console | ~95% | VRAM-limit hardening done (full-wraparound + crossing coverage); hardware test |
 | M3 keyboard/PSG/basic devices | ~95% | Printer calls (LPTOUT/LPTSTT) and touch-panel GTPAD implemented; light-pen/trackball unemulable in openMSX; remaining: selectable frequency/locale |
 | M4 cartridge compatibility | ~70% | Redistributable compatibility corpus deferred (TBD) — the only remaining M4 item, gated on sourcing and clearing ROMs for redistribution |
-| M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns, gated on MSX2 storage boot (M6/M7) |
+| M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns pending DOS API bindings; MSX2 storage boot via Nextor now gated |
 | M6 completeness/optional | ~90% | Disk baseline, GTPDL, INIFNK, ISCNTC/CKCNTC, CHGMOD, KEYINT, internal-payload graphics/cassette/scroll/edit workloads, openMSX GeoBench full-desktop gate, loader inputs HL/DE (DISKVE/ENAKRN), RESET ABI documented implemented; remaining: real-hardware timing |
-| M7 disk/IDE boot | ~80% | FAT12 FS.LOAD, FS.DIR, FS.WRITE, and DSKFMT/CHOICE gated; DSKIO writes gated; remaining: drive B, other controllers, real-hardware timing, CALSLT double-call crash in C000 fixture context, openMSX WD2793 data-transfer misalignment (RainBIOS driver vs openMSX read/write byte timing) |
+| M7 disk/IDE boot | ~85% | FAT12 FS.LOAD, FS.DIR, FS.WRITE, and DSKFMT/CHOICE gated; DSKIO writes gated; MSX2 Nextor storage boot gated; remaining: drive B, other controllers, real-hardware timing, CALSLT double-call crash, openMSX WD2793 data-transfer misalignment |
 
 ## Pull request log
 
@@ -52,6 +52,10 @@ milestone percentages are estimates derived from the roadmap slices
 | #115 | — | Record openMSX WD2793 transfer + 1983 double-call findings |
 | #133 | M7 | Rewrite FS.WRITE and fix FAT12 helpers; gate FS.DIR and FS.WRITE (`test-1983-disk-fsdir`/`-disk-fswrite`) |
 | #135 | M7 | Implement DSKFMT/CHOICE (WD2793 format track); gate with `test-1983-disk-dskfmt` |
+| #137 | M7 | Fix MSX2 Nextor storage boot (002Dh reports MSX1 for DOS cartridge compat) |
+| #138 | — | Remove stale 'read-only' references from all docs |
+| #139 | — | Fix: restore Nextor console after MSX2 graphics VDP state |
+| — | — | Change default text mode colors to white-on-blue (INITXT table + BAKCLR) |
 
 ## Issue matrix
 

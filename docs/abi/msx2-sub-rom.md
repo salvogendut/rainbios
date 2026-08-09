@@ -41,12 +41,9 @@ The disk-file transfer entries `BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`
 (`019Dh`/`01A1h`/`01A5h`/`01A9h`) are deliberately left as safe returns. A real
 implementation streams whole files between disk and VRAM/RAM through the DOS
 file API (open/create/set-DTA/random block I/O/close via BDOS), and requires
-the machine to boot a disk system such as Nextor. The RainBIOS MSX2 build
-does not yet boot a cartridge/Nextor storage layer (the Sunrise cartridge is
-found by the boot scan but does not take over on the MSX2 model, unlike the
-NMS 8250 reference), so there is no DOS for these entries to call. Wiring that
-storage boot is separate M6/M7 work; until then the entries stay safe returns,
-mirroring the C-BIOS reference.
+DOS API bindings not yet provided. MSX2 storage boot via Nextor is now gated
+(002Dh reports MSX1 for cartridge DOS compatibility). The entries stay safe
+returns until DOS bindings are implemented, mirroring the C-BIOS reference.
 
 ## VDP command engine
 
