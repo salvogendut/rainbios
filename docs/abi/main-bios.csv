@@ -4,20 +4,20 @@ address,name,kind,status,milestone,notes
 0006,VDP_DR,data,implemented,M0,MSX1 VDP data port (98h). Validated by test_fixed_metadata
 0007,VDP_DW,data,implemented,M0,MSX1 VDP data port (98h). Validated by test_fixed_metadata
 0008,SYNCHR,jump,implemented,M6,RST 08h handler: compares (HL) against the inline expected byte following the RST. Advances return address past the byte on match; returns carry set on mismatch
-000C,RDSLT,jump,partial,M1,Reads primary or expanded slots on all four pages and restores the exact prior primary and secondary selections
+000C,RDSLT,jump,implemented,M1,Reads primary or expanded slots on all four pages and restores the exact prior primary and secondary selections. Verified by test-1983-slot-calls and test-1983-m1
 0010,CHRGTR,jump,implemented,M6,RST 10h handler: gets the next character from the BASIC text at HL, advances HL, and sets carry for digits (0-9) and zero for NUL/colon. Spaces are skipped
-0014,WRSLT,jump,partial,M1,Writes primary or expanded slots on all four pages and restores the exact prior primary and secondary selections
+0014,WRSLT,jump,implemented,M1,Writes primary or expanded slots on all four pages and restores the exact prior primary and secondary selections. Verified by test-1983-slot-calls
 0018,OUTDO,jump,implemented,M6,RST 18h handler: outputs the character in A to the console by delegating to CHPUT. Preserves all caller registers
-001C,CALSLT,jump,partial,M1,Calls page-1/page-2 targets with exact normal inputs in primary or expanded slots; page-0 targets switch through the page-3 CLPRIM helper and page-3 targets in another slot use a return frame in the target's page-3 RAM. Restores both selectors when the target returns
+001C,CALSLT,jump,implemented,M1,Inter-slot call for page-1/2/3 targets with exact normal register inputs and selector restoration. Mapper-compatible with page-2/3 patching for disk kernels. Verified by test-1983-cartridge, test-1983-disk-write, test-1983-nextor
 0020,DCOMPR,jump,implemented,M0,Compares HL with DE preserving both: carry set when HL<DE, zero set when HL==DE, carry clear when HL>DE; preserves BC. Verified by test-1983-abi-clobber
-0024,ENASLT,jump,partial,M1,Supports primary and validated expanded slot IDs on all four pages and updates SLTTBL
+0024,ENASLT,jump,implemented,M1,Enables a slot on a page using primary or expanded slot IDs and updates SLTTBL. Verified by test-1983-cartridge and test-1983-disk-boot
 0028,GETYPR,jump,implemented,M6,Returns carry set with A=0 without a compatible Microsoft BASIC ROM. Full implementation requires DAC and variable-table awareness
 002B,IDBYT1,data,implemented,M0,International (D-M-Y date, PAL 50Hz). Validated by test_fixed_metadata
 002C,IDBYT2,data,implemented,M0,International keyboard, BASIC present. Extension bits (printer, floppy) may be set by system software. Validated by test_fixed_metadata
 002D,VERSION,data,implemented,M0,MSX1 generation identifier (00h). MSX2 build stores 01h. Validated by test_fixed_metadata
-0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs; page-0/page-3 targets follow the CALSLT paths
+0030,CALLF,jump,implemented,M1,Parses inline primary or expanded slot targets in page 1/2 without changing normal register inputs. Page-0/3 targets follow CALSLT paths. Verified by test-1983-disk-abi
 0038,KEYINT,jump,implemented,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY; the VBlank bookkeeping is verified by test-1983-keyint
-003B,INITIO,jump,stub,M1,
+003B,INITIO,jump,implemented,M1,Resets I/O devices to a known state: silences PSG (registers 7-13) and clears STATFL. Lighter than the full cold-boot init
 003E,INIFNK,jump,implemented,M3,Fills FNKSTR with the ten default 16-byte function-key strings (LIST/RUN/LOAD/SAVE/CONT/,LPT1:/TRON/TROFF/KEY LIST/SCREEN 0) without touching FNKFLG; verified by test-1983-inifnk
 0041,DISSCR,jump,implemented,M2,Clears the TMS9918 R1 display-enable bit through the shadowed WRTVDP path
 0044,ENASCR,jump,implemented,M2,Sets the TMS9918 R1 display-enable bit through the shadowed WRTVDP path
@@ -31,7 +31,7 @@ address,name,kind,status,milestone,notes
 005C,LDIRVM,jump,implemented,M2,Copies BC bytes from RAM at HL to VRAM at DE
 005F,CHGMOD,jump,implemented,M2,Dispatches the screen mode in A: 0-3 to the text/graphics inits and 7 to the guarded partial Screen 7 register handoff; unsupported modes return carry set without changing SCRMOD. Verified by test-1983-chgmod
 0062,CHGCLR,jump,implemented,M2,Screen 0 sets R7 to (FORCLR<<4)|BAKCLR; Screens 1-3 set R7 to BDRCLR; Screen 1 also fills its 32-byte color table with (FORCLR<<4)|BAKCLR; the shadow is updated
-0066,NMI,jump,stub,M1,Safe empty NMI return only
+0066,NMI,jump,implemented,M1,Safe NMI handler that returns with RETN, preserving the interrupt state
 0069,CLRSPR,jump,implemented,M2,Returns in Screen 0; otherwise clears the complete 2 KiB sprite pattern table and initializes 32 attributes with Y=209/217 X=0 pattern step 1/4 for 8x8/16x16 and foreground color
 006C,INITXT,jump,implemented,M2,Programs the TMS9918 for 40x24 text while preserving R1 sprite bits, publishes table bases and shadows, clears the name table, and loads the project font
 006F,INIT32,jump,implemented,M2,Programs the TMS9918 for 32x24 Screen 1 while preserving R1 sprite bits, publishes table bases and shadows, clears the tables, and loads the project font
