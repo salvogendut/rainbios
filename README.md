@@ -25,7 +25,8 @@ complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
 - an embedded Z80 BASIC fallback, plus a boot menu whose `START BASIC`,
   `BOOT FLOPPY`, and `BOOT IDE OR SD` choices cover the built-in interpreter,
   an MSX-DOS-style drive-A boot sector, Sunrise IDE, and SD Mapper V2 media;
-- an optional read-only NMS 8250 WD2793 disk extension;
+- an optional NMS 8250 WD2793 disk extension with PHYDIO read/write, DSKCHG,
+  GETDPB, CHOICE/DSKFMT formatting, and FAT12 FS.LOAD/FS.DIR/FS.WRITE services;
 - host, openMSX, and 1983 integration tests built from original fixtures.
 
 ## Current limitations
@@ -120,8 +121,9 @@ at the top of the screen.
 
 ### Disk and storage boot
 
-The optional NMS 8250 extension provides read-only `PHYDIO`, `DSKCHG`,
-`GETDPB`, and a bounded `H.RUNC` boot-sector path. Storage cartridges now enter
+The optional NMS 8250 extension provides `PHYDIO` read and write, `DSKCHG`,
+`GETDPB`, `CHOICE`/`DSKFMT` formatting, FAT12 `FS.LOAD`/`FS.DIR`/`FS.WRITE`,
+and a bounded `H.RUNC` boot-sector path. Storage cartridges now enter
 their standard `INIT`; an installed `H.RUNC` takes the normal cold-boot path,
 including a validated Nextor 2.12 prompt through Sunrise IDE. Menu option 3
 retains RainBIOS's direct ATA/SPI fallback loader. Exact disk-ROM behavior is

@@ -4,7 +4,7 @@
 
 RainBIOS is an independent, open-source firmware project for MSX and MSX2
 computers. The repository currently produces a deliberately incomplete 32 KiB
-MSX1 main BIOS and an optional 16 KiB read-only disk extension for the Philips
+MSX1 main BIOS and an optional 16 KiB disk extension for the Philips
 NMS 8250 WD2793 layout.
 
 The compatibility target is externally visible behavior, not byte identity
@@ -406,7 +406,8 @@ Coverage includes:
 
 - production `H.PHYD` and `DRVINF` registration;
 - invalid drive, media ID, zero count, logical range, and buffer range;
-- valid write rejection with a byte-identical read/write-mounted host image;
+- valid write to a read/write-mounted image with verified persistence;
+- write-protect error 3 on a read-only-mounted image with the image unchanged;
 - an 11-sector read from LBA 8 through LBA 18, crossing side and track;
 - a transfer crossing `BFFFh/C000h` with guard bytes;
 - a direct seek to LBA 731;
@@ -644,14 +645,14 @@ that raw DSK images cannot reach. Real hardware can now be used to confirm that
 the injected polarity assumptions (LINES bit 6 as inverted IRQ) match the NMS
 8250.
 
-The read-only `DSKCHG`/`GETDPB`, floppy bootstrap, Sunrise/SD Mapper direct
-bootstraps, and Sunrise/SD Mapper Nextor paths are complete. The SD path covers
-single-card automatic selection, a dual-card A/B chooser, no-card menu fallback,
-and coexistence with a bootable floppy. Nextor is the primary disk compatibility
-target; broaden versions, adapters, and user-supplied media without downloading
-or bundling a DOS. Other user-supplied systems, filesystem services, floppy
-drive B, formatting, and writes remain separate milestones with their own tests
-and provenance.
+The `DSKCHG`/`GETDPB`, `DSKFMT`/`CHOICE`, FAT12 `FS.LOAD`/`FS.DIR`/`FS.WRITE`,
+floppy bootstrap, Sunrise/SD Mapper direct bootstraps, and Sunrise/SD Mapper
+Nextor paths are complete. The SD path covers single-card automatic selection,
+a dual-card A/B chooser, no-card menu fallback, and coexistence with a bootable
+floppy. Nextor is the primary disk compatibility target; broaden versions,
+adapters, and user-supplied media without downloading or bundling a DOS. Other
+user-supplied systems, floppy drive B, and non-NMS controllers remain separate
+milestones with their own tests and provenance.
 
 Broader project work can instead return to the unfinished M1-M4 items in
 `docs/ROADMAP.md`; do not imply that floppy support makes the main BIOS complete.
@@ -679,7 +680,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tests/cartridges/kbd_probe.asm` | Probe for CHSNS/CHGET/KILBUF and CHGCAP/CHGSND contracts |
 | `tools/run_1983_kbd_probe.py` | 1983 runner validating the keyboard probe markers |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
-| `src/disk_nms8250_driver.asm` | Shared read-only WD2793 PHYDIO implementation |
+| `src/disk_nms8250_driver.asm` | Shared WD2793 PHYDIO read/write, DSKFMT, DSKCHG, GETDPB, and bootstrap implementation |
 | `src/disk_fat12.asm` | FAT12 FS.LOAD, FS.DIR, and FS.WRITE services (BPB parse, directory walk, FAT12 cluster chain) |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
 | `docs/abi/main-bios.csv` | Truthful fixed-entry implementation status |
