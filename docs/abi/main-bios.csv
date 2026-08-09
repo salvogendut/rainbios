@@ -1,20 +1,20 @@
 address,name,kind,status,milestone,notes
 0000,RESET,reset,implemented,M4,Tests primary and expanded slots for RAM and establishes SP=F380h; scans non-BIOS slots for page-1/page-2 AB/INIT cartridges and validated page-1 RBP1 payloads. Entry bytes and metadata checked by test_rom; RAM discovery by test-openmsx-m1; cartridge scanning by test-1983-cartridge/test-1983-external-cartridges; payload state and invalid-payload rejection by test-openmsx-payload-state/test-openmsx-payload-invalid
 0004,CGTABL,data,implemented,M2,Points to the project-owned 8x8 boot font covering printable ASCII and the full MSX international character set 0x80-0xA3
-0006,VDP_DR,data,partial,M0,MSX1 VDP data port
-0007,VDP_DW,data,partial,M0,MSX1 VDP data port
+0006,VDP_DR,data,implemented,M0,MSX1 VDP data port (98h). Validated by test_fixed_metadata
+0007,VDP_DW,data,implemented,M0,MSX1 VDP data port (98h). Validated by test_fixed_metadata
 0008,SYNCHR,jump,implemented,M6,RST 08h handler: compares (HL) against the inline expected byte following the RST. Advances return address past the byte on match; returns carry set on mismatch
 000C,RDSLT,jump,partial,M1,Reads primary or expanded slots on all four pages and restores the exact prior primary and secondary selections
 0010,CHRGTR,jump,implemented,M6,RST 10h handler: gets the next character from the BASIC text at HL, advances HL, and sets carry for digits (0-9) and zero for NUL/colon. Spaces are skipped
 0014,WRSLT,jump,partial,M1,Writes primary or expanded slots on all four pages and restores the exact prior primary and secondary selections
 0018,OUTDO,jump,implemented,M6,RST 18h handler: outputs the character in A to the console by delegating to CHPUT. Preserves all caller registers
 001C,CALSLT,jump,partial,M1,Calls page-1/page-2 targets with exact normal inputs in primary or expanded slots; page-0 targets switch through the page-3 CLPRIM helper and page-3 targets in another slot use a return frame in the target's page-3 RAM. Restores both selectors when the target returns
-0020,DCOMPR,jump,partial,M0,Verified by test-1983-abi-clobber: carry set when HL<DE, zero set when HL==DE, carry clear when HL>DE; preserves BC
+0020,DCOMPR,jump,implemented,M0,Compares HL with DE preserving both: carry set when HL<DE, zero set when HL==DE, carry clear when HL>DE; preserves BC. Verified by test-1983-abi-clobber
 0024,ENASLT,jump,partial,M1,Supports primary and validated expanded slot IDs on all four pages and updates SLTTBL
 0028,GETYPR,jump,implemented,M6,Returns carry set with A=0 without a compatible Microsoft BASIC ROM. Full implementation requires DAC and variable-table awareness
-002B,IDBYT1,data,partial,M0,International D-M-Y 60 Hz
-002C,IDBYT2,data,partial,M0,International keyboard and BASIC identifiers
-002D,VERSION,data,partial,M0,MSX1 generation identifier; the MSX2 build stores 01 here
+002B,IDBYT1,data,implemented,M0,International (D-M-Y date, PAL 50Hz). Validated by test_fixed_metadata
+002C,IDBYT2,data,implemented,M0,International keyboard, BASIC present. Extension bits (printer, floppy) may be set by system software. Validated by test_fixed_metadata
+002D,VERSION,data,implemented,M0,MSX1 generation identifier (00h). MSX2 build stores 01h. Validated by test_fixed_metadata
 0030,CALLF,jump,partial,M1,Parses inline primary or expanded page-1/page-2 targets without changing their normal register inputs; page-0/page-3 targets follow the CALSLT paths
 0038,KEYINT,jump,implemented,M3,Runs H.KEYI then scans keyboard rows and runs VBlank H.TIMI before updating STATFL and JIFFY; the VBlank bookkeeping is verified by test-1983-keyint
 003B,INITIO,jump,stub,M1,
