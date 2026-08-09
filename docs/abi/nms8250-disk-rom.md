@@ -129,6 +129,25 @@ The published 720 KiB F9 layout is:
 The `MAXCLUS` value is `DISK_CLUSTERS + 1`, so DOS stores the true count minus
 one in the FAT, matching the MSX-DOS `DSKCHG`/`GETDPB` usage.
 
+## CHOICE and DSKFMT
+
+### CHOICE (4019h)
+
+Returns HL = 1 (one format choice: default F9 720 KiB geometry). Carry clear,
+A = 0.
+
+### DSKFMT (401Ch)
+
+Formats the entire disk with the fixed F9 geometry (80 tracks, 2 sides,
+9 sectors per side, 512 bytes/sector). Any choice number is accepted. On
+success returns carry clear with A = 0. On failure returns carry set with
+the PHYDIO error code. The WD2793 Format Track command (F0h) writes sector
+headers (track, side, sector number, length code 2) and fills each data
+field with 0xE5.
+
+Low-level format writes depend on the FDC hardware; emulator virtual FDCs
+may not persist format track data to the disk image.
+
 ## FAT12 filesystem services
 
 Three optional inter-slot-call entry points provide FAT12 filesystem operations
@@ -219,7 +238,7 @@ The current component provides:
 - FAT12 filesystem services: FS.LOAD (`4025h`), FS.DIR (`4028h`), and
   FS.WRITE (`402Bh`).
   
-It does not provide formatting, drive B, controllers other than the NMS 8250
+It does not provide drive B, controllers other than the NMS 8250
 memory-mapped WD2793, or a full DOS. The change state is
 synthesized from the WD2793 drive register and controller status rather than a
 mechanical switch, so it cannot distinguish a swapped medium of identical

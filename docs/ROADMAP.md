@@ -565,7 +565,8 @@ timeout and error-mapping branches. `DSKCHG` reports changed, unchanged, and
 unknown states from the WD2793 drive register and status without ever starting
 the motor, and `GETDPB` publishes the fixed F9 DPB without touching the
 controller; both report error 12 for drives other than A and are validated by
-1983 probes with and without a mounted image. Filesystem services, formatting,
+1983 probes with and without a mounted image. Filesystem services and DSKFMT
+formatting are implemented;
 drive B, other floppy controllers, writable media, and real-hardware timing
 validation remain pending; M7 owns the implemented boot-sector paths.
 
@@ -691,8 +692,8 @@ target.
   contract (requires provenance-cleared DOS files);
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
-- filesystem services, formatting, floppy drive B, other controllers, write
-  services, and real-hardware timing validation remain pending.
+- floppy drive B, other controllers, real-hardware timing, and full DOS
+  integration remain pending.
 
 DSKIO now supports writes: the production NMS 8250 disk ROM writes sectors
 through the WD2793 (`A4h`) and persists them to the medium, reporting the
