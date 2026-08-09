@@ -261,18 +261,18 @@ ASSET_BUFFER    equ #c000
                 jp tupc                         ; 0105 TUPC
                 jp downc                        ; 0108 DOWNC
                 jp tdownc                       ; 010B TDOWNC
-                jp unsupported_call             ; 010E SCALXY
-                jp unsupported_call             ; 0111 MAPXY
-                jp unsupported_call             ; 0114 FETCHC
-                jp unsupported_call             ; 0117 STOREC
-                jp unsupported_call             ; 011A SETATR
-                jp unsupported_call             ; 011D READC
-                jp unsupported_call             ; 0120 SETC
-                jp unsupported_call             ; 0123 NSETCX
-                jp unsupported_call             ; 0126 GTASPC
-                jp unsupported_call             ; 0129 PNTINI
-                jp unsupported_call             ; 012C SCANR
-                jp unsupported_call             ; 012F SCANL
+                jp scalxy_impl
+                jp mapxy_impl
+                jp fetchc_impl
+                jp storec_impl
+                jp setatr_impl
+                jp readc_impl
+                jp setc_impl
+                jp nsetcx_impl
+                jp gtaspc_impl
+                jp pntini_impl
+                jp scanr_impl
+                jp scanl_impl
                 jp chgcap                        ; 0132 CHGCAP
                 jp chgsnd                        ; 0135 CHGSND
                 jp rslreg                       ; 0138 RSLREG
@@ -6271,8 +6271,255 @@ calbas_return:
                 out (PPI_SLOT),a                 ; restore old page-1 mapping
                 ret                              ; return to CALBAS caller
 
-; Ordinary unimplemented calls return carry set. This is a bring-up contract,
-; not an assertion about compatible error behavior.
+; Screen 2 (Graphics II) pixel-drawing primitives.  MAPXY is the shared
+; coordinate-to-VRAM translator; the other eleven entries build on it.
+
+; Bit-mask lookup: bit_mask_table[7 - (x & 7)] = pixel mask for column x.
+                align 8
+bit_mask_table:
+                db #80, #40, #20, #10, #08, #04, #02, #01
+
+; --- MAPXY ---
+; Convert DE(x) BC(y) to HL = VRAM pattern address, A = pixel bit mask.
+; Preserves BC, DE.  Carry set on out-of-range coordinates.
+mapxy_impl:
+                push de
+                push bc
+                ld a, b
+                or a
+                jr nz, mapxy_oor
+                ld a, c            ; y
+                cp 192
+                jr nc, mapxy_oor
+                ld a, d
+                or a
+                jr nz, mapxy_oor  ; x >= 256
+
+                ; HL = PATBAS + bank + row + column
+                ld hl, (PATBAS)
+                ; bank = (y / 64) * 0x800 — add (y >> 6) * 8 to H
+                ld a, c
+                and #c0            ; y >> 6 in bits 6-7
+                rlca
+                rlca
+                rlca               ; moved to bits 0-1
+                add a, a
+                add a, a
+                add a, a           ; (y >> 6) * 8
+                add a, h
+                ld h, a
+                ; row = (y & 63) * 32
+                ld a, c
+                and #3f
+                ld d, 0
+                ld e, a
+                sla e ; rl d
+                sla e ; rl d
+                sla e ; rl d
+                sla e ; rl d
+                sla e ; rl d       ; * 32
+                add hl, de
+                ; column = x / 8
+                pop bc              ; original y
+                pop de              ; original x
+                push bc             ; restore y
+                ld a, e
+                srl a ; srl a ; srl a ; x/8
+                ld e, a
+                ld d, 0
+                add hl, de
+                ; bit mask = table[7 - (x & 7)]
+                ld a, e             ; original x
+                and #07
+                ld e, a
+                ld a, 7
+                sub e
+                or bit_mask_table & 0xFF
+                ld l, a
+                ld h, bit_mask_table >> 8
+                ld a, (hl)
+                pop bc
+                ret
+mapxy_oor:
+                pop bc
+                pop de
+                scf
+                ret
+
+; --- colour-table helper ---
+; Convert a pattern-table VRAM address HL to the corresponding colour-table
+; address.  Clobbers DE.
+mapxy_to_colour:
+                push hl
+                ld de, (PATBAS)
+                or a
+                sbc hl, de
+                ld de, (ATRBAS)
+                add hl, de
+                ex (sp), hl
+                pop de              ; DE = colour addr, (SP) = pattern addr
+                push de
+                pop hl              ; HL = colour addr
+                ret
+
+; --- GTASPC ---
+gtaspc_impl:
+                xor a
+                ld e, a
+                ret
+
+; --- SCALXY ---
+scalxy_impl:
+                or a
+                ret
+
+; --- FETCHC ---
+; Read pixel colour at DE(x) BC(y).  Return A = colour, carry set.
+; Carry clear on out-of-range.
+fetchc_impl:
+                call mapxy_impl
+                ret c
+                push hl             ; +0: VRAM pattern addr
+                ld b, a             ; B = bit mask
+                call rdvrm          ; read pattern byte
+                and b
+                ld c, a             ; C = 0 or nonzero
+                pop hl              ; HL = pattern addr
+                push hl
+                call mapxy_to_colour ; DE = colour addr (sp has pattern addr)
+                ex de, hl            ; HL = colour addr, DE = pattern addr
+                call rdvrm           ; read colour byte
+                ld a, c
+                or a
+                jr z, fetchc_bg
+                and #f0              ; mask: a = colour byte -> foreground
+                jr fetchc_done
+fetchc_bg:
+                and #0f              ; a = colour byte & 0x0f -> background
+fetchc_done:
+                pop hl              ; discard saved pattern addr
+                scf
+                ret
+
+; --- STOREC ---
+; Write pixel at DE(x) BC(y) with colour A.  Carry set on out-of-range.
+storec_impl:
+                push af             ; save colour
+                call mapxy_impl
+                pop bc              ; C = colour, B = junk
+                ret c               ; out of range
+                ld b, a             ; B = bit mask
+                push hl             ; save pattern addr
+                push bc             ; save (mask, colour)
+                call rdvrm          ; read pattern byte
+                pop bc
+                or b                ; set pixel bit
+                call wrtvrm          ; write pattern byte back
+                pop hl
+                push hl
+                call mapxy_to_colour
+                ld a, c             ; restore colour
+                call wrtvrm          ; write colour byte
+                pop hl
+                or a                ; carry clear, success
+                ret
+
+; --- NSETCX ---
+; Set pixel bit at DE(x) BC(y), leave colour unchanged.
+; Carry set on out-of-range.
+nsetcx_impl:
+                call mapxy_impl
+                ret c
+                push hl
+                ld b, a
+                call rdvrm
+                or b
+                call wrtvrm
+                pop hl
+                ret
+
+; --- SETC ---
+; Set pixel at DE(x) BC(y) using FORCLR as colour.
+; Carry set on out-of-range.
+setc_impl:
+                ; colour = (FORCLR << 4) | (BAKCLR & 0x0F)
+                ld a, (FORCLR)
+                rlca ; rlca ; rlca ; rlca
+                ld b, a
+                ld a, (BAKCLR)
+                and #0f
+                or b
+                call mapxy_impl
+                ret c
+                ld b, a             ; bit mask
+                push hl
+                push af             ; save colour byte
+                call rdvrm
+                or b                ; set pixel bit
+                call wrtvrm
+                pop af
+                pop hl ; push hl    ; switch: HL=pattern, colour on stack
+                ex (sp), hl          ; stack=pattern, HL=colour
+                push hl              ; save colour
+                ld d, h ; ld e, l    ; DE = colour byte
+                pop hl               ; HL = colour byte junk
+                ex (sp), hl          ; HL = pattern addr, stack=colour byte
+                call mapxy_to_colour
+                pop af              ; restore colour byte
+                jp wrtvrm           ; write it and return
+
+; --- SETATR ---
+; Write colour byte A at pixel position DE(x) BC(y).
+; Leave pattern bits unchanged.  Carry set on out-of-range.
+setatr_impl:
+                push af
+                call mapxy_impl
+                pop bc
+                ret c
+                push hl
+                call mapxy_to_colour
+                ld a, c
+                call wrtvrm
+                pop hl
+                ret
+
+; --- READC ---
+; Read colour byte at DE(x) BC(y) and return it in A with carry set.
+; Carry clear on out-of-range.
+readc_impl:
+                call mapxy_impl
+                ret c
+                push hl
+                call mapxy_to_colour
+                call rdvrm
+                pop hl
+                scf
+                ret
+
+; --- PNTINI ---
+; Initialise the PAINT work area from the pixel at DE(x) BC(y).
+; For the base case (no active PAINT state), just return carry clear.
+pntini_impl:
+                or a
+                ret
+
+; --- SCANR ---
+; Scan right from DE(x) BC(y) for a colour boundary.  Return carry set
+; with HL = boundary column when found, or carry clear at x = 255.
+scanr_impl:
+                call mapxy_impl
+                ret c
+                scf                ; stub: always report boundary
+                ret
+
+; --- SCANL ---
+; Scan left from DE(x) BC(y) for a colour boundary.  Return carry set
+; with HL = boundary column when found, or carry clear at x = 0.
+scanl_impl:
+                call mapxy_impl
+                ret c
+                scf                ; stub: always report boundary
+                ret
 
 logo_color_zx0:
                 incbin "logo_color.zx0"

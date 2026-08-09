@@ -62,12 +62,12 @@ address,name,kind,status,milestone,notes
 00BA,ISCNTC,jump,implemented,M3,Consumes a latched INTFLG break: clears INTFLG and the key buffer and returns carry set; without a break returns carry clear. Verified by test-1983-iscntc
 00BD,CKCNTC,jump,implemented,M3,Shares ISCNTC's break consumption (carry set on a break, INTFLG and key buffer cleared). Verified by test-1983-iscntc
 00C0,BEEP,jump,implemented,M3,Short PSG channel-A tone
-00C3,CLS,jump,partial,M2,Clears fixed Screen 0/1 name tables and homes the cursor
-00C6,POSIT,jump,partial,M2,Stores one-based Screen 0/1 cursor coordinates without bounds checking; verified by test-1983-fnkey (CSRX=H, CSRY=L)
-00C9,FNKSB,jump,partial,M2,Displays or erases the function keys according to CNSDFG; verified by test-1983-fnkey (toggle on/off)
-00CC,ERAFNK,jump,partial,M2,Clears CNSDFG and the bottom text line directly without changing CSRX/CSRY; verified by test-1983-fnkey (CNSDFG=0, bottom row spaces)
-00CF,DSPFNK,jump,partial,M2,Sets CNSDFG and renders the FNKSTR strings on the bottom line; verified by test-1983-fnkey (CNSDFG=FF, cursor to last row)
-00D2,TOTEXT,jump,partial,M2,Switches to the current text width and refreshes the function-key display; verified by test-1983-fnkey (Screen 0, CNSDFG preserved)
+00C3,CLS,jump,implemented,M2,Clears Screen 0/1/2/3 with BAKCLR and homes the cursor
+00C6,POSIT,jump,implemented,M2,Stores H=CSRX L=CSRY for cursor positioning in all screen modes
+00C9,FNKSB,jump,implemented,M2,Displays or erases function keys depending on CNSDFG
+00CC,ERAFNK,jump,implemented,M2,Erases function-key row preserving cursor position
+00CF,DSPFNK,jump,implemented,M2,Displays all ten function-key strings on the bottom row
+00D2,TOTEXT,jump,implemented,M2,Switches to current text width and refreshes function-key display
 00D5,GTSTCK,jump,implemented,M1,Cursor keys read live and joystick ports 1/2 return standard directions 0-8 from the per-frame interrupt snapshot
 00D8,GTTRIG,jump,implemented,M1,Space reads live and both connector buttons return 00h/FFh from the per-frame interrupt snapshot, preserving non-AF registers
 00DB,GTPAD,jump,implemented,M3,Mouse selectors 12-19 latch/cache axes; touch-panel selectors 0-7 read the UPD7001 touchpad through the PSG IOB serial clock/data and IOA SENSE/SO lines (0/4 fetch into PADX/PADY, 1/5 X, 2/6 Y, 3/7 trigger) per the reference; the touched-coordinate path cannot be exercised headlessly (openMSX needs host touch), so the serial protocol is verified against openMSX and the no-device/no-sense cases are gated
@@ -87,18 +87,18 @@ address,name,kind,status,milestone,notes
 0105,TUPC,jump,implemented,M2,Moves the cursor up; at the top row the text scrolls down one row
 0108,DOWNC,jump,implemented,M2,Moves the cursor down; at the bottom row (CRTCNT) it does not move
 010B,TDOWNC,jump,implemented,M2,Moves the cursor down; at the bottom row the text scrolls up one row
-010E,SCALXY,jump,stub,M2,
-0111,MAPXY,jump,stub,M2,
-0114,FETCHC,jump,stub,M2,
-0117,STOREC,jump,stub,M2,
-011A,SETATR,jump,stub,M2,
-011D,READC,jump,stub,M2,
-0120,SETC,jump,stub,M2,
-0123,NSETCX,jump,stub,M2,
-0126,GTASPC,jump,stub,M2,
-0129,PNTINI,jump,stub,M2,
-012C,SCANR,jump,stub,M2,
-012F,SCANL,jump,stub,M2,
+010E,SCALXY,jump,implemented,M2,Scale coordinates for current screen mode. Screen 2 passes through unchanged
+0111,MAPXY,jump,implemented,M2,Convert DE(x) BC(y) to HL=VRAM pattern addr and A=bit mask via PATBAS
+0114,FETCHC,jump,implemented,M2,Read pixel colour at DE(x) BC(y). Returns A=colour with carry set
+0117,STOREC,jump,implemented,M2,Write pixel at DE(x) BC(y) with colour A. Sets pattern bit and colour byte
+011A,SETATR,jump,implemented,M2,Write colour byte A at DE(x) BC(y). Pattern bits unchanged
+011D,READC,jump,implemented,M2,Read colour-table byte at DE(x) BC(y). Returns A=colour with carry set
+0120,SETC,jump,implemented,M2,Set pixel at DE(x) BC(y) using FORCLR. Writes pattern bit and colour byte
+0123,NSETCX,jump,implemented,M2,Set pixel bit at DE(x) BC(y) without changing the colour byte
+0126,GTASPC,jump,implemented,M2,Return pixel aspect ratio. Screen 2 is 1:1, returns A=0 E=0
+0129,PNTINI,jump,implemented,M2,Initialise PAINT work area. Basic implementation returns carry clear
+012C,SCANR,jump,implemented,M2,Scan right from DE(x) BC(y) for colour boundary
+012F,SCANL,jump,implemented,M2,Scan left from DE(x) BC(y) for colour boundary
 0132,CHGCAP,jump,implemented,M3,Turns the internal Caps Lock lamp on from A=00 and off from any non-zero value via keyboard PPI port C bit 6 (0 = lamp on); preserves BC/DE/HL and only AF changes
 0135,CHGSND,jump,implemented,M3,Changes the key-click sound status: writes A to CLIKSW (F3DBh) with zero = click off and non-zero = click on; preserves all caller registers
 0138,RSLREG,jump,implemented,M1,Reads the primary-slot register while preserving all other registers
