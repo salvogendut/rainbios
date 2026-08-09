@@ -124,6 +124,9 @@ DISK_FSDIR_IMAGE := $(BUILD_DIR)/disks/disk-fsdir.dsk
 DISK_FSWRITE_SECTOR := tests/cartridges/disk_fswrite_boot.asm
 DISK_FSWRITE_SECTOR_BIN := $(FIXTURES_DIR)/disk_fswrite_boot.bin
 DISK_FSWRITE_IMAGE := $(BUILD_DIR)/disks/disk-fswrite.dsk
+DISK_DSKFMT_SECTOR := tests/cartridges/disk_dskfmt_boot.asm
+DISK_DSKFMT_SECTOR_BIN := $(FIXTURES_DIR)/disk_dskfmt_boot.bin
+DISK_DSKFMT_IMAGE := $(BUILD_DIR)/disks/disk-dskfmt.dsk
 DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
 DISK_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_boot_sector.bin
 DISK_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_boot_sector.sym
@@ -324,6 +327,8 @@ EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-fsdir.ppm
  EMULATOR_1983_DISK_FSWRITE_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-fswrite.ppm
+ EMULATOR_1983_DISK_DSKFMT_SCREEN := \
+ 	$(EMULATOR_1983_DIR)/disk-dskfmt.ppm
 EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-boot-fallback.ppm
 EMULATOR_1983_DISK_BOOT_MENU_SCREEN := \
@@ -413,7 +418,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-disk-baseline test-1983-disk-boot \
 	test-1983-disk-write test-1983-disk-write-protect \
 	test-1983-disk-fat12 \
-	test-1983-disk-fsdir test-1983-disk-fswrite \
+	test-1983-disk-fsdir test-1983-disk-fswrite test-1983-disk-dskfmt \
 	test-1983-disk-boot-production test-1983-disk-boot-fallback \
 	test-1983-disk-write test-1983-disk-write-protect \
 	test-1983-disk-boot-menu test-1983-disk-menu-stub \
@@ -688,6 +693,13 @@ $(DISK_FSWRITE_SECTOR_BIN): $(DISK_FSWRITE_SECTOR) | $(BUILD_DIR)
 
 $(DISK_FSWRITE_IMAGE): tools/make_fat12_disk.py $(DISK_FSWRITE_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_FSWRITE_SECTOR_BIN) $@
+
+$(DISK_DSKFMT_SECTOR_BIN): $(DISK_DSKFMT_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@
+
+$(DISK_DSKFMT_IMAGE): tools/make_fat12_disk.py $(DISK_DSKFMT_SECTOR_BIN)
+	$(PYTHON) $< --boot-sector $(DISK_DSKFMT_SECTOR_BIN) $@
 
 $(IDE_BOOT_SECTOR_BIN): $(IDE_BOOT_SECTOR) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1858,6 +1870,15 @@ test-1983-disk-fswrite: \
 		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
 		--disk-a "$(DISK_FSWRITE_IMAGE)" \
 		--screenshot "$(EMULATOR_1983_DISK_FSWRITE_SCREEN)"
+
+test-1983-disk-dskfmt: \
+		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_DSKFMT_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_dskfmt.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--disk-a "$(DISK_DSKFMT_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_DISK_DSKFMT_SCREEN)"
 
 test-1983-disk-boot-fallback: $(MSX1_ROM) $(NMS8250_DISK_ROM)
 	mkdir -p $(EMULATOR_1983_DIR)

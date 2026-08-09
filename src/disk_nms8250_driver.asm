@@ -614,6 +614,251 @@ disk_wait_irq_done:
                 or a
                 ret
 
+; Format one track side.  D carries the packed CHS: track in bits 6-0, side in
+; bit 7.  E is ignored.  Returns carry clear with A = 0 on success, or carry set
+; with the public DSKIO error number in A.  Preserves IX.
+disk_format_track:
+                push bc
+                push de
+
+                ; Set track register.
+                ld a, d
+                and #7f
+                ld (FDC_TRACK), a
+
+                ; Set side.
+                xor a
+                bit 7, d
+                jr z, dft_side_set
+                inc a
+dft_side_set:
+                ld (FDC_SIDE), a
+
+                ; Compute ID bytes: H = track, L = side.
+                push de
+                ld a, d
+                and #7f
+                ld h, a
+                ld l, 0
+                bit 7, d
+                jr z, dft_id_side
+                inc l
+dft_id_side:
+
+                ; Write fill byte, then issue Format Track command.
+                ld a, #e5
+                ld (FDC_DATA), a
+                ld a, #f0
+                ld (FDC_COMMAND), a
+
+                ; Wait for initial DRQ.
+                ld bc, #ffff
+dft_wait_drq:
+                ld a, (FDC_LINES)
+                bit 7, a
+                jr z, dft_send
+                bit 6, a
+                jr z, dft_early_irq
+                dec bc
+                ld a, b
+                or c
+                jr nz, dft_wait_drq
+                jp dft_timeout
+
+                ; Send 9 sectors * 4 bytes = 36 bytes of header data.
+dft_send:
+                ld c, 9
+                ld e, 1
+dft_sec_loop:
+                ; Byte 0: track.
+                ld a, h
+                ld (FDC_DATA), a
+                call dft_drq_poll
+                jr c, dft_timeout
+
+                ; Byte 1: side.
+                ld a, l
+                ld (FDC_DATA), a
+                call dft_drq_poll
+                jr c, dft_timeout
+
+                ; Byte 2: sector number.
+                ld a, e
+                ld (FDC_DATA), a
+                call dft_drq_poll
+                jr c, dft_timeout
+
+                ; Byte 3: length code 2 = 512 bytes.
+                ld a, 2
+                ld (FDC_DATA), a
+
+                inc e
+                dec c
+                jr z, dft_wait_complete
+                call dft_drq_poll
+                jr c, dft_timeout
+                jr dft_sec_loop
+
+dft_drq_poll:
+                push bc
+                ld bc, #ffff
+dft_drq_loop:
+                ld a, (FDC_LINES)
+                bit 7, a
+                jr z, dft_drq_ok
+                bit 6, a
+                jr z, dft_drq_early
+                dec bc
+                ld a, b
+                or c
+                jr nz, dft_drq_loop
+                pop bc
+                scf
+                ret
+dft_drq_ok:
+                pop bc
+                or a
+                ret
+dft_drq_early:
+                pop bc
+
+dft_early_irq:
+                ld a, (FDC_STATUS)
+                call disk_map_format_status
+                jr c, dft_exit
+                ld a, 4
+                scf
+                jr dft_exit
+
+dft_wait_complete:
+                ld bc, #ffff
+dft_wait_comp:
+                ld a, (FDC_LINES)
+                bit 6, a
+                jr z, dft_check_status
+                dec bc
+                ld a, b
+                or c
+                jr nz, dft_wait_comp
+
+dft_timeout:
+                ld a, #d0
+                ld (FDC_COMMAND), a
+                ld a, 16
+                scf
+                jr dft_exit
+
+dft_check_status:
+                ld a, (FDC_STATUS)
+                call disk_map_format_status
+
+dft_exit:
+                push af
+                ld a, #d0
+                ld (FDC_COMMAND), a
+                pop af
+                pop de
+                pop de
+                pop bc
+                ret
+
+; Map type-I format status to the public DSKIO error numbers.
+disk_map_format_status:
+                bit 7, a
+                jr nz, dft_not_ready
+                bit 6, a
+                jr nz, dft_protected
+                bit 3, a
+                jr nz, dft_crc
+                and #03
+                jr nz, dft_other
+                xor a
+                ret
+dft_not_ready:
+                ld a, 2
+                scf
+                ret
+dft_protected:
+                ld a, 3
+                scf
+                ret
+dft_crc:
+                ld a, 4
+                scf
+                ret
+dft_other:
+                ld a, 16
+                scf
+                ret
+
+; Choice entry: return the number of format choices.
+; Returns HL = 1 (default F9 720 KiB format).
+disk_choice:
+                ld hl, 1
+                xor a
+                ret
+
+; DSKFMT entry (401Ch).  Format the entire disk using the fixed F9 geometry
+; (80 tracks, 2 sides, 9 sectors per side, 512 bytes/sector).
+; Input:  A = choice (accepted, only choice 1 supported)
+; Returns carry clear with A = 0 on success, or carry set with error code.
+disk_dskfmt:
+                ; Accept any choice number (only one format supported).
+
+                ; Spin up the motor.
+                ld a, #80
+                ld (FDC_DRIVE), a
+                call disk_motor_spinup
+
+                ; Format all 80 tracks, 2 sides each.
+                ld d, 0                  ; track 0, side 0
+disk_fmt_side:
+                push de
+                call disk_seek_track
+                jr c, disk_fmt_seek_err
+                pop de
+                push de
+                call disk_format_track
+                jr c, disk_fmt_err
+                pop de
+
+                ; Next side or track.
+                bit 7, d
+                jr nz, disk_fmt_next_trk
+                set 7, d                ; switch to side 1
+                jr disk_fmt_side
+disk_fmt_next_trk:
+                res 7, d
+                inc d                   ; next track
+                ld a, d
+                cp 80
+                jr c, disk_fmt_side
+
+                ; All done.
+                call disk_motor_arm
+                xor a
+                ret
+
+disk_fmt_seek_err:
+                pop de
+                jr disk_fmt_err_pop
+
+disk_fmt_err:
+                pop de
+disk_fmt_err_pop:
+                push af
+                ld a, #d0
+                ld (FDC_COMMAND), a
+                call disk_motor_arm
+                pop af
+                scf
+                ret
+
+disk_fmt_bad:
+                ld a, 12
+                scf
+                ret
+
 ; DSKCHG entry. A is the drive number, B and C the media descriptors, and HL
 ; the base of the DPB. The medium-change flag is drained from the drive
 ; register and the controller status is probed without starting a command;
