@@ -21,6 +21,7 @@
                 defs #4025-$,#ff
                 jp disk_fs_load                ; 4025 FS.LOAD
                 jp disk_fs_dir                 ; 4028 FS.DIR
+                jp disk_fs_write               ; 402B FS.WRITE
                 defs #4030-$,#ff
 
                 include "disk_nms8250_driver.asm"
