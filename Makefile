@@ -84,6 +84,12 @@ NMS8250_DISK_ROM := $(BUILD_DIR)/rainbios_nms8250_disk.rom
 NMS8250_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_nms8250_disk.sym
 NMS8250_DISK_SOURCES := src/disk_nms8250_rom.asm \
 	src/disk_nms8250_driver.asm \
+	src/disk_driver.asm \
+	src/disk_fat12.asm
+GENERIC_DISK_ROM := $(BUILD_DIR)/rainbios_disk.rom
+GENERIC_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_disk.sym
+GENERIC_DISK_SOURCES := src/disk_rom.asm \
+	src/disk_driver.asm \
 	src/disk_fat12.asm
 DISK_PHYDIO_TEST_ROM := $(BUILD_DIR)/cartridges/disk_phydio_rom.rom
 DISK_PHYDIO_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_phydio_rom.sym
@@ -443,12 +449,14 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
- 	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom \
+ 	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom rainbios-disk-rom \
  	check-manifest check-release clean clean-ancillary
 
 all: $(MSX1_ROM)
 
 nms8250-disk-rom: $(NMS8250_DISK_ROM)
+
+rainbios-disk-rom: $(GENERIC_DISK_ROM)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -500,7 +508,9 @@ RELEASE_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 RELEASE_DIR := $(BUILD_DIR)/release/$(RELEASE_VERSION)
 
 release: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
-		$(MSX1_SYM) $(MSX2_SYM) $(MSX2_SUB_SYM) $(NMS8250_DISK_ROM_SYM)
+		$(GENERIC_DISK_ROM) \
+		$(MSX1_SYM) $(MSX2_SYM) $(MSX2_SUB_SYM) $(NMS8250_DISK_ROM_SYM) \
+		$(GENERIC_DISK_ROM_SYM)
 	$(PYTHON) tools/make_release_bundle.py \
 		--build "$(BUILD_DIR)" --root "$(CURDIR)" \
 		--output "$(RELEASE_DIR)" --version "$(RELEASE_VERSION)"
@@ -555,6 +565,10 @@ $(NMS8250_DISK_ROM_SYM): $(NMS8250_DISK_ROM)
 		$(RASM) $(firstword $(NMS8250_DISK_SOURCES)) -Isrc \
 			-ob $(NMS8250_DISK_ROM) -s -os $@; \
 	fi
+
+$(GENERIC_DISK_ROM): $(GENERIC_DISK_SOURCES) | $(BUILD_DIR)
+	$(RASM) $< -Isrc -ob $(GENERIC_DISK_ROM) \
+		-s -os $(GENERIC_DISK_ROM_SYM)
 
 $(DISK_PHYDIO_TEST_ROM): $(DISK_PHYDIO_TEST_SOURCES) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -759,6 +773,7 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	$(RASM) $< -ob $@
 
 test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
+	$(GENERIC_DISK_ROM) \
 	$(DISK_BOOT_SECTOR_BIN) $(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) \
 	$(VALID_PAYLOAD_CART) release
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
