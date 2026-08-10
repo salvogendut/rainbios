@@ -12,15 +12,15 @@ from tools.run_1983_disk_boot import (
 
 class DiskBootLoaderInputsTests(unittest.TestCase):
     def test_expected_loader_inputs_are_accepted(self) -> None:
-        text = "F3CC: 23 F3 00 00\n"
-        self.assertEqual(parse_loader_inputs(text), {0xF3CC: 0x23, 0xF3CD: 0xF3, 0xF3CE: 0, 0xF3CF: 0})
+        text = "F3CC: 23 F3 68 F3\n"
+        self.assertEqual(parse_loader_inputs(text), {0xF3CC: 0x23, 0xF3CD: 0xF3, 0xF3CE: 0x68, 0xF3CF: 0xF3})
         check_loader_inputs(text)
 
     def test_wrong_hl_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "DISKVE"):
             check_loader_inputs("F3CC: 00 C2 00 00\n")
 
-    def test_nonzero_de_is_rejected(self) -> None:
+    def test_wrong_de_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "ENAKRN"):
             check_loader_inputs("F3CC: 23 F3 34 12\n")
 

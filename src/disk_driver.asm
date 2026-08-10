@@ -959,10 +959,11 @@ disk_boot:
                 ret nz
 disk_boot_go:
                 ld sp,#e000
+                call disk_bdos_install         ; page-3 vectors, safe stack
                 xor a                          ; A = cold-boot flag
                 scf                            ; carry set
                 ld hl,DISKVE                   ; HL = disk-error-handler pointer
-                ld de,0                        ; DE = ENAKRN entry (no kernel yet)
+                ld de,#f368                    ; DE = clean-room ENAKRN entry
                 jp #c01e
 
 ; Install the cold-boot bootstrap hook H_RUNC. Called by the production ROM
