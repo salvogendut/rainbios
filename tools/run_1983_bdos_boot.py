@@ -24,6 +24,7 @@ M_VERSION = 0xF3D0
 M_LOGIN = 0xF3D2
 M_DRIVE = 0xF3D4
 M_PASS = 0xF3D5
+M_INPUT = 0xF3D6
 
 
 def parse_ram(text: str) -> dict[int, int]:
@@ -56,6 +57,15 @@ def validate(
         raise ValueError("CALL 5 GET DEFAULT DRIVE did not return drive A")
     if values.get(M_PASS) != 0x5A:
         raise ValueError("source-built DOS system did not reach its pass marker")
+    if values.get(M_INPUT + 1) != 2:
+        raise ValueError("CALL 5 buffered input did not return two characters")
+    input_bytes = bytes(
+        values.get(M_INPUT + offset, -1) for offset in range(2, 5)
+    )
+    if input_bytes != b"OK\r":
+        raise ValueError(
+            "CALL 5 buffered input did not return OK plus carriage return"
+        )
     expected_pc = symbols.get("disk_bdos_system_pass")
     if expected_pc is None:
         raise ValueError("system symbol file has no pass label")
@@ -95,6 +105,8 @@ def main() -> int:
         "--floppy-mode", "read-only",
         "--headless", "--unthrottled",
         "--exit-after", "1800",
+        "--paste-text", "OK\n",
+        "--paste-at", "200",
         "--dump-state",
         "--dump-ram", "0xF3CC:0x10",
         "--screenshot", str(arguments.screenshot),

@@ -687,10 +687,13 @@ target.
 The clean-room DOS1 layer now also initializes the published communication
 area and DPB, loads a stock `MSXDOS.SYS` through byte-sized random block reads,
 returns the expected `$$INIT` memory boundary, and installs an original
-RainBIOS resident trampoline behind `CALL 0005h`. Unmodified, local-only
-`MSXDOS.SYS` and `COMMAND.COM` inputs reach the `A>` prompt with both the
-RainBIOS MSX1 and MSX2 system ROMs in 1983. The source-built fixture exercises
-the same transition in the committed test matrix without distributing DOS.
+RainBIOS resident trampoline behind `CALL 0005h`. The BDOS console layer
+provides blocking buffered line input, console status, and nonblocking direct
+input, so a compatible local-only `MSXDOS.SYS`/`COMMAND.COM` pair reaches one
+stable `A>` prompt and accepts commands with both the RainBIOS MSX1 and MSX2
+system ROMs in 1983. The source-built fixture exercises the same transition
+and verifies an `OK` input line in the committed test matrix without
+distributing DOS.
 
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
