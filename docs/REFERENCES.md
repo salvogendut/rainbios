@@ -172,16 +172,26 @@ implementation inputs. They remain quarantined under
 
 - Local-only files:
   - `MSXDOS.SYS`, 2,432 bytes, SHA-256
-    `f65e3ac22f0c8eb842e1863fa885aeb8cef4e0ace02efff92e2bb311db2de469`;
-  - `COMMAND.COM`, 6,656 bytes, SHA-256
-    `6d192368235c039579322c623698febc8a77654c39c02f91d632abc5766e3a1d`;
+    `8f2577eec214ce947e74c740c82d4266ff2933978033433d4532385640b47231`;
+  - `COMMAND.COM`, 7,168 bytes, SHA-256
+    `d4c1f030f585af8cae626af07ed5906759547042f109e7116ae2c38654c9b513`;
+  - openMSX `diskmanipulator` DOS1 image containing those files, 737,280
+    bytes, SHA-256
+    `5774322c2c509bdec45a82d6ac006c742a87a8aadda9c9d19e411ec16f39100c`;
   - NMS 8250 Disk ROM, 16,384 bytes, SHA-256
     `26cf5bbdde918cafb4605267dc415528424ed5b5dcd028076bf72157ed5c37cb`.
 - Public interfaces observed: boot-sector transfer registers, fixed Disk-ROM
   entry points, documented DOS communication-area bytes and DPB, CPU register
   state at system/command entry, BDOS function numbers, and rendered output.
 - Purpose: black-box comparison of the RainBIOS floppy boot path through the
-  stock DOS banner and `A>` prompt on both RainBIOS system ROM generations.
+  MSX-DOS 1.8 and COMMAND 1.12 banners, a single stable `A>` prompt, and
+  buffered command input on both RainBIOS system ROM generations.
+- Rejected oracle: a different local pair (`MSXDOS.SYS` SHA-256
+  `f65e3ac22f0c8eb842e1863fa885aeb8cef4e0ace02efff92e2bb311db2de469`,
+  `COMMAND.COM` SHA-256
+  `6d192368235c039579322c623698febc8a77654c39c02f91d632abc5766e3a1d`)
+  repeatedly restarted or corrupted its prompt in both 1983 and openMSX and
+  therefore is not used as compatibility evidence.
 - Distribution: no DOS or vendor ROM bytes are copied into or distributed by
   RainBIOS; the committed equivalent is an independently written fixture.
 - RainBIOS use: observable behavior only. No vendor implementation was

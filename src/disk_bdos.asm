@@ -345,6 +345,10 @@ disk_bdos_dispatch:
                 jp z,disk_bdos_direct_console
                 cp #09
                 jp z,disk_bdos_string_output
+                cp #0a
+                jp z,disk_bdos_buffered_console
+                cp #0b
+                jp z,disk_dos_bios
                 cp #0c
                 jp z,disk_bdos_version
                 cp #0d
@@ -398,6 +402,72 @@ disk_bdos_direct_console:
                 jr z,disk_bdos_direct_input
                 jp disk_dos_console_out
 disk_bdos_direct_input:
+                call disk_dos_bios
+                or a
+                ret z
+                jp disk_dos_console_in
+
+; Read and echo a DOS1/CP/M style buffered command line. DE points at a
+; caller-owned buffer whose first byte is its character capacity; the second
+; byte receives the length excluding the terminating carriage return, and the
+; characters begin at DE+2. The call blocks until Return, as COMMAND.COM
+; requires, and stores a trailing carriage return immediately after the text.
+disk_bdos_buffered_console:
+                push de
+                ld a,(de)
+                ld b,a
+                inc de
+                xor a
+                ld (de),a
+                inc de
+                ex de,hl
+                ld c,0
+disk_bdos_buffered_console_loop:
+                call disk_dos_console_in
+                cp #0d
+                jr z,disk_bdos_buffered_console_done
+                cp #08
+                jr z,disk_bdos_buffered_console_backspace
+                cp #7f
+                jr z,disk_bdos_buffered_console_backspace
+                cp #20
+                jr c,disk_bdos_buffered_console_loop
+                push af
+                ld a,c
+                cp b
+                jr nc,disk_bdos_buffered_console_full
+                pop af
+                ld (hl),a
+                inc hl
+                inc c
+                ld e,a
+                call disk_dos_console_out
+                jr disk_bdos_buffered_console_loop
+disk_bdos_buffered_console_full:
+                pop af
+                jr disk_bdos_buffered_console_loop
+disk_bdos_buffered_console_backspace:
+                ld a,c
+                or a
+                jr z,disk_bdos_buffered_console_loop
+                dec c
+                dec hl
+                ld e,#08
+                call disk_dos_console_out
+                ld e,#20
+                call disk_dos_console_out
+                ld e,#08
+                call disk_dos_console_out
+                jr disk_bdos_buffered_console_loop
+disk_bdos_buffered_console_done:
+                ld (hl),#0d
+                pop hl
+                inc hl
+                ld (hl),c
+                ld e,#0d
+                call disk_dos_console_out
+                ld e,#0a
+                call disk_dos_console_out
                 xor a
                 ret
 
