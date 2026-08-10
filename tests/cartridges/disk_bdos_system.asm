@@ -13,10 +13,27 @@ M_INPUT         equ #f3d6
 DISK_INIT       equ #4030
 DISABLE_KERNEL  equ #f36b
 RUNTIME_ENTRY   equ #ca06
+SCRMOD          equ #fcaf
+LINLEN          equ #f3b0
+CSRY            equ #f3dc
+CSRX            equ #f3dd
 
                 org #0100
 
 disk_bdos_system_start:
+                ld a,(SCRMOD)
+                or a
+                jp nz,disk_bdos_system_fail
+                ld a,(LINLEN)
+                cp 40
+                jp nz,disk_bdos_system_fail
+                ld a,(CSRY)
+                cp 1
+                jp nz,disk_bdos_system_fail
+                ld a,(CSRX)
+                cp 1
+                jp nz,disk_bdos_system_fail
+
                 ld hl,#f1c9
                 call DISK_INIT
                 ld de,#d0d5

@@ -691,9 +691,11 @@ RainBIOS resident trampoline behind `CALL 0005h`. The BDOS console layer
 provides blocking buffered line input, console status, and nonblocking direct
 input, so a compatible local-only `MSXDOS.SYS`/`COMMAND.COM` pair reaches one
 stable `A>` prompt and accepts commands with both the RainBIOS MSX1 and MSX2
-system ROMs in 1983. DOS1 FCB Search First/Search Next enumerate the FAT12 root
+system ROMs in 1983. The cold disk handoff calls `INITXT` before entering the
+boot-sector loader, ensuring DOS inherits a cleared 40-column Screen 0 rather
+than the Graphics II boot logo. DOS1 FCB Search First/Search Next enumerate the FAT12 root
 directory, apply padded 8.3 `?` wildcard matching, skip deleted, volume-label,
-and VFAT long-name entries, and publish the one-based drive byte plus raw
+and VFAT long-name entries, and publish the one-based drive byte plus the
 FAT-derived directory result at the DTA. The source-built fixture exercises the same
 transition, verifies an `OK` input line, and walks a synthetic mixed root
 directory in the committed test matrix without distributing DOS. Search
