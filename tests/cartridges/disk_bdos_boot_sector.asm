@@ -49,7 +49,7 @@ disk_bdos_boot_entry:
                 call BDOS
                 or a
                 jr nz,disk_bdos_boot_fail
-                call #f36b                    ; expose page-1 RAM for DOS
+                call #f368                    ; keep Disk ROM visible for $INIT
                 jp #0100
 
 disk_bdos_boot_fail:

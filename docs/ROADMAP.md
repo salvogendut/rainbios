@@ -684,8 +684,14 @@ bundle or prescribe a DOS. Users supply the system of their choice, while the
 test matrix uses the freely available Nextor as its primary compatibility
 target.
 
-- boot a real MSX-DOS 1 `MSXDOS.SYS`/`COMMAND.COM` disk through the loader
-  contract (requires provenance-cleared DOS files);
+The clean-room DOS1 layer now also initializes the published communication
+area and DPB, loads a stock `MSXDOS.SYS` through byte-sized random block reads,
+returns the expected `$$INIT` memory boundary, and installs an original
+RainBIOS resident trampoline behind `CALL 0005h`. Unmodified, local-only
+`MSXDOS.SYS` and `COMMAND.COM` inputs reach the `A>` prompt with both the
+RainBIOS MSX1 and MSX2 system ROMs in 1983. The source-built fixture exercises
+the same transition in the committed test matrix without distributing DOS.
+
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
 - floppy drive B, other controllers, real-hardware timing, and full DOS

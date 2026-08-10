@@ -56,6 +56,9 @@ DISK_FIRST_DATA equ DISK_FIRST_DIR+DISK_DIR_SIZE
 DISK_CLUSTERS   equ (DISK_SECTORS-DISK_FIRST_DATA)/DISK_CLUSTER_SIZE
 
 disk_driver_init:
+                xor a
+                ld (DISK_MOTOR),a
+                ld (DISK_MOTOR_TIMER),a
                 push iy
                 pop bc
                 ld a,1
@@ -220,6 +223,9 @@ disk_motor_arm:
 ; standard Z80 clock. The controller call runs with interrupts inhibited, so a
 ; bounded instruction delay is used instead of JIFFY.
 disk_motor_spinup:
+                ld a,(DISK_MOTOR)
+                or a
+                ret nz                          ; an armed motor is still at speed
                 push bc
                 push de
                 ld d,2
@@ -959,7 +965,9 @@ disk_boot:
                 ret nz
 disk_boot_go:
                 ld sp,#e000
+                ifdef DISK_HAS_BDOS
                 call disk_bdos_install         ; page-3 vectors, safe stack
+                endif
                 xor a                          ; A = cold-boot flag
                 scf                            ; carry set
                 ld hl,DISKVE                   ; HL = disk-error-handler pointer

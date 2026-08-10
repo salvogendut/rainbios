@@ -9,10 +9,32 @@ M_VERSION       equ #f3d0
 M_LOGIN         equ #f3d2
 M_DRIVE         equ #f3d4
 M_PASS          equ #f3d5
+DISK_INIT       equ #4030
+DISABLE_KERNEL  equ #f36b
+RUNTIME_ENTRY   equ #ca06
 
                 org #0100
 
 disk_bdos_system_start:
+                ld hl,#f1c9
+                call DISK_INIT
+                ld de,#d0d5
+                or a
+                sbc hl,de
+                jr nz,disk_bdos_system_fail
+
+                call DISABLE_KERNEL
+                ld hl,RUNTIME_ENTRY
+                ld (#0006),hl
+                ld a,(RUNTIME_ENTRY)
+                cp #c3
+                jr nz,disk_bdos_system_fail
+                ld hl,(RUNTIME_ENTRY+1)
+                ld de,#f37d
+                or a
+                sbc hl,de
+                jr nz,disk_bdos_system_fail
+
                 ld c,#0c                     ; GET VERSION
                 call #0005
                 ld (M_VERSION),hl

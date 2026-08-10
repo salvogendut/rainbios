@@ -168,6 +168,25 @@ directory and metadata filenames only. Their source and documentation are not
 implementation inputs. They remain quarantined under
 `docs/DEVELOPMENT_POLICY.md`.
 
+## 2026-08-10 — Opaque MSX-DOS 1 compatibility inputs
+
+- Local-only files:
+  - `MSXDOS.SYS`, 2,432 bytes, SHA-256
+    `f65e3ac22f0c8eb842e1863fa885aeb8cef4e0ace02efff92e2bb311db2de469`;
+  - `COMMAND.COM`, 6,656 bytes, SHA-256
+    `6d192368235c039579322c623698febc8a77654c39c02f91d632abc5766e3a1d`;
+  - NMS 8250 Disk ROM, 16,384 bytes, SHA-256
+    `26cf5bbdde918cafb4605267dc415528424ed5b5dcd028076bf72157ed5c37cb`.
+- Public interfaces observed: boot-sector transfer registers, fixed Disk-ROM
+  entry points, documented DOS communication-area bytes and DPB, CPU register
+  state at system/command entry, BDOS function numbers, and rendered output.
+- Purpose: black-box comparison of the RainBIOS floppy boot path through the
+  stock DOS banner and `A>` prompt on both RainBIOS system ROM generations.
+- Distribution: no DOS or vendor ROM bytes are copied into or distributed by
+  RainBIOS; the committed equivalent is an independently written fixture.
+- RainBIOS use: observable behavior only. No vendor implementation was
+  disassembled, copied, or used as a source-code input.
+
 ## 2026-07-30 — 1983 emulator
 
 - Project: adjacent open-source `1983` MSX/MSX2 emulator

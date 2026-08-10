@@ -36,7 +36,9 @@ complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
   touch-panel, paddle, printer, graphics, and filesystem services remain
   pending;
 - Sunrise IDE and SD Mapper V2 compatibility boot a local Nextor 2.12 system
-  image in 1983; a provenance-cleared MSX-DOS 1 system remains pending;
+  image in 1983; the floppy extension also boots user-supplied, unmodified
+  MSX-DOS 1 `MSXDOS.SYS` and `COMMAND.COM` files through its clean-room BDOS
+  compatibility layer;
 - real-hardware timing and compatibility validation remain in progress.
 
 ## Build
@@ -122,7 +124,9 @@ at the top of the screen.
 
 The optional NMS 8250 extension provides `PHYDIO` read and write, `DSKCHG`,
 `GETDPB`, `CHOICE`/`DSKFMT` formatting, FAT12 `FS.LOAD`/`FS.DIR`/`FS.WRITE`,
-and a bounded `H.RUNC` boot-sector path. Storage cartridges now enter
+the DOS1 communication-area/DPB state and resident `CALL 0005h` gate needed
+by stock MSX-DOS 1, and a bounded `H.RUNC` boot-sector path. Storage
+cartridges now enter
 their standard `INIT`; an installed `H.RUNC` takes the normal cold-boot path,
 including a validated Nextor 2.12 prompt through Sunrise IDE. Menu option 3
 retains RainBIOS's direct ATA/SPI fallback loader. Exact disk-ROM behavior is

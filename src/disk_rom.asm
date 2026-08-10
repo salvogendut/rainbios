@@ -8,6 +8,8 @@
 ; The driver defaults to the NMS 8250 WD2793 memory window at #7ff8 but can
 ; be redirected to any address by defining FDC_BASE before inclusion.
 
+DISK_HAS_BDOS           equ 1
+
                 org #4000
 
                 db #41,#42                     ; AB signature
@@ -98,7 +100,7 @@ disk_rom_init:
 
                 defs #56d0-$,#ff
                 jp disk_bdos_dispatch_l         ; 56D0 $$DISP
-                jp disk_dos_runtime_init        ; 56D3 FUNCTI fallback
+                jp disk_bdos_dispatch           ; 56D3 FUNCTI
                 defs #576f-$,#ff
                 jp disk_dos_runtime_init        ; 576F $$INIT
 

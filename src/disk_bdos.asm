@@ -18,11 +18,12 @@ RAMAD0                  equ #f341
 RAMAD1                  equ #f342
 SLTTBL                  equ #fcc5
 
-DOS_DTA                 equ #f000
+DOS_DTA                 equ #f23d
 DOS_FILE_SIZE           equ #f002
 DOS_OPEN_FCB            equ #f004
 DOS_PAGE0_RAM           equ #f006
-DOS_DEFAULT_DRIVE       equ #f007
+DOS_DEFAULT_DRIVE       equ #f247
+DOS_MSDOS_DRIVE         equ #f306
 DOS_REQUEST_RECORDS     equ #f008
 DOS_RECORD_SIZE         equ #f00a
 DOS_BYTE_OFFSET         equ #f00c
@@ -32,21 +33,34 @@ DOS_TRANSFER_STATUS     equ #f012
 DOS_BIOS_PRIMARY        equ #f013
 DOS_IRQ_PRIMARY         equ #f014
 DOS_CALL_PRIMARY        equ #f015
+DOS_RUNTIME_ACTIVE      equ #f016
+DOS_DPB                 equ #f197
+DOS_KERNEL_WORK_START   equ #d361
+DOS_FAT_BUFFER          equ #e565
+DOS_REBOOT              equ #f340
 DOS_ROM_SLOT            equ #f348
 DOS_SYSTEM_BOTTOM       equ #f34b
+DOS_BOOTED              equ #f346
+DOS_DRIVE_COUNT         equ #f347
+DOS_WORK_START          equ #f349
+DOS_CURRENT_DPB         equ #f353
+DOS_DPB_LIST            equ #f355
+; The DOS1 1.x resident dispatcher target installed behind CALL 0005h.
+DOS_RUNTIME_ENTRY       equ #ca06
 
 DOS_PAGE3_STUBS         equ #f100
 DOS_PAGE1_ENABLE        equ DOS_PAGE3_STUBS
 DOS_PAGE1_DISABLE       equ DOS_PAGE3_STUBS+(disk_bdos_page3_disable_source-disk_bdos_page3_stubs_source)
 DOS_PAGE1_XFER          equ DOS_PAGE3_STUBS+(disk_bdos_page3_xfer_source-disk_bdos_page3_stubs_source)
+DOS_PAGE1_COPY          equ DOS_PAGE3_STUBS+(disk_bdos_page3_copy_source-disk_bdos_page3_stubs_source)
 DOS_BDOS_GATE           equ DOS_PAGE3_STUBS+(disk_bdos_page3_bdos_source-disk_bdos_page3_stubs_source)
 DOS_IRQ_GATE            equ DOS_PAGE3_STUBS+(disk_bdos_page3_interrupt_source-disk_bdos_page3_stubs_source)
 DOS_IRQ_RETURN          equ DOS_PAGE3_STUBS+(disk_bdos_page3_interrupt_return_source-disk_bdos_page3_stubs_source)
 DOS_PAGE1_SELECT        equ DOS_PAGE3_STUBS+(disk_bdos_page3_select_source-disk_bdos_page3_stubs_source)
 
 DOS_WORK                equ #c200
-DOS_STAGE               equ #ca20
-DOS_STAGE_LIMIT         equ #f000
+DOS_STAGE               equ #8000
+DOS_STAGE_LIMIT         equ #c000
 FCB_CURRENT_BLOCK       equ 12
 FCB_RECORD_SIZE         equ 14
 FCB_FILE_SIZE           equ 16
@@ -98,12 +112,54 @@ disk_bdos_install:
                 xor a
                 ld (DOS_PAGE0_RAM),a
                 ld (DOS_DEFAULT_DRIVE),a
-                ld hl,#c000
+                ld (DOS_MSDOS_DRIVE),a
+                ld (DOS_RUNTIME_ACTIVE),a
+                ld (DOS_REBOOT),a
+                ld a,#eb
+                ld (DOS_BOOTED),a
+                ld a,4
+                ld (DOS_DRIVE_COUNT),a
+                xor a
+                ld (DOS_DPB),a
+                ld hl,disk_dpb
+                ld de,DOS_DPB+1
+                ld bc,18
+                ldir
+                ld hl,DOS_FAT_BUFFER
+                ld (DOS_DPB+19),hl
+                ld hl,DOS_KERNEL_WORK_START
+                ld (DOS_WORK_START),hl
+                ld hl,0
+                ld (DOS_CURRENT_DPB),hl
+                ld hl,DOS_DPB
+                ld (DOS_DPB_LIST),hl
+                ld hl,#d0d5
                 ld (DOS_SYSTEM_BOTTOM),hl
                 ret
 
 disk_dos_init:
+                call disk_bdos_runtime_entry_install
+                ld a,1
+                ld (DOS_RUNTIME_ACTIVE),a
                 ld hl,(DOS_SYSTEM_BOTTOM)
+                ret
+
+disk_bdos_runtime_entry_install:
+                ; MSXDOS.SYS clears its resident range after $$INIT and then
+                ; loads COMMAND.COM through RDBLK. Reinstall this original
+                ; RainBIOS trampoline after each completed block read so the
+                ; final CALL 0005h vector has a live page-3 target.
+                push hl
+                push de
+                ld hl,DOS_RUNTIME_ENTRY
+                ld (hl),#c3
+                inc hl
+                ld de,BDOS_ENTRY
+                ld (hl),e
+                inc hl
+                ld (hl),d
+                pop de
+                pop hl
                 ret
 
 disk_dos_bios:
@@ -178,10 +234,24 @@ disk_bdos_page3_xfer_source:
                 call DOS_PAGE1_DISABLE
                 jp (hl)
 
+; Copy a block from page 3 into page-1 RAM while this routine remains safely
+; resident in page 3. Restore the Disk ROM before returning to its caller.
+disk_bdos_page3_copy_source:
+                call DOS_PAGE1_DISABLE
+                ldir
+                call DOS_PAGE1_ENABLE
+                ret
+
 disk_bdos_page3_bdos_source:
                 call DOS_PAGE1_ENABLE
                 call disk_bdos_dispatch
+                push af
+                ld a,(DOS_RUNTIME_ACTIVE)
+                or a
+                jr z,disk_bdos_page3_bdos_return_source
                 call DOS_PAGE1_DISABLE
+disk_bdos_page3_bdos_return_source:
+                pop af
                 ret
 
 ; DOS replaces page 0 with RAM, including the IM 1 vector at 0038h.  The
@@ -350,6 +420,7 @@ disk_bdos_version:
 disk_bdos_disk_reset:
                 xor a
                 ld (DOS_DEFAULT_DRIVE),a
+                ld (DOS_MSDOS_DRIVE),a
                 ld hl,#0080
                 ld (DOS_DTA),hl
                 ret
@@ -359,6 +430,7 @@ disk_bdos_select_disk:
                 or a
                 jp nz,disk_bdos_fail
                 ld (DOS_DEFAULT_DRIVE),a
+                ld (DOS_MSDOS_DRIVE),a
                 ret
 
 disk_bdos_default_drive:
@@ -383,7 +455,7 @@ disk_bdos_allocation:
                 ld bc,DISK_SECTOR_SIZE
                 ld de,DISK_CLUSTERS
                 ld hl,DISK_CLUSTERS
-                ld ix,disk_dpb-1
+                ld ix,DOS_DPB
                 ld iy,0
                 ret
 
@@ -564,7 +636,7 @@ disk_bdos_random_partial:
                 ld bc,(DOS_RECORD_SIZE)
                 ex de,hl                        ; DE = complete records
                 call disk_bdos_multiply16
-                jr c,disk_bdos_random_fail_pop
+                jp c,disk_bdos_random_fail_pop
                 ld (DOS_TRANSFER_BYTES),hl
                 ld a,1
                 ld (DOS_TRANSFER_STATUS),a
@@ -578,7 +650,7 @@ disk_bdos_random_copy:
                 add hl,bc
                 ld a,h
                 cp #f0
-                jr nc,disk_bdos_random_fail_source
+                jp nc,disk_bdos_random_fail_source
                 pop hl
                 ld de,(DOS_DTA)
                 ld a,b
@@ -588,7 +660,7 @@ disk_bdos_random_copy:
                 cp #40
                 jr c,disk_bdos_random_page0
                 cp #80
-                jr c,disk_bdos_random_fail_pop ; page 1 is resident ROM
+                jr c,disk_bdos_random_page1
                 jr disk_bdos_random_copy_now
 disk_bdos_random_page0:
                 push hl
@@ -609,6 +681,22 @@ disk_bdos_random_page0:
                 pop bc
                 pop de
                 pop hl
+                jr disk_bdos_random_copy_now
+disk_bdos_random_page1:
+                push hl
+                push de
+                push bc
+                ex de,hl                       ; HL = page-1 destination
+                add hl,bc
+                dec hl                         ; last byte must remain in page 1
+                ld a,h
+                cp #80
+                jr nc,disk_bdos_random_fail_page1
+                pop bc
+                pop de
+                pop hl
+                call DOS_PAGE1_COPY
+                jr disk_bdos_random_update
 disk_bdos_random_copy_now:
                 ldir
 
@@ -631,10 +719,14 @@ disk_bdos_random_update:
                 jr nc,disk_bdos_random_no_carry
                 inc (hl)
 disk_bdos_random_no_carry:
+                call disk_bdos_runtime_entry_install
                 ld de,(DOS_OPEN_FCB)
                 ld hl,(DOS_TRANSFER_RECORDS)
                 ld a,(DOS_TRANSFER_STATUS)
-                pop de                          ; restore the caller's FCB pointer
+                pop iy                          ; fixed kernel ABI returns FCB in IY
+                ld ix,DOS_DPB
+                ld de,0                         ; fixed kernel RDBLK return ABI
+                cp a                            ; publish the completed-read flags
                 ret
 disk_bdos_random_fail_record:
                 pop de
@@ -644,10 +736,17 @@ disk_bdos_random_fail_page0:
                 pop de
                 pop hl
                 jr disk_bdos_random_fail_pop
+disk_bdos_random_fail_page1:
+                pop bc
+                pop de
+                pop hl
+                jr disk_bdos_random_fail_pop
 disk_bdos_random_fail_source:
                 pop hl
 disk_bdos_random_fail_pop:
-                pop de
+                pop iy
+                ld ix,DOS_DPB
+                ld de,0
                 ld hl,0
                 ld a,1
                 ret
@@ -767,6 +866,8 @@ disk_bdos_prepare_page0:
                 ret
 
 disk_bdos_find_first:
+                ld a,#ff
+                ret
 disk_bdos_find_next:
                 ld a,#ff
                 ret
