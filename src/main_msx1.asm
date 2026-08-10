@@ -119,6 +119,7 @@ SD_INIT_TRIES   equ #f30b
 APP_CART_PRESENT equ #f30c
 RAMAD0          equ #f341
 MAPPER_SEGMENTS equ #f345
+VRAM_KB         equ #f346
 H_PHYD          equ #ffa7
 H_FORM          equ #ffac
 H_ISFL          equ #fedf
@@ -2298,6 +2299,178 @@ cold_boot_render_logo_color_block:
                 jr nz,cold_boot_render_logo_color_block
                 ret
 
+; Render RAM and VRAM counters on the boot logo overlay in Screen 2.
+; Uses graphics_put_character which writes glyphs from ROM to VRAM pattern
+; table (row*256+col*8 layout).
+cold_boot_show_memory:
+                ; Switch to Screen 1 context for CHPUT.
+                ld a,1
+                ld (SCRMOD),a
+                ; Set color table 2000h-2003h to white(15) on dark blue(4).
+                ld hl,#2000
+                di
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                or #40
+                out (VDP_CONTROL),a
+                ld a,#f4
+                out (VDP_DATA),a
+                out (VDP_DATA),a
+                out (VDP_DATA),a
+                out (VDP_DATA),a
+                ei
+                ; Probe VRAM size.  MSX1 (TMS9918) = 16 KB.
+                ld a,16
+                IFDEF MSX2
+                ld b,64
+                call cold_boot_probe_vram
+                ENDIF
+                ld (VRAM_KB),a
+                ; Compute RAM KB from MAPPER_SEGMENTS.
+                ld a,(MAPPER_SEGMENTS)
+                ld l,a
+                ld h,0
+                dec a
+                jr z,cbm_no_mapper
+                add hl,hl
+                add hl,hl
+                add hl,hl
+                add hl,hl
+                push hl
+                pop bc
+                jr cbm_got_ram
+cbm_no_mapper:
+                ld bc,64
+cbm_got_ram:
+                ; Position cursor at row 14, col 4.
+                ld a,14
+                ld (CSRY),a
+                ld a,4
+                ld (CSRX),a
+                ; Print "RAM: ".
+                ld e,'R'; call chput
+                ld e,'A'; call chput
+                ld e,'M'; call chput
+                ld e,':'; call chput
+                ld e,' '; call chput
+                ; Print RAM KB number.
+                call cb_print_num
+                ; Print "K  VRAM: ".
+                ld e,'K'; call chput
+                ld e,' '; call chput
+                ld e,' '; call chput
+                ld e,'V'; call chput
+                ld e,'R'; call chput
+                ld e,'A'; call chput
+                ld e,'M'; call chput
+                ld e,':'; call chput
+                ld e,' '; call chput
+                ; Print VRAM KB.
+                ld a,(VRAM_KB)
+                ld c,a
+                ld b,0
+                call cb_print_num
+                ; Print final "K".
+                ld e,'K'; call chput
+                ret
+
+; Print 16-bit BC as decimal at cursor (via CHPUT).
+cb_print_num:
+                push bc
+                ld de,-10000
+                call cbp_digit
+                ld de,-1000
+                call cbp_digit
+                ld de,-100
+                call cbp_digit
+                ld de,-10
+                call cbp_digit
+                ld de,-1
+                call cbp_digit
+                pop bc
+                ret
+cbp_digit:
+                xor a
+cbp_loop:
+                inc a
+                ex de,hl
+                add hl,bc
+                ex de,hl
+                jr c,cbp_loop
+                dec a
+                ex de,hl
+                or a
+                sbc hl,bc
+                ld b,h
+                ld c,l
+                ex de,hl
+                push bc
+                add a,'0'
+                ld e,a
+                call chput
+                pop bc
+                ret
+
+                IFDEF MSX2
+; Probe VRAM size for V9938: write distinct bytes at bank 0 and bank 1
+; (same 14-bit offset), then read back.  If banks alias → 64 KB,
+; otherwise → 128 KB.  Returns VRAM KB in A.
+cold_boot_probe_vram:
+                ; Save test bytes.
+                ld e,b          ; E = 64 (test byte for bank 0)
+                ld d,b
+                inc d           ; D = 65 (test byte for bank 1)
+
+                ; Write E to bank 0, address 0x0000.
+                xor a
+                ld b,0
+                ld c,14
+                call wrtvdp_v9938        ; R14 = 0
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#40
+                out (VDP_CONTROL),a       ; set write addr 0x0000
+                ld a,e
+                out (VDP_DATA),a           ; write E
+
+                ; Write D to bank 1, same address.
+                ld b,1
+                ld c,14
+                call wrtvdp_v9938          ; R14 = 1
+                xor a
+                out (VDP_CONTROL),a
+                ld a,#40
+                out (VDP_CONTROL),a
+                ld a,d
+                out (VDP_DATA),a           ; write D
+
+                ; Read back from bank 0.
+                xor a
+                ld b,0
+                ld c,14
+                call wrtvdp_v9938          ; R14 = 0
+                xor a
+                out (VDP_CONTROL),a
+                out (VDP_CONTROL),a        ; read addr 0x0000 (bit6=0)
+                in a,(VDP_DATA)            ; read byte
+
+                ; Restore R14 = 0.
+                ld b,0
+                ld c,14
+                call wrtvdp_v9938
+
+                ; If read-back equals E, banks are independent → 128 KB.
+                cp e
+                jr z,cpvr_128
+                ld a,64
+                ret
+cpvr_128:
+                ld a,128
+                ret
+                ENDIF
+
 cold_boot_render_options:
                 di                              ; VDP control pairs must be atomic
                 xor a
@@ -2374,6 +2547,7 @@ cold_boot_render_options_name_block:
                 ld a,#81
                 out (VDP_CONTROL),a
                 ei
+                call cold_boot_show_memory
                 ret
 
 cold_boot_select_internal_payload_impl:
