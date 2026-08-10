@@ -6,6 +6,7 @@
 
 H_PHYD          equ #ffa7
 DRVINF          equ #fb21
+BIOS_INITXT     equ #006c
 
 ; A test shell may define H_RUNC before including this driver. Production
 ; builds use the public cold-boot bootstrap hook address.
@@ -965,6 +966,12 @@ disk_boot:
                 ret nz
 disk_boot_go:
                 ld sp,#e000
+                ; The boot UI leaves the VDP in Graphics II mode. A DOS1
+                ; loader inherits the firmware display state, so establish
+                ; and clear the standard 40-column text screen before the
+                ; cold-boot transfer instead of leaving COMMAND.COM to write
+                ; over the retained RainBIOS logo.
+                call BIOS_INITXT
                 ifdef DISK_HAS_BDOS
                 call disk_bdos_install         ; page-3 vectors, safe stack
                 endif

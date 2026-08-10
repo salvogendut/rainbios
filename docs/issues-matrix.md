@@ -55,6 +55,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #137 | M7 | Fix MSX2 Nextor storage boot (002Dh reports MSX1 for DOS cartridge compat) |
 | #138 | — | Remove stale 'read-only' references from all docs |
 | #139 | — | Fix: restore Nextor console after MSX2 graphics VDP state |
+| #147 | M7 | Clear the RainBIOS logo before DOS startup |
 | — | — | Change default text mode colors to white-on-blue (INITXT table + BAKCLR) |
 
 ## Issue matrix

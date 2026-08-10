@@ -1862,7 +1862,8 @@ test-1983-disk-boot-production: \
 		--disk-a "$(DISK_BOOT_IMAGE)" --floppy-mode read-only \
 		--screenshot "$(EMULATOR_1983_DISK_BOOT_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
-		--size 640x480 $(EMULATOR_1983_DISK_BOOT_SCREEN)
+		--size 640x480 --min-colors 1 --max-colors 1 \
+		$(EMULATOR_1983_DISK_BOOT_SCREEN)
 
 test-1983-disk-bdos-msx1: $(MSX1_ROM) $(NMS8250_DISK_ROM) \
 		$(DISK_BDOS_IMAGE) $(DISK_BDOS_SYSTEM_SYM)
