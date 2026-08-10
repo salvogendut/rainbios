@@ -447,7 +447,10 @@ disk_fs_error_20:
 ;
 ; Returns carry clear, A = 0, BC = bytes written (entries * 32).
 ; Carry set propagates a PHYDIO error.
-FS_D_SECTOR     equ 18
+; FS.DIR owns the shared FS_L_REMAIN byte while it runs. Do not place this at
+; FS_L_CURDIR (18): doing so aliases the root-sector LBA and turns the first
+; read into a FAT-sector read when the remaining-sector count is decremented.
+FS_D_SECTOR     equ FS_L_REMAIN
 
 disk_fs_dir:
                 or a
@@ -503,10 +506,10 @@ dfd_dirsz:
                 ld (ix+FS_D_SECTOR), a
 
                 ; First directory sector = reserved + FATCNT * FATSZ.
-                ld e, (ix+FS_DIR+FS_RESERVED)
-                ld d, (ix+FS_DIR+FS_RESERVED+1)
-                ld l, (ix+FS_DIR+FS_FAT_SIZE)
-                ld h, (ix+FS_DIR+FS_FAT_SIZE+1)
+                ld e, (ix+FS_DIR+FS_FAT_SIZE)
+                ld d, (ix+FS_DIR+FS_FAT_SIZE+1)
+                ld l, (ix+FS_DIR+FS_RESERVED)
+                ld h, (ix+FS_DIR+FS_RESERVED+1)
                 ld b, (ix+FS_DIR+FS_FAT_COUNT)
 dfd_first:
                 add hl, de
@@ -598,9 +601,9 @@ dfd_copy:
                 ld (ix+FS_L_CLUSTER+1), h
 
                 pop hl                   ; HL = entry addr (pre-copy)
-                ld de, 32
-                add hl, de                     ; HL += 32
 dfd_next:
+                ld de, 32
+                add hl, de               ; advance copied, deleted, or skipped entry
                 dec b
                 jr nz, dfd_entry
                 jp dfd_sector              ; next directory sector
@@ -611,11 +614,16 @@ dfd_ret:
                 ld b, h
                 ld c, l                    ; BC = entries written
                 ; Multiply BC by 32.
-                sla c ; rl b
-                sla c ; rl b
-                sla c ; rl b
-                sla c ; rl b
-                sla c ; rl b               ; BC = bytes written
+                sla c
+                rl b
+                sla c
+                rl b
+                sla c
+                rl b
+                sla c
+                rl b
+                sla c
+                rl b                       ; BC = bytes written
                 xor a
                 ret
 

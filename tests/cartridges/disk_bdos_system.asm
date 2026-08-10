@@ -92,6 +92,75 @@ disk_bdos_system_start:
                 cp #0d
                 jp nz,disk_bdos_system_fail
 
+                ld de,disk_bdos_find_dta
+                ld c,#1a                     ; SET DTA
+                call #0005
+                ld de,disk_bdos_find_all_fcb
+                ld c,#11                     ; SEARCH FIRST
+                call #0005
+                or a
+                jp nz,disk_bdos_system_fail
+                ld a,h
+                or l
+                jp nz,disk_bdos_system_fail
+                ld a,b
+                or c
+                jp nz,disk_bdos_system_fail
+                ld de,disk_bdos_name_msxdos
+                call disk_bdos_expect_dta_name
+                jp nz,disk_bdos_system_fail
+                ld a,(disk_bdos_find_dta+15)
+                cp (disk_bdos_system_end-disk_bdos_system_start+127)>>7
+                jp nz,disk_bdos_system_fail
+
+                ld de,disk_bdos_find_all_fcb
+                ld c,#12                     ; SEARCH NEXT
+                call #0005
+                or a
+                jp nz,disk_bdos_system_fail
+                ld a,h
+                or l
+                jp nz,disk_bdos_system_fail
+                ld a,b
+                or c
+                jp nz,disk_bdos_system_fail
+                ld de,disk_bdos_name_command
+                call disk_bdos_expect_dta_name
+                jp nz,disk_bdos_system_fail
+
+                ld de,disk_bdos_find_all_fcb
+                ld c,#12                     ; END OF SEARCH
+                call #0005
+                cp #ff
+                jp nz,disk_bdos_system_fail
+                ld a,h
+                or a
+                jp nz,disk_bdos_system_fail
+                ld a,l
+                cp #ff
+                jp nz,disk_bdos_system_fail
+                ld a,b
+                or c
+                jp nz,disk_bdos_system_fail
+                ld de,disk_bdos_name_command ; failed search preserves DTA
+                call disk_bdos_expect_dta_name
+                jp nz,disk_bdos_system_fail
+
+                ld de,disk_bdos_find_command_fcb
+                ld c,#11                     ; C???????.COM wildcard
+                call #0005
+                or a
+                jp nz,disk_bdos_system_fail
+                ld a,h
+                or l
+                jp nz,disk_bdos_system_fail
+                ld a,b
+                or c
+                jp nz,disk_bdos_system_fail
+                ld de,disk_bdos_name_command
+                call disk_bdos_expect_dta_name
+                jp nz,disk_bdos_system_fail
+
                 ld a,#5a
                 ld (M_PASS),a
 disk_bdos_system_pass:
@@ -101,3 +170,33 @@ disk_bdos_system_fail:
                 xor a
                 ld (M_PASS),a
                 jr disk_bdos_system_fail
+
+disk_bdos_expect_dta_name:
+                ld hl,disk_bdos_find_dta
+                ld a,(hl)
+                cp 1                         ; DOS1 one-based drive A
+                ret nz
+                inc hl
+                ld b,11
+disk_bdos_expect_dta_name_loop:
+                ld a,(de)
+                cp (hl)
+                ret nz
+                inc de
+                inc hl
+                djnz disk_bdos_expect_dta_name_loop
+                ret
+
+disk_bdos_find_all_fcb:
+                db 0,"???????????"
+                defs 24,0
+disk_bdos_find_command_fcb:
+                db 0,"C???????COM"
+                defs 24,0
+disk_bdos_find_dta:
+                defs 33,0
+disk_bdos_name_msxdos:
+                db "MSXDOS  SYS"
+disk_bdos_name_command:
+                db "COMMAND COM"
+disk_bdos_system_end:

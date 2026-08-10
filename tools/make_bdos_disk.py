@@ -19,6 +19,26 @@ FIRST_DIRECTORY = RESERVED + FAT_COUNT * FAT_SIZE
 FIRST_DATA = FIRST_DIRECTORY + ROOT_SECTORS
 MEDIA = 0xF9
 FILE_NAME = b"MSXDOS  SYS"
+COMMAND_NAME = b"COMMAND COM"
+VOLUME_NAME = b"RAINBIOS   "
+
+
+def write_directory_entry(
+    image: bytearray,
+    index: int,
+    name: bytes,
+    *,
+    attributes: int = 0,
+    cluster: int = 0,
+    size: int = 0,
+) -> None:
+    if len(name) != 11:
+        raise ValueError("FAT directory name must contain exactly 11 bytes")
+    offset = FIRST_DIRECTORY * SECTOR_SIZE + index * 32
+    image[offset : offset + 11] = name
+    image[offset + 11] = attributes
+    image[offset + 26 : offset + 28] = cluster.to_bytes(2, "little")
+    image[offset + 28 : offset + 32] = size.to_bytes(4, "little")
 
 
 def set_fat12(fat: bytearray, cluster: int, value: int) -> None:
@@ -53,11 +73,26 @@ def make_image(boot_sector: bytes, system_file: bytes) -> bytes:
         start = (RESERVED + copy * FAT_SIZE) * SECTOR_SIZE
         image[start : start + len(fat)] = fat
 
-    directory = FIRST_DIRECTORY * SECTOR_SIZE
-    image[directory : directory + 11] = FILE_NAME
-    image[directory + 11] = 0
-    image[directory + 26 : directory + 28] = (2).to_bytes(2, "little")
-    image[directory + 28 : directory + 32] = len(system_file).to_bytes(4, "little")
+    # Exercise DOS1 directory filtering without distributing vendor data.
+    # Search First must skip the volume label and VFAT long-name entry;
+    # FS.DIR itself omits the deleted slot. The two ordinary entries then
+    # exercise Search First, Search Next, end-of-search, and exact wildcards.
+    write_directory_entry(image, 0, VOLUME_NAME, attributes=0x08)
+    write_directory_entry(image, 1, bytes((0xE5,)) + b"ELETED TXT")
+    write_directory_entry(
+        image, 2, bytes((0x41,)) + b"LONGNAME  ", attributes=0x0F
+    )
+    for index in range(3, 11):
+        write_directory_entry(
+            image,
+            index,
+            f"FILTER{index:05d}".encode("ascii"),
+            attributes=0x08,
+        )
+    write_directory_entry(
+        image, 11, FILE_NAME, cluster=2, size=len(system_file)
+    )
+    write_directory_entry(image, 12, COMMAND_NAME)
 
     data = FIRST_DATA * SECTOR_SIZE
     image[data : data + len(system_file)] = system_file

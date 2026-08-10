@@ -34,6 +34,11 @@ DOS_BIOS_PRIMARY        equ #f013
 DOS_IRQ_PRIMARY         equ #f014
 DOS_CALL_PRIMARY        equ #f015
 DOS_RUNTIME_ACTIVE      equ #f016
+DOS_FIND_ACTIVE         equ #f018
+DOS_FIND_NEXT           equ #f019
+DOS_FIND_END            equ #f01b
+DOS_FIND_PATTERN        equ #f01d
+DOS_FIND_FCB            equ #f028
 DOS_DPB                 equ #f197
 DOS_KERNEL_WORK_START   equ #d361
 DOS_FAT_BUFFER          equ #e565
@@ -61,6 +66,12 @@ DOS_PAGE1_SELECT        equ DOS_PAGE3_STUBS+(disk_bdos_page3_select_source-disk_
 DOS_WORK                equ #c200
 DOS_STAGE               equ #8000
 DOS_STAGE_LIMIT         equ #c000
+; Runtime FCB searches must not use DOS_WORK/DOS_STAGE: those boot-time
+; buffers live in the transient program area and would overwrite COMMAND.COM
+; or another caller. The private search work and 112-entry snapshot fit in
+; RainBIOS's reserved high-memory range below DOS_FAT_BUFFER.
+DOS_FIND_WORK           equ DOS_KERNEL_WORK_START
+DOS_FIND_STAGE          equ #d580
 FCB_CURRENT_BLOCK       equ 12
 FCB_RECORD_SIZE         equ 14
 FCB_FILE_SIZE           equ 16
@@ -114,6 +125,7 @@ disk_bdos_install:
                 ld (DOS_DEFAULT_DRIVE),a
                 ld (DOS_MSDOS_DRIVE),a
                 ld (DOS_RUNTIME_ACTIVE),a
+                ld (DOS_FIND_ACTIVE),a
                 ld (DOS_REBOOT),a
                 ld a,#eb
                 ld (DOS_BOOTED),a
@@ -491,6 +503,7 @@ disk_bdos_disk_reset:
                 xor a
                 ld (DOS_DEFAULT_DRIVE),a
                 ld (DOS_MSDOS_DRIVE),a
+                ld (DOS_FIND_ACTIVE),a
                 ld hl,#0080
                 ld (DOS_DTA),hl
                 ret
@@ -936,8 +949,222 @@ disk_bdos_prepare_page0:
                 ret
 
 disk_bdos_find_first:
-                ld a,#ff
-                ret
+                xor a
+                ld (DOS_FIND_ACTIVE),a
+                ld (DOS_FIND_FCB),de
+
+                ; FCB drive 0 (or 80h as emitted by COMMAND.COM) means the
+                ; current drive; 1 means A:. RainBIOS presently exposes only
+                ; drive A, so all other values fail without touching the DTA.
+                ld a,(de)
+                and #7f
+                jr z,disk_bdos_find_default_drive
+                cp 1
+                jp nz,disk_bdos_find_fail
+                jr disk_bdos_find_copy_pattern
+disk_bdos_find_default_drive:
+                ld a,(DOS_DEFAULT_DRIVE)
+                or a
+                jp nz,disk_bdos_find_fail
+
+disk_bdos_find_copy_pattern:
+                inc de
+                ex de,hl
+                ld de,DOS_FIND_PATTERN
+                ld bc,11
+                ldir
+
+                ; Stage the complete FAT12 root directory once. Search Next
+                ; advances through this snapshot, matching DOS1's stateful
+                ; SFIRST/SNEXT interface without repeating host I/O.
+                ld hl,DOS_FIND_STAGE
+                ld bc,#0e00                  ; 112 FAT12 root entries
+                ld de,DOS_FIND_WORK
+                xor a
+                call disk_fs_dir
+                jp c,disk_bdos_find_fail
+                ld hl,DOS_FIND_STAGE
+                ld (DOS_FIND_NEXT),hl
+                add hl,bc
+                ld (DOS_FIND_END),hl
+                ld a,1
+                ld (DOS_FIND_ACTIVE),a
+                jp disk_bdos_find_scan
+
 disk_bdos_find_next:
+                ld a,(DOS_FIND_ACTIVE)
+                or a
+                jp z,disk_bdos_find_fail
+
+disk_bdos_find_scan:
+                ld hl,(DOS_FIND_NEXT)
+                ld de,(DOS_FIND_END)
+                or a
+                sbc hl,de
+                jp nc,disk_bdos_find_exhausted
+
+                ld hl,(DOS_FIND_NEXT)
+                push hl
+                ld de,32
+                add hl,de
+                ld (DOS_FIND_NEXT),hl
+                pop hl
+
+                ; FS.DIR already omits deleted entries. Keep the defensive
+                ; checks here because this is the public DOS boundary, then
+                ; reject volume labels, VFAT long-name entries, and entries
+                ; carrying reserved high attribute bits. Directories remain
+                ; enumerable, as DOS DIR expects.
+                ld a,(hl)
+                or a
+                jp z,disk_bdos_find_exhausted
+                cp #e5
+                jr z,disk_bdos_find_scan
+                push hl
+                ld de,11
+                add hl,de
+                ld a,(hl)
+                pop hl
+                and #c8
+                jr nz,disk_bdos_find_scan
+
+                ; DOS1 FCB wildcards are represented by '?' in the padded
+                ; 8.3 name. Accept lower-case callers as a convenience while
+                ; comparing against the upper-case FAT entry.
+                push hl
+                ld de,DOS_FIND_PATTERN
+                ld b,11
+disk_bdos_find_match:
+                ld a,(de)
+                cp '?'
+                jr z,disk_bdos_find_match_char
+                cp 'a'
+                jr c,disk_bdos_find_match_exact
+                cp 'z'+1
+                jr nc,disk_bdos_find_match_exact
+                sub #20
+disk_bdos_find_match_exact:
+                cp (hl)
+                jr nz,disk_bdos_find_mismatch
+disk_bdos_find_match_char:
+                inc hl
+                inc de
+                djnz disk_bdos_find_match
+                pop hl
+                jp disk_bdos_find_publish
+disk_bdos_find_mismatch:
+                pop hl
+                jr disk_bdos_find_scan
+
+disk_bdos_find_publish:
+                ; DOS1 publishes a one-based drive byte followed by the raw
+                ; 32-byte FAT-derived directory result. Build it in page-3 work
+                ; RAM first so a rejected DTA leaves caller memory unchanged.
+                ld a,1
+                ld (DOS_FIND_WORK),a
+                ld de,DOS_FIND_WORK+1
+                ld bc,32
+                ldir
+                call disk_bdos_find_set_record_count
+
+                ld hl,DOS_FIND_WORK
+                ld de,(DOS_DTA)
+                ld bc,33
+                ld a,d
+                cp #40
+                jr c,disk_bdos_find_publish_page0
+                cp #80
+                jr c,disk_bdos_find_publish_page1
+                cp #ff
+                jr nz,disk_bdos_find_publish_direct
+                ld a,e
+                cp #e0
+                jr nc,disk_bdos_find_fail
+disk_bdos_find_publish_direct:
+                ldir
+                jr disk_bdos_find_success
+
+disk_bdos_find_publish_page0:
+                ld a,d
+                cp #3f
+                jr nz,disk_bdos_find_publish_page0_ok
+                ld a,e
+                cp #e0
+                jr nc,disk_bdos_find_fail
+disk_bdos_find_publish_page0_ok:
+                push hl
+                push de
+                push bc
+                call disk_bdos_prepare_page0
+                pop bc
+                pop de
+                pop hl
+                ldir
+                jr disk_bdos_find_success
+
+disk_bdos_find_publish_page1:
+                ld a,d
+                cp #7f
+                jr nz,disk_bdos_find_publish_page1_ok
+                ld a,e
+                cp #e0
+                jr nc,disk_bdos_find_fail
+disk_bdos_find_publish_page1_ok:
+                call DOS_PAGE1_COPY
+disk_bdos_find_success:
+                ; DOS1 mirrors the byte result in HL and leaves DE pointing
+                ; at FCB+15. COMMAND.COM consumes the HL result even though
+                ; the documented Search interface foregrounds A.
+                ld de,(DOS_FIND_FCB)
+                ld hl,15
+                add hl,de
+                ex de,hl
+                ld ix,DOS_DPB
+                ld bc,0
+                ld hl,0
+                xor a
+                ret
+
+disk_bdos_find_exhausted:
+                xor a
+                ld (DOS_FIND_ACTIVE),a
+disk_bdos_find_fail:
+                ld de,(DOS_FIND_FCB)
+                ld hl,15
+                add hl,de
+                ex de,hl
+                ld ix,DOS_DPB
+                ld bc,0
                 ld a,#ff
+                ld hl,#00ff
+                ret
+
+; DOS1's observable search record derives byte 14 of the 32-byte directory
+; result (DTA+15 after the drive byte) from the file size: it is the number of
+; 128-byte records in the first extent, rounded up and saturated at 80h.
+disk_bdos_find_set_record_count:
+                ld hl,DOS_FIND_WORK+31         ; file-size bytes 2 and 3
+                ld a,(hl)
+                inc hl
+                or (hl)
+                jr nz,disk_bdos_find_record_full
+                ld hl,(DOS_FIND_WORK+29)       ; file-size bytes 0 and 1
+                ld de,#4000
+                or a
+                sbc hl,de
+                jr nc,disk_bdos_find_record_full
+                ld hl,(DOS_FIND_WORK+29)
+                ld de,127
+                add hl,de
+                ld b,7
+disk_bdos_find_record_shift:
+                srl h
+                rr l
+                djnz disk_bdos_find_record_shift
+                ld a,l
+                jr disk_bdos_find_record_store
+disk_bdos_find_record_full:
+                ld a,#80
+disk_bdos_find_record_store:
+                ld (DOS_FIND_WORK+15),a
                 ret
