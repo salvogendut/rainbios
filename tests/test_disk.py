@@ -283,10 +283,12 @@ class DiskRomLayoutTests(unittest.TestCase):
             code,  # LD HL,disk_dpb
         )
 
-    def test_choice_reports_no_format_options(self) -> None:
+    def test_choice_reports_the_default_f9_format(self) -> None:
         self.assertEqual(self.rom[0x19], 0xC3)
         target = int.from_bytes(self.rom[0x1A:0x1C], "little") - 0x4000
-        self.assertEqual(self.rom[target : target + 4], bytes((0x21, 0, 0, 0xC9)))
+        self.assertEqual(
+            self.rom[target : target + 5], bytes((0x21, 1, 0, 0xAF, 0xC9))
+        )
 
     def test_unused_tail_is_erased(self) -> None:
         self.assertEqual(self.rom[-256:], bytes((0xFF,)) * 256)

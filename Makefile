@@ -85,12 +85,14 @@ NMS8250_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_nms8250_disk.sym
 NMS8250_DISK_SOURCES := src/disk_nms8250_rom.asm \
 	src/disk_nms8250_driver.asm \
 	src/disk_driver.asm \
-	src/disk_fat12.asm
+	src/disk_fat12.asm \
+	src/disk_bdos.asm
 GENERIC_DISK_ROM := $(BUILD_DIR)/rainbios_disk.rom
 GENERIC_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_disk.sym
 GENERIC_DISK_SOURCES := src/disk_rom.asm \
 	src/disk_driver.asm \
-	src/disk_fat12.asm
+	src/disk_fat12.asm \
+	src/disk_bdos.asm
 DISK_PHYDIO_TEST_ROM := $(BUILD_DIR)/cartridges/disk_phydio_rom.rom
 DISK_PHYDIO_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_phydio_rom.sym
 DISK_PHYDIO_TEST_SOURCES := tests/cartridges/disk_phydio_rom.asm \
@@ -137,6 +139,13 @@ DISK_BOOT_SECTOR := tests/cartridges/disk_boot_sector.asm
 DISK_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_boot_sector.bin
 DISK_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_boot_sector.sym
 DISK_BOOT_IMAGE := $(BUILD_DIR)/disks/disk-boot.dsk
+DISK_BDOS_BOOT_SECTOR := tests/cartridges/disk_bdos_boot_sector.asm
+DISK_BDOS_BOOT_SECTOR_BIN := $(FIXTURES_DIR)/disk_bdos_boot_sector.bin
+DISK_BDOS_BOOT_SECTOR_SYM := $(FIXTURES_DIR)/disk_bdos_boot_sector.sym
+DISK_BDOS_SYSTEM := tests/cartridges/disk_bdos_system.asm
+DISK_BDOS_SYSTEM_BIN := $(FIXTURES_DIR)/disk_bdos_system.bin
+DISK_BDOS_SYSTEM_SYM := $(FIXTURES_DIR)/disk_bdos_system.sym
+DISK_BDOS_IMAGE := $(BUILD_DIR)/disks/disk-bdos.dsk
 DISK_WRITE_SECTOR := tests/cartridges/disk_write_sector.asm
 DISK_WRITE_SECTOR_BIN := $(FIXTURES_DIR)/disk_write_sector.bin
 DISK_WRITE_SECTOR_SYM := $(FIXTURES_DIR)/disk_write_sector.sym
@@ -422,6 +431,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
 	test-1983-disk-baseline test-1983-disk-boot \
+	test-1983-disk-bdos \
 	test-1983-disk-write test-1983-disk-write-protect \
 	test-1983-disk-fat12 \
 	test-1983-disk-fsdir test-1983-disk-fswrite test-1983-disk-dskfmt \
@@ -679,6 +689,19 @@ $(DISK_BOOT_SECTOR_SYM): $(DISK_BOOT_SECTOR_BIN)
 
 $(DISK_BOOT_IMAGE): tools/make_boot_disk.py $(DISK_BOOT_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_BOOT_SECTOR_BIN) $@
+
+$(DISK_BDOS_BOOT_SECTOR_BIN): $(DISK_BDOS_BOOT_SECTOR) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_BDOS_BOOT_SECTOR_SYM)
+
+$(DISK_BDOS_SYSTEM_BIN): $(DISK_BDOS_SYSTEM) | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $@ -s -os $(DISK_BDOS_SYSTEM_SYM)
+
+$(DISK_BDOS_IMAGE): tools/make_bdos_disk.py $(DISK_BDOS_BOOT_SECTOR_BIN) \
+		$(DISK_BDOS_SYSTEM_BIN)
+	$(PYTHON) $< --boot-sector $(DISK_BDOS_BOOT_SECTOR_BIN) \
+		--system $(DISK_BDOS_SYSTEM_BIN) $@
 
 $(DISK_WRITE_SECTOR_BIN): $(DISK_WRITE_SECTOR) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1840,6 +1863,27 @@ test-1983-disk-boot-production: \
 		--screenshot "$(EMULATOR_1983_DISK_BOOT_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_DISK_BOOT_SCREEN)
+
+test-1983-disk-bdos-msx1: $(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(DISK_BDOS_IMAGE) $(DISK_BDOS_SYSTEM_SYM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bdos_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--disk-a "$(DISK_BDOS_IMAGE)" --symbols "$(DISK_BDOS_SYSTEM_SYM)" \
+		--screenshot "$(EMULATOR_1983_DIR)/disk-bdos-msx1.ppm"
+
+test-1983-disk-bdos-msx2: $(MSX2_ROM) $(MSX2_SUB_ROM) \
+		$(NMS8250_DISK_ROM) $(DISK_BDOS_IMAGE) $(DISK_BDOS_SYSTEM_SYM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bdos_boot.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" --disk-a "$(DISK_BDOS_IMAGE)" \
+		--symbols "$(DISK_BDOS_SYSTEM_SYM)" \
+		--screenshot "$(EMULATOR_1983_DIR)/disk-bdos-msx2.ppm"
+
+test-1983-disk-bdos: test-1983-disk-bdos-msx1 test-1983-disk-bdos-msx2
 
 test-1983-disk-write: \
 		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(DISK_WRITE_IMAGE)

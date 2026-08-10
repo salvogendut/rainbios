@@ -23,7 +23,7 @@ RAM_RE = re.compile(r"^([0-9A-F]{4}):(.*)$", re.MULTILINE)
 LOADER_HL = 0xF3CC
 LOADER_DE = 0xF3CE
 EXPECTED_LOADER_HL = 0xF323
-EXPECTED_LOADER_DE = 0x0000
+EXPECTED_LOADER_DE = 0xF368
 
 
 def parse_loader_inputs(text: str) -> dict[int, int]:

@@ -1,8 +1,8 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
-; Test shell for the production NMS 8250 read-only driver. It installs a
-; bootstrap hook, exercises parameter/write errors, then verifies multi-sector
-; reads across side, track, and RAM-page boundaries.
+; Test shell for the production NMS 8250 driver on read-only media. It
+; installs a bootstrap hook, exercises parameter/write errors, then verifies
+; multi-sector reads across side, track, and RAM-page boundaries.
 
 PHYDIO          equ #0144
 H_RUNC          equ #fecb
@@ -115,7 +115,7 @@ disk_phydio_test_run:
                 or a
                 jp nz,disk_phydio_fail_buffer
 
-                ; Valid writes are rejected before issuing an FDC command.
+                ; Valid writes against read-only media report write protect.
                 xor a
                 ld b,1
                 ld c,#f9
@@ -124,7 +124,7 @@ disk_phydio_test_run:
                 scf
                 call PHYDIO
                 jp nc,disk_phydio_fail_write
-                or a
+                cp 3
                 jp nz,disk_phydio_fail_write
                 ld a,b
                 or a
