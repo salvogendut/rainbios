@@ -182,7 +182,12 @@ implementation inputs. They remain quarantined under
     `26cf5bbdde918cafb4605267dc415528424ed5b5dcd028076bf72157ed5c37cb`.
 - Public interfaces observed: boot-sector transfer registers, fixed Disk-ROM
   entry points, documented DOS communication-area bytes and DPB, CPU register
-  state at system/command entry, BDOS function numbers, and rendered output.
+  state at system/command entry, BDOS function numbers, rendered output, and
+  the black-box Search First/Search Next result contract: `A=00h` with a
+  one-based drive byte plus the 32-byte FAT-derived directory result at the
+  DTA (including the rounded-up 128-byte record count in result byte 15), then
+  `A=FFh` at end with the DTA unchanged. The returned status is mirrored in
+  `HL` (`0000h` or `00FFh`), `DE` points to FCB+15, and `BC` is zero.
 - Purpose: black-box comparison of the RainBIOS floppy boot path through the
   MSX-DOS 1.8 and COMMAND 1.12 banners, a single stable `A>` prompt, and
   buffered command input on both RainBIOS system ROM generations.

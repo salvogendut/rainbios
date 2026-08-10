@@ -185,7 +185,7 @@ make test-1983 \
 | `test-1983-disk-baseline` | Safe default disk-hook behavior |
 | `test-1983-disk-boot` | Test disk-ROM bootstrap hook |
 | `test-1983-disk-boot-production` | Production ROM loads a two-sector boot fixture; the fixture captures the loader inputs (HL=DISKVE F323h, DE=ENAKRN 0) at the C000h+1Eh contract |
-| `test-1983-disk-bdos` | Source-built DOS1 loader/system fixture on both RainBIOS MSX1 and MSX2: standard communication state, page-1 loading, `$$INIT`, the resident `CA06h` to `F37Dh` CALL-5 gate, version/login/default-drive calls, and blocking buffered console input driven by scripted `OK` plus Return |
+| `test-1983-disk-bdos` | Source-built DOS1 loader/system fixture on both RainBIOS MSX1 and MSX2: standard communication state, page-1 loading, `$$INIT`, the resident `CA06h` to `F37Dh` CALL-5 gate, version/login/default-drive calls, blocking buffered console input driven by scripted `OK` plus Return, and FCB Search First/Search Next over a root containing enough volume/deleted/LFN entries to exercise the 16-bit FS.DIR count before exact and wildcard matches |
 | `test-1983-disk-write` | DSKIO write path: a fixture writes a deterministic 512-byte pattern to logical sector 2 and the host byte-verifies the image |
 | `test-1983-disk-write-protect` | DSKIO write-protect: the same write against a read-only image reports error 3 and leaves the image untouched |
 | `test-1983-disk-boot-fallback` | Empty/non-bootable media returns to the menu |

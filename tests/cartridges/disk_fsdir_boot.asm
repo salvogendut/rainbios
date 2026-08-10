@@ -58,9 +58,11 @@ disk_fsdir_entry:
                 ld (M_ENTRIES_HI),a
 
                 ; BC should be 32 (one entry)
-                dec bc
                 ld a,b
-                or c
+                or a
+                jr nz,disk_fsdir_size_fail
+                ld a,c
+                cp 32
                 jr nz,disk_fsdir_size_fail     ; BC != 32
 
                 ; Verify entry name: "RAIN    BIN"
@@ -118,14 +120,17 @@ disk_fsdir_entry:
 disk_fsdir_name_fail:
 disk_fsdir_cluster_fail:
 disk_fsdir_size_fail:
-                jr disk_fsdir_done
+                xor a
+                ld (M_PASS),a
+                jr disk_fsdir_spin
 disk_fsdir_error:
                 ld (M_ERROR),a
                 ld a,1
                 ld (M_CARRY),a
-                jr disk_fsdir_done
+                xor a
+                ld (M_PASS),a
+                jr disk_fsdir_spin
 disk_fsdir_pass:
-disk_fsdir_done:
                 ld a,#5a
                 ld (M_PASS),a
 disk_fsdir_spin:

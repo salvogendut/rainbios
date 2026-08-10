@@ -691,9 +691,15 @@ RainBIOS resident trampoline behind `CALL 0005h`. The BDOS console layer
 provides blocking buffered line input, console status, and nonblocking direct
 input, so a compatible local-only `MSXDOS.SYS`/`COMMAND.COM` pair reaches one
 stable `A>` prompt and accepts commands with both the RainBIOS MSX1 and MSX2
-system ROMs in 1983. The source-built fixture exercises the same transition
-and verifies an `OK` input line in the committed test matrix without
-distributing DOS.
+system ROMs in 1983. DOS1 FCB Search First/Search Next enumerate the FAT12 root
+directory, apply padded 8.3 `?` wildcard matching, skip deleted, volume-label,
+and VFAT long-name entries, and publish the one-based drive byte plus raw
+FAT-derived directory result at the DTA. The source-built fixture exercises the same
+transition, verifies an `OK` input line, and walks a synthetic mixed root
+directory in the committed test matrix without distributing DOS. Search
+sector scratch and the root snapshot live in the reserved high-memory DOS work
+region rather than the transient program area, so a search cannot overwrite
+COMMAND.COM's code or return address.
 
 - validate Sunrise and SD Mapper timing, card initialization, and electrical
   behavior on real hardware;
@@ -721,7 +727,10 @@ free directory slot, allocates a free cluster from the FAT, writes data via
 PHYDIO, updates both FAT copies, and commits the directory entry. All three
 services use the single CALSLT inter-slot-call discipline; the closed-form
 byte pattern for FS.LOAD is verified across all cluster boundaries from the
-loaded destination buffer.
+loaded destination buffer. The DOS1 enumeration gate additionally verifies
+FS.DIR's BPB-derived `reserved + FAT-count * FAT-size` root-sector calculation
+and its full 16-bit byte count; the older single-entry fixture now fails
+closed on name, cluster, or size mismatches.
 
 The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
 fixture pass label with the cartridge mapped in page 1 (slot `F8`), and
