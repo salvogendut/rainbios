@@ -256,6 +256,11 @@ class DiskRomLayoutTests(unittest.TestCase):
     def test_standard_dskio_entry_is_a_jump(self) -> None:
         self.assertEqual(self.rom[0x10], 0xC3)
 
+    def test_init_preserves_an_existing_disk_system_master(self) -> None:
+        init = int.from_bytes(self.rom[2:4], "little") - 0x4000
+        # LD A,(DEVICE) ; OR A ; JP NZ,disk_driver_init_slave
+        self.assertEqual(self.rom[init : init + 5], b"\x3a\x99\xfd\xb7\xc2")
+
     def test_dskchg_and_getdpb_entries_are_jumps(self) -> None:
         for offset in (0x13, 0x16):
             self.assertEqual(self.rom[offset], 0xC3)

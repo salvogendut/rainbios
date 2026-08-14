@@ -46,8 +46,11 @@ def validate_disk_baseline_state(
     symbols: dict[str, int],
     expected_slot: str = "F4",
     expected_pass_label: str = "disk_baseline_pass",
+    minimum_sp: int = 0xF080,
 ) -> dict[str, str]:
-    fields = validate_cartridge_state(text, expected_slot=expected_slot)
+    fields = validate_cartridge_state(
+        text, expected_slot=expected_slot, minimum_sp=minimum_sp
+    )
     try:
         pc = int(fields["pc"], 16)
     except (KeyError, ValueError) as error:
@@ -76,6 +79,9 @@ def main() -> int:
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
     parser.add_argument("--expected-slot", default="F4")
     parser.add_argument("--expected-pass-label", default="disk_baseline_pass")
+    parser.add_argument(
+        "--minimum-sp", type=lambda value: int(value, 0), default=0xF080
+    )
     parser.add_argument("--disk-rom", type=pathlib.Path)
     parser.add_argument("--disk-a", type=pathlib.Path)
     parser.add_argument("--floppy-mode", default="read-only")
@@ -140,6 +146,7 @@ def main() -> int:
             symbols=symbols,
             expected_slot=arguments.expected_slot,
             expected_pass_label=arguments.expected_pass_label,
+            minimum_sp=arguments.minimum_sp,
         )
     except ValueError as error:
         print(f"error: invalid 1983 disk baseline state: {error}", file=sys.stderr)

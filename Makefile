@@ -17,6 +17,7 @@ NEXTOR_SYS ?= ../1983/DOS/NEXTOR.SYS
 NEXTOR_COMMAND ?= ../1983/DOS/COMMAND2.COM
 CBIOS_SUB_ROM ?= ../cbios-0.29a/roms/cbios_sub.rom
 GEOBENCH_IMAGE ?= ../geobench/QA/GBMSX.IMG
+GEOBENCH_FLOPPY ?= ../geobench/QA/MSX/Floppies/GEOBENCH.DSK
 OPENMSX_GEOBENCH_CAPTURE_TIME ?= 15
 
 BUILD_DIR := build
@@ -122,6 +123,10 @@ DISK_PRODUCTION_INIT_CART := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.rom
 DISK_PRODUCTION_INIT_CART_SYM := \
 	$(BUILD_DIR)/cartridges/disk_production_init_input.sym
+DISK_PRODUCTION_SLAVE_CART := \
+	$(BUILD_DIR)/cartridges/disk_production_slave_input.rom
+DISK_PRODUCTION_SLAVE_CART_SYM := \
+	$(BUILD_DIR)/cartridges/disk_production_slave_input.sym
 DISK_FAT12_SECTOR := tests/cartridges/disk_fat12_boot.asm
 DISK_FAT12_SECTOR_BIN := $(FIXTURES_DIR)/disk_fat12_boot.bin
 DISK_FAT12_SECTOR_SYM := $(FIXTURES_DIR)/disk_fat12_boot.sym
@@ -332,6 +337,8 @@ EMULATOR_1983_DISK_PARTIAL_SCREEN := \
 	$(EMULATOR_1983_DIR)/disk-partial-error.ppm
 EMULATOR_1983_NMS8250_DISK_ROM_SCREEN := \
 	$(EMULATOR_1983_DIR)/nms8250-disk-rom.ppm
+EMULATOR_1983_NMS8250_DISK_SLAVE_SCREEN := \
+	$(EMULATOR_1983_DIR)/nms8250-disk-rom-slave.ppm
  EMULATOR_1983_DISK_BOOT_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-boot.ppm
  EMULATOR_1983_DISK_WRITE_SCREEN := \
@@ -374,6 +381,8 @@ EMULATOR_1983_GEOBENCH_SUNRISE_SCREEN := \
 	$(EMULATOR_1983_DIR)/geobench-sunrise.ppm
 EMULATOR_1983_GEOBENCH_SD_SCREEN := \
 	$(EMULATOR_1983_DIR)/geobench-sd.ppm
+EMULATOR_1983_GEOBENCH_INTERNAL_FLOPPY_SCREEN := \
+	$(EMULATOR_1983_DIR)/geobench-internal-floppy.ppm
 EMULATOR_1983_EXTERNAL_ARKANO_SCREEN := \
 	$(EMULATOR_1983_DIR)/external-arkano.ppm
 EMULATOR_1983_EXTERNAL_DIAGNOSTICS_SCREEN := \
@@ -442,11 +451,13 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-disk-write-guard \
 	test-1983-disk-dskchg-getdpb test-1983-disk-dskchg-no-media \
 	test-1983-disk-partial-error test-1983-nms8250-disk-rom \
+	test-1983-nms8250-disk-rom-slave \
 	test-1983-ide-boot test-1983-ide-menu \
 	test-1983-sd-boot test-1983-sd-menu test-1983-sd-empty-floppy \
 	test-1983-sd-empty-sunrise \
 	test-1983-nextor test-1983-nextor-sd \
 	test-1983-geobench-sunrise test-1983-geobench-sd \
+	test-1983-nextor-internal-floppy \
 	run-1983-ide-boot run-1983-sd-boot run-1983-nextor \
 	test-openmsx-expanded-bbcbasic-menu \
 	test-openmsx-payload-invalid test-1983-bbcbasic \
@@ -657,6 +668,18 @@ $(DISK_PRODUCTION_INIT_CART_SYM): $(DISK_PRODUCTION_INIT_CART)
 	@if test ! -f "$@"; then \
 		$(RASM) tests/cartridges/disk_production_init_input.asm \
 			-ob $(DISK_PRODUCTION_INIT_CART) -s -os $@; \
+	fi
+
+$(DISK_PRODUCTION_SLAVE_CART): \
+		tests/cartridges/disk_production_slave_input.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -ob $(DISK_PRODUCTION_SLAVE_CART) \
+		-s -os $(DISK_PRODUCTION_SLAVE_CART_SYM)
+
+$(DISK_PRODUCTION_SLAVE_CART_SYM): $(DISK_PRODUCTION_SLAVE_CART)
+	@if test ! -f "$@"; then \
+		$(RASM) tests/cartridges/disk_production_slave_input.asm \
+			-ob $(DISK_PRODUCTION_SLAVE_CART) -s -os $@; \
 	fi
 
 $(VALID_PAYLOAD_CART): tests/cartridges/payload_valid.asm | $(BUILD_DIR)
@@ -2150,6 +2173,19 @@ test-1983-geobench-sd: $(MSX1_ROM)
 		--sd-mapper-rom "$(SD_MAPPER_ROM)" --image "$(GEOBENCH_IMAGE)" \
 		--screenshot "$(EMULATOR_1983_GEOBENCH_SD_SCREEN)"
 
+test-1983-nextor-internal-floppy: $(MSX2_ROM) $(MSX2_SUB_ROM) \
+		$(NMS8250_DISK_ROM)
+	test -f "$(SD_MAPPER_ROM)"
+	test -f "$(GEOBENCH_FLOPPY)"
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_geobench.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--sd-mapper-rom "$(SD_MAPPER_ROM)" \
+		--floppy-image "$(GEOBENCH_FLOPPY)" \
+		--screenshot "$(EMULATOR_1983_GEOBENCH_INTERNAL_FLOPPY_SCREEN)"
+
 run-1983-ide-boot: \
 		$(MSX1_ROM) $(NMS8250_DISK_ROM) $(IDE_BOOT_IMAGE)
 	test -f "$(SUNRISE_ROM)"
@@ -2282,6 +2318,21 @@ test-1983-nms8250-disk-rom: $(MSX1_ROM) $(NMS8250_DISK_ROM) \
 		--screenshot "$(EMULATOR_1983_NMS8250_DISK_ROM_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--size 640x480 $(EMULATOR_1983_NMS8250_DISK_ROM_SCREEN)
+
+test-1983-nms8250-disk-rom-slave: $(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(DISK_PRODUCTION_SLAVE_CART) $(DISK_PRODUCTION_SLAVE_CART_SYM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_disk_baseline.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--model nms8250 --region pal --bios "$(MSX1_ROM)" \
+		--cartridge "$(DISK_PRODUCTION_SLAVE_CART)" \
+		--disk-rom "$(NMS8250_DISK_ROM)" \
+		--symbols "$(DISK_PRODUCTION_SLAVE_CART_SYM)" \
+		--expected-pass-label disk_production_slave_pass \
+		--expected-slot F4 --minimum-sp 0xF060 --exit-after 1200 \
+		--screenshot "$(EMULATOR_1983_NMS8250_DISK_SLAVE_SCREEN)"
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--size 640x480 $(EMULATOR_1983_NMS8250_DISK_SLAVE_SCREEN)
 
 test-1983-external-cartridges: test-1983-external-arkano \
 		test-1983-external-diagnostics

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Boot GeoBench through Sunrise IDE or SD Mapper V2 in 1983."""
+"""Boot GeoBench through a Nextor storage cartridge in 1983."""
 
 from __future__ import annotations
 
@@ -29,7 +29,10 @@ def main() -> int:
     controller = parser.add_mutually_exclusive_group(required=True)
     controller.add_argument("--sunrise-rom", type=pathlib.Path)
     controller.add_argument("--sd-mapper-rom", type=pathlib.Path)
-    parser.add_argument("--image", type=pathlib.Path, required=True)
+    media = parser.add_mutually_exclusive_group(required=True)
+    media.add_argument("--image", type=pathlib.Path)
+    media.add_argument("--floppy-image", type=pathlib.Path)
+    parser.add_argument("--disk-rom", type=pathlib.Path)
     parser.add_argument("--screenshot", type=pathlib.Path, required=True)
     parser.add_argument("--exit-after", type=int, default=2502)
     arguments = parser.parse_args()
@@ -49,7 +52,7 @@ def main() -> int:
         "--subrom",
         str(arguments.subrom),
         "--disk-rom",
-        "",
+        str(arguments.disk_rom) if arguments.disk_rom else "",
         "--headless",
         "--unthrottled",
         "--exit-after",
@@ -61,26 +64,28 @@ def main() -> int:
         str(arguments.screenshot),
     ]
     if arguments.sunrise_rom:
+        command.extend(["--sunrise-rom", str(arguments.sunrise_rom)])
+    else:
+        command.extend(["--sd-mapper-rom", str(arguments.sd_mapper_rom)])
+
+    if arguments.floppy_image:
+        if arguments.disk_rom is None:
+            parser.error("--floppy-image requires --disk-rom")
         command.extend(
             [
-                "--sunrise-rom",
-                str(arguments.sunrise_rom),
-                "--ide",
-                str(arguments.image),
-                "--ide-mode",
+                "--disk-a",
+                str(arguments.floppy_image),
+                "--floppy-mode",
                 "read-only",
             ]
         )
+    elif arguments.sunrise_rom:
+        command.extend(
+            ["--ide", str(arguments.image), "--ide-mode", "read-only"]
+        )
     else:
         command.extend(
-            [
-                "--sd-mapper-rom",
-                str(arguments.sd_mapper_rom),
-                "--sd-a",
-                str(arguments.image),
-                "--sd-mode",
-                "read-only",
-            ]
+            ["--sd-a", str(arguments.image), "--sd-mode", "read-only"]
         )
 
     result = subprocess.run(
@@ -113,6 +118,8 @@ def main() -> int:
         return 1
 
     controller = "Sunrise IDE" if arguments.sunrise_rom else "SD Mapper V2"
+    if arguments.floppy_image:
+        controller += " plus internal floppy"
     print(
         f"validated 1983 GeoBench through {controller}: "
         f"R0={fields['VDP_R0']}, R1={fields['VDP_R1']}, "

@@ -21,6 +21,7 @@ def validate_state(
     expected_slot: str = "F4",
     expected_vdp_r0: str | None = None,
     expected_vdp_r1: str | None = None,
+    minimum_sp: int = 0xF080,
 ) -> dict[str, str]:
     fields = parse_state(text)
     try:
@@ -33,7 +34,7 @@ def validate_state(
     # The cartridge scan runs on the extension stack (F092h), so a
     # non-returning INIT is sampled with SP in that region rather than the
     # main stack top (F380h). Accept either RainBIOS page-3 stack region.
-    if not 0xF080 <= sp <= 0xF380:
+    if not minimum_sp <= sp <= 0xF380:
         raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
     if fields.get("slot") != expected_slot:
         raise ValueError(

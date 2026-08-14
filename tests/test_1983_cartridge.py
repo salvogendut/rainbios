@@ -44,6 +44,13 @@ class Emulator1983CartridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "vdp_r1"):
             validate_state(state, expected_vdp_r1="F0")
 
+    def test_allocator_shifted_stack_floor_is_configurable(self) -> None:
+        shifted = VALID_STATE.replace("sp=F376", "sp=F073")
+        with self.assertRaisesRegex(ValueError, "SP"):
+            validate_state(shifted)
+        fields = validate_state(shifted, minimum_sp=0xF060)
+        self.assertEqual(fields["sp"], "F073")
+
 
 if __name__ == "__main__":
     unittest.main()

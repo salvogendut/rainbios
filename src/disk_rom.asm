@@ -36,6 +36,9 @@ DISK_HAS_BDOS           equ 1
                 defs #4034-$,#ff
                 jp disk_dos_bios               ; 4034 $$BIOS
 disk_rom_init:
+                ld a,(DEVICE)
+                or a
+                jp nz,disk_driver_init_slave
                 call disk_driver_init
                 jp disk_driver_init_boot
                 defs #4078-$,#ff

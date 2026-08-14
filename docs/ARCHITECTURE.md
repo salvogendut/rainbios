@@ -101,8 +101,11 @@ calls a non-empty `H.RUNC`. A standalone empty SD Mapper first leaves any
 previously installed `H.PHYD` path a chance to boot drive A. The optional 16 KiB
 NMS 8250 disk extension separates a small production ROM shell from a shared
 WD2793 driver. Test shells include the same driver and add only `H.RUNC` probes.
-The production component installs `H.PHYD`, publishes one drive, and returns
-from startup without test behavior.
+Without a disk-system master, the production component installs `H.PHYD`,
+publishes one drive, and installs its standalone bootstrap hook. When Nextor or
+MSX-DOS is already active, it instead appends a legacy driver-table entry,
+allocates an initialized F9 DPB, and preserves the master's hooks. This makes
+the built-in NMS8250 floppy available after cartridge-backed Nextor devices.
 
 The driver accepts drive A and 720 KiB `F9h` media, supporting both reads and
 writes. It validates the complete logical-sector and RAM-buffer ranges before
