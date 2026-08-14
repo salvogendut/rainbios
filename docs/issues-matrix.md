@@ -18,7 +18,7 @@ milestone percentages are estimates derived from the roadmap slices
 | M4 cartridge compatibility | ~70% | Redistributable compatibility corpus deferred (TBD) — the only remaining M4 item, gated on sourcing and clearing ROMs for redistribution |
 | M5 MSX2 main BIOS/SUB-ROM | ~95% | Disk-file commands (BLTVD etc.) stay safe returns pending DOS API bindings; MSX2 storage boot via Nextor now gated |
 | M6 completeness/optional | ~90% | Disk baseline, GTPDL, INIFNK, ISCNTC/CKCNTC, CHGMOD, KEYINT, internal-payload graphics/cassette/scroll/edit workloads, openMSX GeoBench full-desktop gate, loader inputs HL/DE (DISKVE/ENAKRN), RESET ABI documented implemented; remaining: real-hardware timing |
-| M7 disk/IDE boot | ~85% | FAT12 FS.LOAD, FS.DIR, FS.WRITE, and DSKFMT/CHOICE gated; DSKIO writes gated; MSX2 Nextor storage boot gated; remaining: drive B, other controllers, real-hardware timing, CALSLT double-call crash, openMSX WD2793 data-transfer misalignment |
+| M7 disk/IDE boot | ~90% | FAT12 FS.LOAD, FS.DIR, FS.WRITE, DSKFMT/CHOICE, DSKIO writes, MSX2 Nextor storage boot, and Nextor/internal-floppy coexistence gated; remaining: drive B, other controllers, real-hardware timing, CALSLT double-call crash, openMSX WD2793 data-transfer misalignment |
 
 ## Pull request log
 
@@ -104,3 +104,4 @@ milestone percentages are estimates derived from the roadmap slices
 | 84 | CLOSED | M6 | M6: characterize DCOMPR and PSG clobber/flag contracts |
 | 86 | CLOSED | M6 | M6: characterize function-key and text-cursor contracts |
 | 88 | CLOSED | M6 | M6: characterize keyboard buffer contracts |
+| 149 | OPEN | M7 | Allow the internal NMS8250 floppy to boot under Nextor |

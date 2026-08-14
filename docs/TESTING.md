@@ -198,6 +198,7 @@ make test-1983 \
 | `test-1983-disk-write-guard` | Write rejection without changing a writable host image |
 | `test-1983-disk-partial-error` | Exact completed-sector count on a later failure |
 | `test-1983-nms8250-disk-rom` | Production INIT, hook, and drive registration |
+| `test-1983-nms8250-disk-rom-slave` | Redistributable synthetic-master gate: preserved master hooks, appended legacy drive, initialized drive-C DPB, and safe 21-byte HIMEM/stack allocation |
 
 ### Sunrise IDE and SD Mapper V2
 
@@ -213,6 +214,7 @@ make test-1983 \
 | `test-1983-nextor-sd` | SD Mapper one-card auto-boot plus dual-card chooser selection and matching Nextor prompts |
 | `test-1983-geobench-sunrise` | Sunrise/Nextor reaches the complete GeoBench Screen 7 desktop |
 | `test-1983-geobench-sd` | SD Mapper/Nextor reaches the complete GeoBench Screen 7 desktop |
+| `test-1983-nextor-internal-floppy` | An empty SD Mapper supplies Nextor while the source-built NMS8250 disk ROM registers its internal floppy; GeoBench boots from drive C with the complete source-built MSX2 firmware stack |
 
 The storage tests default to local ROMs under `../1983/ROMS`. Override
 `SUNRISE_ROM` or `SD_MAPPER_ROM` for another local layout. The ROMs remain

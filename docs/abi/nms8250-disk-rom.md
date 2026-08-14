@@ -9,9 +9,17 @@ Philips NMS 8250 WD2793 memory layout. It is built separately with
 ## Initialization
 
 The standard `AB` header begins at `4000h`. `INIT` derives its full slot ID from
-`IYH`, publishes one drive in `DRVINF`, installs a five-byte `H.PHYD` hook, and
-installs a five-byte `H.RUNC` bootstrap hook. It does not retain control.
-Standard `DSKIO` entry `4010h` reaches the same PHYDIO implementation.
+`IYH`. With no existing disk-system master (`DEVICE = 0`), it publishes one
+drive in `DRVINF`, installs five-byte `H.PHYD` and `H.RUNC` hooks, and uses the
+standalone bootstrap described below.
+
+When MSX-DOS or Nextor is already the master, `INIT` instead appends one legacy
+drive to the first free `DRVINF` entry. It allocates and initializes the drive's
+21-byte F9 DPB, increments `DEVICE`, and leaves the master's `H.PHYD` and
+`H.RUNC` hooks untouched. This lets Nextor perform its normal cleanup, map the
+internal floppy after its own devices, and boot it when those devices are
+empty. In both cases `INIT` returns to the firmware scan. Standard `DSKIO`
+entry `4010h` reaches the same PHYDIO implementation.
 
 ## Bootstrap contract
 
@@ -52,13 +60,16 @@ Inputs follow BIOS entry `0144h`:
 | B | `01h` through `FFh`, subject to range and buffer limits |
 | C | `F9h`, 720 KiB media |
 | DE | First zero-based logical sector, `0000h` through `059Fh` |
-| HL | Destination wholly within `8000h` through `EFFFh` |
+| HL | Destination wholly within the active disk system's page-2/page-3 buffer range |
 | Carry | Clear for read; set requests a write |
 
 The complete request is validated before the motor or controller is touched.
 The exclusive logical end must not exceed sector 1440. The exclusive buffer
-end must not exceed `F000h`, must not wrap, and must remain outside page 1,
-which contains the disk extension while the hook runs.
+end must not wrap or enter page 1, which contains the disk extension while the
+hook runs. The standalone clean-room DOS path stops at `F000h`, where its
+private state begins. Nextor may place its 512-byte physical-sector buffer
+across that boundary, so the Nextor path accepts an exclusive end through
+`F300h`, immediately below the fixed BIOS work area.
 
 On success carry is clear, A is zero, and B is the requested sector count. On
 failure carry is set, A is an error code, and B is the number of fully completed

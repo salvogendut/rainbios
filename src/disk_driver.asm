@@ -6,6 +6,18 @@
 
 H_PHYD          equ #ffa7
 DRVINF          equ #fb21
+DPBLIST         equ #f355
+HIMEM           equ #fc4a
+MEMSIZ          equ #f672
+STKTOP          equ #f674
+SAVSTK          equ #f6b1
+MAXFIL          equ #f85f
+FILTAB          equ #f860
+NULBUF          equ #f862
+                ifndef DEVICE
+DEVICE          equ #fd99
+                endif
+NEXTOR_DOS_VERSION equ #f313
 BIOS_INITXT     equ #006c
 
 ; A test shell may define H_RUNC before including this driver. Production
@@ -34,6 +46,7 @@ DISK_SECTORS    equ 1440
 DISK_TRACK_SIZE equ 18
 DISK_SIDE_SIZE  equ 9
 DISK_RAM_LIMIT  equ #f000
+DISK_NEXTOR_RAM_LIMIT equ #f300
 DISK_SECTOR_SIZE equ 512
 DISK_CLUSTER_SIZE equ 2
 DISK_FAT_SIZE   equ 3
@@ -69,6 +82,186 @@ disk_driver_init:
                 ld de,disk_phydio
                 ld hl,H_PHYD
                 jp disk_set_hook
+
+; Register this ROM as a legacy slave when a disk-system master (MSX-DOS or
+; Nextor) has already initialized.  The master owns H.RUNC and H.PHYD; replacing
+; those hooks here would bypass its cleanup and drive-mapping pass.  DRVINF is
+; four {drive-count, slot-id} entries.  This driver contributes one drive and
+; reserves only the standard 21-byte DPB that the master expects.
+disk_driver_init_slave:
+                ld a,(DEVICE)
+                inc a
+                ret z                           ; a previous master aborted init
+                xor a
+                ld (DISK_MOTOR),a
+                ld (DISK_MOTOR_TIMER),a
+                push iy
+                pop bc                          ; B = full extension slot ID
+                ld c,0                          ; drives already registered
+                ld hl,DRVINF
+                ld e,4
+disk_driver_init_slave_find:
+                ld a,(hl)
+                or a
+                jr z,disk_driver_init_slave_found
+                add a,c
+                ld c,a
+                inc hl
+                inc hl
+                dec e
+                jr nz,disk_driver_init_slave_find
+                ret                             ; no free driver-table entry
+disk_driver_init_slave_found:
+                ld a,c
+                cp 8
+                ret nc                          ; legacy disk limit reached
+                push ix
+                push bc
+                push hl
+                ld hl,21                        ; one legacy DPB
+                call disk_driver_allocate_page3
+                jr c,disk_driver_init_slave_no_memory
+                pop ix                          ; free DRVINF entry
+                pop bc                          ; B = slot, C = first drive
+
+                ; Publish and initialize the DPB before Nextor's H.RUNC pass.
+                ; A null DPB is allocated by Nextor, but remains deliberately
+                ; geometry-free until first media access and is not considered
+                ; as a boot candidate.
+                push bc
+                push hl                         ; allocated DPB base
+                ld a,c
+                add a,a
+                ld e,a
+                ld d,0
+                ld hl,DPBLIST
+                add hl,de
+                pop de                          ; DE = allocated DPB base
+                ld (hl),e
+                inc hl
+                ld (hl),d
+                ex de,hl                        ; HL = DPB base
+                ld (hl),c                       ; physical drive number
+                inc hl
+                ex de,hl                        ; DE = DPB geometry destination
+                ld hl,disk_dpb
+                ld bc,18
+                ldir
+                xor a
+                ld (de),a                       ; FAT buffer assigned by master
+                inc de
+                ld (de),a
+                pop bc
+
+                ld (ix+0),1
+                ld (ix+1),b
+                ld hl,DEVICE
+                inc (hl)
+                pop ix
+                ret
+disk_driver_init_slave_no_memory:
+                pop hl
+                pop bc
+                pop ix
+                ret
+
+; Reserve page-3 memory during extension INIT while preserving the active
+; CALSLT stack.  The block is taken downward from HIMEM and the BASIC memory
+; pointers/file structures are moved consistently.  Input HL is the size;
+; output HL is the block base, or carry set if it would cross C200h.
+disk_driver_allocate_page3:
+                ld a,h
+                or l
+                jr z,disk_driver_allocate_page3_success
+                ld b,h
+                ld c,l
+                ld hl,0
+                or a
+                sbc hl,bc
+                ld b,h
+                ld c,l                          ; BC = negative size
+
+                ld hl,(HIMEM)
+                add hl,bc
+                ld a,h
+                cp #c2
+                ret c
+                ld hl,0
+                add hl,sp
+                add hl,bc
+                ld a,h
+                cp #c2
+                ret c
+
+                ; Move the complete live stack down with the allocation.
+                push bc
+                ld hl,0
+                add hl,sp
+                ld e,l
+                ld d,h                          ; DE = old stack bottom
+                add hl,bc                       ; HL = new stack bottom
+                push hl
+                ld hl,(STKTOP)
+                or a
+                sbc hl,de
+                ld c,l
+                ld b,h
+                inc bc
+                pop hl
+                ld sp,hl
+                ex de,hl
+                ldir
+                pop bc                          ; negative size from moved stack
+
+                ld hl,(HIMEM)
+                add hl,bc
+                ld (HIMEM),hl
+                ld de,-534                      ; two 256-byte BASIC file buffers
+                add hl,de                       ; plus their pointer/flag areas
+                ld (FILTAB),hl
+                push hl
+                ld hl,(MEMSIZ)
+                add hl,bc
+                ld (MEMSIZ),hl
+                ld hl,(NULBUF)
+                add hl,bc
+                ld (NULBUF),hl
+                ld hl,(STKTOP)
+                add hl,bc
+                ld (STKTOP),hl
+                dec hl
+                dec hl
+                ld (SAVSTK),hl
+
+                ; Rebuild the two default BASIC file-control blocks at their
+                ; relocated addresses.
+                pop hl                          ; FILTAB
+                inc hl
+                inc hl
+                inc hl
+                inc hl                          ; first FCB
+                ld a,2
+disk_driver_allocate_page3_fcb:
+                ex de,hl                        ; DE = FCB, HL = table entry
+                ld (hl),e
+                inc hl
+                ld (hl),d
+                inc hl
+                ex de,hl                        ; HL = FCB
+                ld bc,7
+                ld (hl),b
+                add hl,bc
+                ld (hl),b
+                ld bc,258
+                add hl,bc
+                dec a
+                jr nz,disk_driver_allocate_page3_fcb
+                ld a,1
+                ld (MAXFIL),a
+disk_driver_allocate_page3_success:
+                ld hl,(HIMEM)
+                or a
+                ret
 
 ; Input A is the full slot ID, DE the target, and HL the hook address.
 disk_set_hook:
@@ -270,8 +463,11 @@ disk_validate_sector_range_exit:
                 pop de
                 ret
 
-; Page 1 contains this ROM. Keep the complete transfer in page 2 or low page 3
-; and below the system stack/work area.
+; Page 1 contains this ROM. Keep the complete transfer in page 2 or page 3 and
+; below the active disk system's work area.  The standalone clean-room DOS
+; layer starts its private state at F000h. Nextor allocates its physical-sector
+; buffer across that boundary (typically EFxxh-F1xxh), while its fixed BIOS
+; work area still starts at F300h.
 disk_validate_buffer:
                 ld a,h
                 cp #80
@@ -285,12 +481,15 @@ disk_validate_buffer_loop:
                 jr c,disk_validate_buffer_bad
                 dec a
                 jr nz,disk_validate_buffer_loop
-                ld a,h
-                cp DISK_RAM_LIMIT/256
-                jr c,disk_validate_buffer_ok
-                jr nz,disk_validate_buffer_bad
-                ld a,l
+                ld de,DISK_RAM_LIMIT
+                ld a,(NEXTOR_DOS_VERSION)
+                cp #99
+                jr nz,disk_validate_buffer_limit_ready
+                ld de,DISK_NEXTOR_RAM_LIMIT
+disk_validate_buffer_limit_ready:
                 or a
+                sbc hl,de
+                jr c,disk_validate_buffer_ok
                 jr z,disk_validate_buffer_ok
 disk_validate_buffer_bad:
                 scf

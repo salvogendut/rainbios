@@ -669,15 +669,21 @@ fallback. These paths also cover the pre-DOS stack, the mapper-compatible
 expanded `CALSLT` frame, and Nextor's direct use of the original-BIOS keyboard
 decoder at `0D89h`.
 
-The GeoBench application layer is now an explicit three-target integration
-matrix. Sunrise IDE and SD Mapper V2 in 1983 both require the complete Screen 7
-desktop with R0=`0Ah`, R1=`62h`, `SCRMOD=7`, and mapper pages
-`03h,02h,01h,00h`. The openMSX Sunrise target requires the same complete
-desktop geometry against the unmodified GeoBench image: the top status bar and
-the red UI accents render alongside the dominant blue background plane, and
-the isolated image copy is byte-verified unchanged after the run. The sampled
-PC is diagnostic only because it can transiently be in a kernel or
-frame-pacing routine.
+The source-built NMS 8250 disk extension also coexists with a cartridge-backed
+Nextor master. Its slave INIT path preserves Nextor's hooks, publishes one
+legacy drive and a fully initialized F9 DPB, and accepts Nextor's page-3 sector
+buffer. An empty SD Mapper followed by a mounted internal GeoBench floppy now
+boots the desktop from drive C in the full source-built MSX2 configuration.
+
+The GeoBench application layer is now an explicit four-target integration
+matrix. Sunrise IDE, SD Mapper V2, and Nextor with an internal floppy in 1983
+require the complete Screen 7 desktop with R0=`0Ah`, R1=`62h`, `SCRMOD=7`, and
+mapper pages `03h,02h,01h,00h`. The openMSX Sunrise target requires the same
+complete desktop geometry against the unmodified GeoBench image: the top
+status bar and the red UI accents render alongside the dominant blue
+background plane, and the isolated image copy is byte-verified unchanged after
+the run. The sampled PC is diagnostic only because it can transiently be in a
+kernel or frame-pacing routine.
 
 RainBIOS provides the firmware interfaces needed by disk systems; it will not
 bundle or prescribe a DOS. Users supply the system of their choice, while the
