@@ -52,7 +52,8 @@ milestone percentages are estimates derived from the roadmap slices
 | #115 | — | Record openMSX WD2793 transfer + 1983 double-call findings |
 | #133 | M7 | Rewrite FS.WRITE and fix FAT12 helpers; gate FS.DIR and FS.WRITE (`test-1983-disk-fsdir`/`-disk-fswrite`) |
 | #135 | M7 | Implement DSKFMT/CHOICE (WD2793 format track); gate with `test-1983-disk-dskfmt` |
-| #137 | M7 | Fix MSX2 Nextor storage boot (002Dh reports MSX1 for DOS cartridge compat) |
+| #137 | M7 | Fix MSX2 Nextor storage boot (temporary MSX1 identity workaround) |
+| #151 | M7 | Restore the standard MSX2 generation identity without regressing storage boot |
 | #138 | — | Remove stale 'read-only' references from all docs |
 | #139 | — | Fix: restore Nextor console after MSX2 graphics VDP state |
 | #147 | M7 | Clear the RainBIOS logo before DOS startup |

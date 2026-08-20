@@ -2151,14 +2151,13 @@ test-1983-nextor-sd: $(MSX1_ROM) $(NEXTOR_IMAGE)
 	$(PYTHON) tools/check_nextor_screenshot.py --sd-card B --sd-dual \
 		$(EMULATOR_1983_NEXTOR_SD_DUAL_SCREEN)
 
-test-1983-geobench-sunrise: $(MSX1_ROM)
-	test -f "$(CBIOS_SUB_ROM)"
+test-1983-geobench-sunrise: $(MSX2_ROM) $(MSX2_SUB_ROM)
 	test -f "$(SUNRISE_ROM)"
 	test -f "$(GEOBENCH_IMAGE)"
 	mkdir -p $(EMULATOR_1983_DIR)
 	$(PYTHON) tools/run_1983_geobench.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
-		--bios "$(MSX1_ROM)" --subrom "$(CBIOS_SUB_ROM)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)" \
 		--sunrise-rom "$(SUNRISE_ROM)" --image "$(GEOBENCH_IMAGE)" \
 		--screenshot "$(EMULATOR_1983_GEOBENCH_SUNRISE_SCREEN)"
 
