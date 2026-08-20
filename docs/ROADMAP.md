@@ -461,8 +461,8 @@ The disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) are left as
 documented safe returns and screen 10-12 remains out of scope. A real disk-file
 implementation streams whole files through the DOS API (BDOS open/create/set
 DTA/random block I/O/close) and therefore needs DOS API bindings not yet
-provided. MSX2 storage boot via Nextor is now gated (the 002Dh generation
-byte reports MSX1 for DOS cartridge compatibility).
+provided. MSX2 storage boot via Nextor remains gated while the 002Dh generation
+byte reports the standard MSX2 value required by generation-aware applications.
 
 - add a distinct MSX2 main-ROM build with V9938 detection and dispatch;
 - implement SUB-ROM discovery and inter-slot calling;

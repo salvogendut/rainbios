@@ -41,9 +41,11 @@ The disk-file transfer entries `BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`
 (`019Dh`/`01A1h`/`01A5h`/`01A9h`) are deliberately left as safe returns. A real
 implementation streams whole files between disk and VRAM/RAM through the DOS
 file API (open/create/set-DTA/random block I/O/close via BDOS), and requires
-DOS API bindings not yet provided. MSX2 storage boot via Nextor is now gated
-(002Dh reports MSX1 for cartridge DOS compatibility). The entries stay safe
-returns until DOS bindings are implemented, mirroring the C-BIOS reference.
+DOS API bindings not yet provided. MSX2 storage boot via Nextor is gated
+independently of these calls. The main ROM reports the standard MSX2 generation
+value at 002Dh so applications such as SymbOS can identify the machine
+correctly. The entries stay safe returns until DOS bindings are implemented,
+mirroring the C-BIOS reference.
 
 ## VDP command engine
 

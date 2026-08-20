@@ -212,7 +212,7 @@ make test-1983 \
 | `test-1983-sd-empty-sunrise` | Empty SD Mapper preserves a second Nextor kernel and Sunrise boot |
 | `test-1983-nextor` | Sunrise `INIT`, `H.RUNC`, `NEXTOR.SYS`, and rendered `A:\>` prompt |
 | `test-1983-nextor-sd` | SD Mapper one-card auto-boot plus dual-card chooser selection and matching Nextor prompts |
-| `test-1983-geobench-sunrise` | Sunrise/Nextor reaches the complete GeoBench Screen 7 desktop |
+| `test-1983-geobench-sunrise` | The MSX2 ROM's standard generation identity remains compatible with Sunrise/Nextor and reaches the complete GeoBench Screen 7 desktop |
 | `test-1983-geobench-sd` | SD Mapper/Nextor reaches the complete GeoBench Screen 7 desktop |
 | `test-1983-nextor-internal-floppy` | An empty SD Mapper supplies Nextor while the source-built NMS8250 disk ROM registers its internal floppy; GeoBench boots from drive C with the complete source-built MSX2 firmware stack |
 

@@ -104,9 +104,7 @@ class MainRomLayoutTest(unittest.TestCase):
         if not MSX2_ROM_PATH.exists():
             self.skipTest("MSX2 ROM not built")
         rom = MSX2_ROM_PATH.read_bytes()
-        # RainBIOS exposes the MSX2 calls below but reports MSX1 here so
-        # MSX-DOS/Nextor cartridges retain their compatible INIT path.
-        self.assertEqual(rom[0x002D], 0x00)
+        self.assertEqual(rom[0x002D], 0x01)
         for address in (0x015C, 0x015F, 0x0162):
             with self.subTest(address=hex(address)):
                 self.assertEqual(rom[address], 0xC3)

@@ -185,11 +185,7 @@ ASSET_BUFFER    equ #c000
                 db #21                          ; 002B IDBYT1
                 db #11                          ; 002C IDBYT2
                 IFDEF MSX2
-                db #00                          ; 002D MSX gen: report MSX1 for DOS compat
-                ; RainBIOS MSX2 provides SUBROM/EXTROM/CHKSLZ and V9938 WRTVDP
-                ; but reports MSX1 generation to keep MSX-DOS/Nextor cartridge
-                ; INIT on the known-working MSX1 code path. Applications detect
-                ; MSX2 via CHKSLZ or live V9938 CD scan.
+                db #01                          ; 002D MSX generation: MSX2
                 ELSE
                 db #00                          ; 002D MSX generation: MSX1
                 ENDIF
