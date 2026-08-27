@@ -55,7 +55,7 @@ Requirements:
   [bbcbasic-z80-msx](https://github.com/salvogendut/bbcbasic-z80-msx)
   checkout beside this repository at `../bbcbasic-z80-msx`.
 
-Build the main ROM and run host validation:
+Build the default firmware set and run host validation:
 
 ```sh
 make
@@ -65,9 +65,11 @@ make test
 Every normal build verifies the companion checkout, runs its tests, rebuilds
 its exact 16 KiB ROM from source, checks its pinned digest, compresses it with
 ZX0, and embeds the compressed stream in an inert `RBC1` container. It never
-falls back to an old prebuilt payload. The main output is
-`build/rainbios_msx1.rom`; the independently usable exact payload and its
-compressed stream are copied to `build/payload/bbcbasic_msx_console.rom` and
+falls back to an old prebuilt payload. The default outputs include
+`build/rainbios_msx1.rom` and `build/rainbios_omega.rom`; the Omega dependency
+chain also builds the MSX2 main ROM, Sub-ROM, and generic WD2793 disk ROM. The
+independently usable exact payload and its compressed stream are copied to
+`build/payload/bbcbasic_msx_console.rom` and
 `build/payload/bbcbasic_msx_console.zx0`. Override tools or the sibling path
 when needed:
 
@@ -84,6 +86,19 @@ make nms8250-disk-rom
 ```
 
 Its output is `build/rainbios_nms8250_disk.rom`.
+
+Build only the Omega unified EEPROM image and its source ROMs with:
+
+```sh
+make omega
+```
+
+The result, `build/rainbios_omega.rom`, is an exact 512 KiB image. Each
+JP1-selectable 256 KiB half contains four 64 KiB physical-slot regions for
+primary slot 0 and expanded slot 3 subslots 0, 1, and 3. RainBIOS MSX2 occupies
+slot 0, the RainBIOS Sub-ROM begins slot 3-0, and the generic WD2793 disk ROM
+occupies page 1 of slot 3-3. Both JP1 halves deliberately contain the same
+redistributable firmware set.
 
 ## Quick validation
 

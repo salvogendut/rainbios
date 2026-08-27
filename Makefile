@@ -21,8 +21,8 @@ GEOBENCH_FLOPPY ?= ../geobench/QA/MSX/Floppies/GEOBENCH.DSK
 OPENMSX_GEOBENCH_CAPTURE_TIME ?= 15
 
 BUILD_DIR := build
-# Output layout: the four production ROMs (and their symbol files, which the
-# release bundle ships) build directly into $(BUILD_DIR) so `ls build` stays
+# Output layout: production ROMs (and their symbol files, when applicable)
+# build directly into $(BUILD_DIR) so `ls build` stays
 # readable. Every ancillary fixture -- probe cartridges, boot-sector images,
 # disk/cassette media, emulator reports, the payload, logo stamps -- builds
 # into a per-purpose subdirectory so `make clean-ancillary` can drop it in one
@@ -34,6 +34,7 @@ MSX2_ROM := $(BUILD_DIR)/rainbios_msx2.rom
 MSX2_SYM := $(BUILD_DIR)/rainbios_msx2.sym
 MSX2_SUB_ROM := $(BUILD_DIR)/rainbios_msx2_sub.rom
 MSX2_SUB_SYM := $(BUILD_DIR)/rainbios_msx2_sub.sym
+OMEGA_ROM := $(BUILD_DIR)/rainbios_omega.rom
 OPENMSX_ROOT := $(BUILD_DIR)/openmsx
 OPENMSX_SHARE := $(OPENMSX_ROOT)/share
 OPENMSX_HOME := $(OPENMSX_ROOT)/home
@@ -470,14 +471,17 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-external-diagnostics test-1983-external-cartridges \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
- 	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom rainbios-disk-rom \
+	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom rainbios-disk-rom \
+	omega \
  	check-manifest check-release clean clean-ancillary
 
-all: $(MSX1_ROM)
+all: $(MSX1_ROM) $(OMEGA_ROM)
 
 nms8250-disk-rom: $(NMS8250_DISK_ROM)
 
 rainbios-disk-rom: $(GENERIC_DISK_ROM)
+
+omega: $(OMEGA_ROM)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -525,11 +529,17 @@ msx2-sub-rom: $(MSX2_SUB_ROM)
 
 msx2-main-rom: $(MSX2_ROM)
 
+$(OMEGA_ROM): $(MSX2_ROM) $(MSX2_SUB_ROM) $(GENERIC_DISK_ROM) \
+		tools/build_omega_rom.py | $(BUILD_DIR)
+	$(PYTHON) tools/build_omega_rom.py --output $@ \
+		--main-rom $(MSX2_ROM) --sub-rom $(MSX2_SUB_ROM) \
+		--disk-rom $(GENERIC_DISK_ROM)
+
 RELEASE_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 RELEASE_DIR := $(BUILD_DIR)/release/$(RELEASE_VERSION)
 
-release: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
-		$(GENERIC_DISK_ROM) \
+release: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(OMEGA_ROM) \
+		$(NMS8250_DISK_ROM) $(GENERIC_DISK_ROM) \
 		$(MSX1_SYM) $(MSX2_SYM) $(MSX2_SUB_SYM) $(NMS8250_DISK_ROM_SYM) \
 		$(GENERIC_DISK_ROM_SYM)
 	$(PYTHON) tools/make_release_bundle.py \
@@ -818,13 +828,14 @@ $(INVALID_PAYLOAD_CART): tests/cartridges/invalid_payload.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@
 
-test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(NMS8250_DISK_ROM) \
-	$(GENERIC_DISK_ROM) \
+test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(OMEGA_ROM) \
+	$(NMS8250_DISK_ROM) $(GENERIC_DISK_ROM) \
 	$(DISK_BOOT_SECTOR_BIN) $(IDE_BOOT_SECTOR_BIN) $(SD_BOOT_SECTOR_BIN) \
 	$(VALID_PAYLOAD_CART) release
 	PYTHONDONTWRITEBYTECODE=1 RAINBIOS_MSX1_ROM=$(MSX1_ROM) \
 	RAINBIOS_MSX2_ROM=$(MSX2_ROM) \
 	RAINBIOS_MSX2_SUB_ROM=$(MSX2_SUB_ROM) \
+	RAINBIOS_OMEGA_ROM=$(OMEGA_ROM) \
 	RAINBIOS_BBC_BASIC_ROM=$(BBC_PAYLOAD_ROM) \
 	RAINBIOS_NMS8250_DISK_ROM=$(NMS8250_DISK_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
@@ -2384,15 +2395,16 @@ check-bbcbasic:
 
 check-bbcbasic-artifact: bbcbasic-payload
 
-check-manifest: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) bbcbasic-payload
+check-manifest: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(OMEGA_ROM) \
+		bbcbasic-payload
 	PYTHONDONTWRITEBYTECODE=1 \
 	$(PYTHON) -m unittest tests.test_component_manifest -v
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-# Drop every ancillary fixture and emulator output while keeping the four
-# production ROMs and their symbol files in $(BUILD_DIR).
+# Drop every ancillary fixture and emulator output while keeping production
+# ROMs and their symbol files in $(BUILD_DIR).
 clean-ancillary:
 	rm -rf $(FIXTURES_DIR) $(BUILD_DIR)/cartridges $(BUILD_DIR)/cassettes \
 		$(BUILD_DIR)/disks $(BUILD_DIR)/1983 $(BUILD_DIR)/openmsx \

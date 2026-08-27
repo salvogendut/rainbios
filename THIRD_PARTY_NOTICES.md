@@ -2,8 +2,11 @@
 
 # Third-party notices
 
-RainBIOS's combined `build/rainbios_msx1.rom` is an aggregate containing
-separately licensed components. This file does not replace their license
+RainBIOS's combined main ROMs (`build/rainbios_msx1.rom` and
+`build/rainbios_msx2.rom`) are aggregates containing separately licensed
+components. The same main-ROM bytes are also embedded in
+`build/rainbios_omega.rom`; its Sub-ROM and disk-ROM regions contain original
+RainBIOS BSD-3-Clause code. This file does not replace the component license
 texts.
 
 | ROM region / repository path | Component | Source identity | License notice |

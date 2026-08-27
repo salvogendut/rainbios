@@ -5,7 +5,8 @@
     "artifacts": {
       "msx1_rom": "build/rainbios_msx1.rom",
       "msx2_rom": "build/rainbios_msx2.rom",
-      "msx2_sub_rom": "build/rainbios_msx2_sub.rom"
+      "msx2_sub_rom": "build/rainbios_msx2_sub.rom",
+      "omega_rom": "build/rainbios_omega.rom"
     }
   },
   "components": [
