@@ -62,6 +62,7 @@ git diff --check
 | Target | Coverage |
 | --- | --- |
 | `make test` | ROM layout, generated assets, ABI metadata, fixture construction, and report/state parsers |
+| `make omega` | Builds the deterministic 512 KiB Omega EEPROM image and its MSX2 component ROMs |
 | `make check-bbcbasic` | Pinned BBC BASIC source revision and dependency identity |
 | `make check-bbcbasic-artifact` | Rebuilds and byte-verifies the pinned 16 KiB payload using the legacy assemblers |
 
@@ -315,6 +316,9 @@ pass.
 Generated files remain under `build/` and are not committed:
 
 - `build/rainbios_msx1.rom` and `build/rainbios_msx1.sym`;
+- `build/rainbios_msx2.rom`, `build/rainbios_msx2_sub.rom`, and their symbols;
+- `build/rainbios_omega.rom`, the two-bank 512 KiB Omega EEPROM image;
+- `build/rainbios_disk.rom` and its symbols;
 - `build/rainbios_nms8250_disk.rom` and its symbols;
 - `build/logo/` for converted artwork and palette previews;
 - `build/openmsx/` for machine definitions, reports, audio, and screenshots;

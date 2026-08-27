@@ -11,9 +11,19 @@ that missing behavior is visible and testable.
 | MSX2 main ROM | `0000h-7FFFh` | 32 KiB | MSX1 ABI plus MSX2 dispatch and initialization |
 | MSX2 SUB-ROM | normally page 1 | 16 KiB | Extended VDP, clock, palette, and graphics ABI; first slices provide bitmap modes, palette, 16-bit VRAM, block transfers, and the clock |
 | NMS 8250 disk ROM | `4000h-7FFFh` | 16 KiB | WD2793 PHYDIO read/write, DSKCHG/GETDPB, CHOICE/DSKFMT, FAT12 FS.LOAD/FS.DIR/FS.WRITE |
+| Omega unified ROM | two `00000h-3FFFFh` banks | 512 KiB | JP1-selectable EEPROM image containing the MSX2 main ROM, Sub-ROM, and generic WD2793 disk ROM in Omega physical-slot order |
 
 The main and SUB-ROM targets will share implementation modules but have
 different fixed-address front ends.
+
+The Omega image models four consecutive 64 KiB physical ROM regions in each
+256 KiB JP1 bank: primary slot 0 followed by expanded-slot subslots 0, 1, and
+3. The MSX2 main ROM starts at offset `00000h`, the Sub-ROM at `10000h`, and
+the disk ROM at `34000h`, corresponding to page 1 of subslot 3. Unused bytes
+are `FFh`, and the two banks are intentionally identical. `make omega` cooks
+this image from freshly built RainBIOS components; host tests compare the
+complete output byte-for-byte with that declared layout and independently
+rebuild it to prove determinism.
 
 ## Layers
 

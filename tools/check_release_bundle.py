@@ -13,6 +13,7 @@ PRODUCTION_ROMS = [
     "rainbios_msx1.rom",
     "rainbios_msx2.rom",
     "rainbios_msx2_sub.rom",
+    "rainbios_omega.rom",
     "rainbios_nms8250_disk.rom",
 ]
 
