@@ -7,16 +7,21 @@ MSX2 computers. It aims for binary-compatible public behavior without using
 proprietary source code, ROM data, disassembly, fonts, logos, or extracted
 assets.
 
-The repository currently builds a deliberately incomplete 32 KiB MSX1 main
-ROM whose upper 16 KiB contains a compressed, source-built Z80 BASIC payload.
-RainBIOS expands the verified 16 KiB image into page-1 RAM before launch. It is
-suitable for compatibility development and controlled tests, not as a
-complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
+The repository currently builds source-based 32 KiB MSX1 and MSX2 main ROMs,
+a 16 KiB MSX2 Sub-ROM, generic and Philips NMS 8250 WD2793 disk ROMs, and a
+deterministic 512 KiB Omega unified EEPROM image. The main ROMs contain a
+compressed, source-built Z80 BASIC payload which RainBIOS expands into page-1
+RAM before launch.
+
+RainBIOS implements a substantial, test-gated compatibility subset, but is not
+yet a complete replacement firmware. It is intended for compatibility
+development and controlled tests. See the [roadmap](docs/ROADMAP.md) and
 [ABI status table](docs/abi/main-bios.csv) for exact implementation status.
 
 ## Key features
 
-- deterministic 32 KiB MSX1 ROM with standard fixed entry points;
+- deterministic 32 KiB MSX1 and MSX2 main ROMs with standard fixed entry
+  points, plus a source-built MSX2 Sub-ROM;
 - primary and expanded slot discovery, 32 KiB RAM selection, and a fixed
   64 KiB memory-mapper baseline;
 - initial Screen 0/1/2, console, keyboard, interrupt, cassette, joystick, and
@@ -27,18 +32,22 @@ complete replacement firmware. See the [roadmap](docs/ROADMAP.md) and
   an MSX-DOS-style drive-A boot sector, Sunrise IDE, and SD Mapper V2 media;
 - an optional NMS 8250 WD2793 disk extension with PHYDIO read/write, DSKCHG,
   GETDPB, CHOICE/DSKFMT formatting, and FAT12 FS.LOAD/FS.DIR/FS.WRITE services;
+- a deterministic 512 KiB Omega image with duplicated JP1 banks laid out in
+  physical-slot order;
+- reproducible release bundles with ROMs, symbols, SHA-256 sums, a provenance
+  manifest, and an SPDX 2.3 software bill of materials;
 - host, openMSX, and 1983 integration tests built from original fixtures.
 
 ## Current limitations
 
-- many BIOS entries remain partial or safe stubs;
-- mapper allocation, broad cartridge compatibility, and several keyboard,
-  touch-panel, paddle, printer, graphics, and filesystem services remain
+- some BIOS entries remain partial or documented safe stubs;
+- MSX2 disk-file transfer commands remain safe returns, and Screens 10-12 are
+  outside the current scope;
+- selectable interrupt frequency and locale, a redistributable cartridge
+  compatibility corpus, drive B, and additional floppy controllers remain
   pending;
-- Sunrise IDE and SD Mapper V2 compatibility boot a local Nextor 2.12 system
-  image in 1983; the floppy extension also boots user-supplied, unmodified
-  MSX-DOS 1 `MSXDOS.SYS` and `COMMAND.COM` files through its clean-room BDOS
-  compatibility layer;
+- storage validation uses local, user-supplied Nextor and MSX-DOS media;
+  RainBIOS does not bundle an operating system;
 - real-hardware timing and compatibility validation remain in progress.
 
 ## Build
@@ -100,6 +109,16 @@ slot 0, the RainBIOS Sub-ROM begins slot 3-0, and the generic WD2793 disk ROM
 occupies page 1 of slot 3-3. Both JP1 halves deliberately contain the same
 redistributable firmware set.
 
+Build and verify the reproducible release bundle with:
+
+```sh
+make release
+make check-release
+```
+
+The versioned bundle is written below `build/release/` and contains all public
+ROMs, symbol files, checksums, provenance metadata, and the SPDX SBOM.
+
 ## Quick validation
 
 ```sh
@@ -143,7 +162,7 @@ the DOS1 communication-area/DPB state and resident `CALL 0005h` gate needed
 by stock MSX-DOS 1, and a bounded `H.RUNC` boot-sector path. Storage
 cartridges now enter
 their standard `INIT`; an installed `H.RUNC` takes the normal cold-boot path,
-including a validated Nextor 2.12 prompt through Sunrise IDE. Menu option 3
+including a validated Nextor prompt through Sunrise IDE. Menu option 3
 retains RainBIOS's direct ATA/SPI fallback loader. Exact disk-ROM behavior is
 documented in [docs/abi/nms8250-disk-rom.md](docs/abi/nms8250-disk-rom.md);
 implementation status and remaining work are tracked under M7 in
