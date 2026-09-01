@@ -57,7 +57,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #138 | — | Remove stale 'read-only' references from all docs |
 | #139 | — | Fix: restore Nextor console after MSX2 graphics VDP state |
 | #147 | M7 | Clear the RainBIOS logo before DOS startup |
-| — | — | Change default text mode colors to white-on-blue (INITXT table + BAKCLR) |
+| — | — | Transition from the boot logo to a clean yellow-on-green text console before cartridge INIT |
 
 ## Issue matrix
 

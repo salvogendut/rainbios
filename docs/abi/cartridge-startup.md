@@ -21,7 +21,7 @@ RainBIOS finds the public `AB` header at `4000h` of a non-BIOS slot, reads the
 | `A`, `B` | the slot ID |
 | `C` | `00h` |
 | `HL` | `4003h`, the header address of the `INIT` high byte (scan artifact) |
-| `SP` | a RainBIOS page-3 stack (`F080h`-`F380h`) with the `CALSLT` return frame |
+| `SP` | a RainBIOS page-3 stack (`F060h`-`F380h`) with the `CALSLT` return frame; the expanded page-1 path currently enters at `F07Eh` |
 
 Flags are unspecified. A, B, C, DE, and HL pass through `CALSLT` unchanged,
 matching the documented slot-calling contract. An `INIT` that returns is

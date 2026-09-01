@@ -48,7 +48,7 @@ proc capture_msx2_boot {} {
     exit
 }
 
-# Report in emulated time, before the 180-frame embedded-BASIC launch window
+# Report in emulated time while the MSX2 bootstrap is still active
 # closes, so the captured frame is the rendered boot logo.
 after time 3.00 {
     set throttle on

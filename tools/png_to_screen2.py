@@ -22,7 +22,7 @@ NAME_SIZE = 768
 FONT_SIZE = 2048
 SCREEN1_COLOR_SIZE = 32
 
-BOOT_NOTICE = "PRESS SPACE TO SEE OPTIONS"
+BOOT_NOTICE = "RainBIOS booting..."
 BOOT_NOTICE_BOX = (40, 176, 216, 192)
 BOOT_NOTICE_Y = 180
 
@@ -283,7 +283,7 @@ def draw_text_5x7(
 
 
 def add_boot_notice(image: Image.Image) -> Image.Image:
-    """Return a copy with the Space-key prompt in an aligned two-color box."""
+    """Return a copy with the boot-status notice in an aligned two-color box."""
 
     rendered = image.convert("RGB")
     left, top, right, bottom = BOOT_NOTICE_BOX

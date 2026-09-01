@@ -58,7 +58,7 @@ tape_load_tick:
                 or a
                 jr nz,tape_load_program
                 ld a,l
-                cp 2
+                cp 1
                 jr z,tape_load_space
                 cp 20
                 jr z,tape_load_menu

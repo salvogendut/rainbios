@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Validate that the Screen 1 menu pattern table carries the console font.
 
-The font probe presses Space at the boot notice, waits for the Screen 1 menu,
+The font probe holds Space during startup, waits for the Screen 1 menu,
 and dumps the pattern-table glyphs. This checker compares those glyphs against
 the built boot_font.bin and confirms lowercase code points are distinct from
 their uppercase counterparts.

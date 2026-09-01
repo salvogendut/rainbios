@@ -116,7 +116,6 @@ TAPE_SYNC       equ #f308
 IDE_SLOT        equ #f309
 SD_FLAGS        equ #f30a
 SD_INIT_TRIES   equ #f30b
-APP_CART_PRESENT equ #f30c
 RAMAD0          equ #f341
 MAPPER_SEGMENTS equ #f345
 H_PHYD          equ #ffa7
@@ -553,12 +552,12 @@ bootstrap_empty_hook:
                 ld a,1
                 ld (CSRY),a
                 ld (CSRX),a
-                ld a,15
+                ld a,11                         ; light-yellow text
                 ld (FORCLR),a
-                ld a,5
+                inc a                           ; dark-green background
                 ld (BAKCLR),a
                 ld (BDRCLR),a
-                ld b,#f5
+                ld b,#bc
                 ld c,7
                 call wrtvdp
                 ld a,2
@@ -608,7 +607,6 @@ bootstrap_empty_hook:
                 ld (CONTROLLER_PORT2),a
                 xor a
                 ld (SD_FLAGS),a
-                ld (APP_CART_PRESENT),a
                 ld (CAS_MOTOR),a
                 ld (CAS_MOTOR_TIMER),a
                 ld (DISK_MOTOR),a
@@ -734,17 +732,17 @@ cold_boot_jingle_gap:
                 jr c,cold_boot_payload_ready
                 call cold_boot_select_internal_payload
                 jr c,cold_boot_payload_ready
-                ld a,(APP_CART_PRESENT)
-                or a
-                jp z,cold_boot_options
+                jp cold_boot_options
 cold_boot_payload_ready:
                 ld sp,STACK_TOP
                 ei
-                ld a,(APP_CART_PRESENT)
-                or a
-                jr nz,cold_boot_cartridge_wait
-                ld b,180                      ; about three seconds at 60 Hz
-                jr cold_boot_wait
+                halt                           ; one keyboard-scan frame
+                call chsns
+                jr z,cold_boot_launch_payload
+                call chget
+                cp #20
+                jp z,cold_boot_options
+                jr cold_boot_launch_payload
 
 ; Match the C-BIOS start-up sequence: initialize disk context and invoke the
 ; disk-ROM bootstrap hook so the selected disk device can install itself before
@@ -752,40 +750,9 @@ cold_boot_payload_ready:
 cold_boot_init_disk:
                 jp cold_boot_init_disk_impl
 
-; Give Space a bounded window to open the options menu. If no external
-; cartridge or storage loader kept control, launch the selected BASIC payload.
-cold_boot_wait:
-                call chsns
-                jr nz,cold_boot_wait_read
-                ei
-                halt
-                djnz cold_boot_wait
-                jr cold_boot_launch_payload
-cold_boot_wait_read:
-                call chget
-                cp #20
-                jr z,cold_boot_options
-                djnz cold_boot_wait
-                jr cold_boot_launch_payload
-
-; A conventional cartridge whose INIT returns may continue through hooks or
-; interrupt-driven code.  Keep the pre-payload unbounded wait in that case so
-; the embedded BASIC cannot later replace page 1 underneath the cartridge.
-; Space remains available to enter the boot menu explicitly.
-cold_boot_cartridge_wait:
-                call chsns
-                jr nz,cold_boot_cartridge_wait_read
-                ei
-                halt
-                jr cold_boot_cartridge_wait
-cold_boot_cartridge_wait_read:
-                call chget
-                cp #20
-                jr z,cold_boot_options
-                jr cold_boot_cartridge_wait
-
-; Space opens a compact Screen 1 menu. The name table selected below reports
-; whether a validated BASIC payload was discovered.
+; Holding Space through the single post-scan keyboard frame opens a compact
+; Screen 1 menu without delaying normal boot. The selected BASIC payload starts
+; immediately when no cartridge or storage loader has retained control.
 cold_boot_options:
                 call cold_boot_render_options
                 xor a
@@ -961,19 +928,16 @@ cold_boot_read_cartridge_init:
                 pop af
                 ld e,a
 
-; Sunrise IDE and SD Mapper use the public 40F6h INIT convention and are
-; storage boot providers: when their boot path returns, embedded BASIC is the
-; intended fallback.  Every other ordinary AB cartridge suppresses automatic
-; BASIC, including header-only cartridges with a null INIT pointer.
+; Sunrise IDE and SD Mapper use the public 40F6h INIT convention, so record
+; them for RainBIOS's direct storage fallback. Every ordinary AB INIT gets its
+; normal startup opportunity; a returning INIT rejoins automatic BASIC boot.
                 ld a,d
                 cp #40
-                jr nz,cold_boot_mark_app_cartridge
+                jr nz,cold_boot_check_cartridge_init
                 ld a,e
                 cp #f6
                 jr z,cold_boot_check_ide
-cold_boot_mark_app_cartridge:
-                ld a,1
-                ld (APP_CART_PRESENT),a
+cold_boot_check_cartridge_init:
                 ld a,d
                 or e
                 ret z
@@ -997,8 +961,8 @@ cold_boot_check_ide:
                 jr nz,cold_boot_call_cartridge
                 ld a,(CART_SCAN_SLOT)
                 ld (IDE_SLOT),a
-                jr cold_boot_call_cartridge
 cold_boot_call_cartridge:
+                call cold_boot_prepare_cartridge_screen
                 push de
                 pop ix
                 ld a,(CART_SCAN_SLOT)
@@ -2257,6 +2221,24 @@ setwrt:
 ; to visual asset handling cannot move that published address. ZX0 expansion
 ; uses C000h-D7FFh as transient storage; cartridge and disk boot paths may
 ; overwrite the buffer after the startup/menu upload has completed.
+cold_boot_prepare_cartridge_screen:
+; The startup artwork uses Graphics II. Before an ordinary cartridge receives
+; control, move to the normal text console so extension-ROM diagnostics do not
+; overwrite the logo's pattern/name tables. Preserve the header-derived INIT
+; pointer and scan address because they are part of the cartridge entry state.
+; A returning extension leaves SCRMOD at zero, so later extension ROMs retain
+; the messages already printed on the same console.
+                ld a,(SCRMOD)
+                cp 2
+                ret nz
+                push de
+                push hl
+                call initxt
+                di
+                pop hl
+                pop de
+                ret
+
 cold_boot_render_logo:
                 ld hl,logo_pattern_zx0
                 ld de,ASSET_BUFFER
@@ -6351,7 +6333,7 @@ msx2_vdp_registers_8_23:
 ENDIF
 
 text40_vdp_registers:
-                db #00,#b0,#00,#00,#01,#36,#07,#f5
+                db #00,#b0,#00,#00,#01,#36,#07,#bc
 text32_vdp_registers:
                 db #00,#a0,#06,#80,#00,#36,#07,#f5
 graphics2_vdp_registers:

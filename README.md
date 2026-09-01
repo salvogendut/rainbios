@@ -145,7 +145,8 @@ Selected emulator images are collected under [screenshots/](screenshots/).
 With no controlling external cartridge and no successful storage boot,
 RainBIOS automatically launches the embedded
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
-payload after a bounded Space-key menu window. A compatible external payload
+payload immediately after a single non-blocking Space check. Holding Space
+during startup opens the options menu. A compatible external payload
 can still override the embedded copy, and the standalone 16 KiB cartridge ROM
 remains available from the companion build. The dependency, memory layout,
 boot policy, licensing analysis, and release gates are in

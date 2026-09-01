@@ -874,7 +874,7 @@ test-openmsx-boot: $(OPENMSX_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_MSX1 \
-		-command 'set throttle off; after time 1 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
+		-command 'set throttle off; after time 0.10 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_BOOT_SCREEN)
 
 test-openmsx-options: $(OPENMSX_MACHINE)
@@ -882,7 +882,7 @@ test-openmsx-options: $(OPENMSX_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_MSX1 \
-		-command 'set throttle off; after time 1.2 {keymatrixdown 8 0x01}; after time 1.3 {keymatrixup 8 0x01}; after time 1.8 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_OPTIONS_SCREEN)); exit}}'
+		-command 'set throttle off; keymatrixdown 8 0x01; after time 0.80 {keymatrixup 8 0x01}; after time 1.00 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_OPTIONS_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py \
 		--min-colors 2 --max-colors 4 $(OPENMSX_OPTIONS_SCREEN)
 
@@ -1333,7 +1333,8 @@ test-openmsx-cartridge: $(OPENMSX_CART_MACHINE)
 		-command "set cartridge_output {$(abspath $(OPENMSX_CART_REPORT))}; set cartridge_screenshot {$(abspath $(OPENMSX_CART_SCREEN))}" \
 		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
 	$(PYTHON) tools/check_cartridge_probe.py $(OPENMSX_CART_REPORT)
-	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_CART_SCREEN)
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--min-colors 2 --max-colors 2 $(OPENMSX_CART_SCREEN)
 
 $(OPENMSX_FAULT_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
@@ -1375,7 +1376,8 @@ test-openmsx-expanded-cartridge: $(OPENMSX_EXPANDED_CART_MACHINE)
 	$(PYTHON) tools/check_cartridge_probe.py --expected-slot F8 \
 		--expected-exptbl 00,00,80,00 --expected-slttbl 00,00,08,00 \
 		$(OPENMSX_EXPANDED_CART_REPORT)
-	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_EXPANDED_CART_SCREEN)
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--min-colors 2 --max-colors 2 $(OPENMSX_EXPANDED_CART_SCREEN)
 
 $(OPENMSX_PAGE2_CART_MACHINE): \
 		tests/openmsx/RainBIOS_M1_PAGE2_CARTRIDGE.xml.in \
@@ -1394,7 +1396,8 @@ test-openmsx-page2-cartridge: $(OPENMSX_PAGE2_CART_MACHINE)
 		-script "$(abspath tests/openmsx/cartridge_probe.tcl)"
 	$(PYTHON) tools/check_cartridge_probe.py --expected-slot D0 \
 		--expected-entry 0x8000 $(OPENMSX_PAGE2_CART_REPORT)
-	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_PAGE2_CART_SCREEN)
+	$(PYTHON) tools/check_boot_screenshot.py \
+		--min-colors 2 --max-colors 2 $(OPENMSX_PAGE2_CART_SCREEN)
 
 $(OPENMSX_BBC_BASIC_MACHINE): \
 		tests/openmsx/RainBIOS_M1_CARTRIDGE.xml.in \
@@ -1442,7 +1445,7 @@ test-openmsx-bbcbasic: test-openmsx-bbcbasic-menu
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
-		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x02}; after time 2.10 {keymatrixup 0 0x02}" \
+		-command "set smoke_output {$(abspath $(OPENMSX_BBC_BASIC_REPORT))}" \
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_smoke.tcl)"
 	$(PYTHON) tools/check_bbcbasic_smoke.py $(OPENMSX_BBC_BASIC_REPORT)
 
@@ -1508,7 +1511,7 @@ test-openmsx-bbcbasic-graphics: $(OPENMSX_BBC_BASIC_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_BBC_BASIC \
-		-command "set graphics_output {$(abspath $(OPENMSX_BBC_GRAPHICS_REPORT))}; set graphics_screenshot {$(abspath $(OPENMSX_BBC_GRAPHICS_SCREEN))}; after time 1.20 {keymatrixdown 8 0x01}; after time 1.30 {keymatrixup 8 0x01}; after time 2.00 {keymatrixdown 0 0x02}; after time 2.10 {keymatrixup 0 0x02}" \
+		-command "set graphics_output {$(abspath $(OPENMSX_BBC_GRAPHICS_REPORT))}; set graphics_screenshot {$(abspath $(OPENMSX_BBC_GRAPHICS_SCREEN))}" \
 		-script "$(abspath $(BBC_BASIC_DIR)/tools/openmsx_graphics.tcl)"
 	$(PYTHON) $(BBC_BASIC_DIR)/tools/check_openmsx_graphics.py \
 		$(OPENMSX_BBC_GRAPHICS_REPORT)
@@ -1682,9 +1685,11 @@ test-1983-cartridge: $(MSX1_ROM) $(DIAGNOSTIC_CART)
 	$(PYTHON) tools/run_1983_cartridge.py \
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(DIAGNOSTIC_CART)" \
+		--expected-vdp-r0 00 --expected-vdp-r1 F0 \
 		--screenshot "$(EMULATOR_1983_CART_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
-		--size 640x480 $(EMULATOR_1983_CART_SCREEN)
+		--size 640x480 --min-colors 2 --max-colors 2 \
+		$(EMULATOR_1983_CART_SCREEN)
 
 test-1983-page2-cartridge: $(MSX1_ROM) $(PAGE2_CART)
 	mkdir -p $(EMULATOR_1983_DIR)
@@ -1692,9 +1697,11 @@ test-1983-page2-cartridge: $(MSX1_ROM) $(PAGE2_CART)
 		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
 		--bios "$(MSX1_ROM)" --cartridge "$(PAGE2_CART)" \
 		--expected-slot D0 \
+		--expected-vdp-r0 00 --expected-vdp-r1 F0 \
 		--screenshot "$(EMULATOR_1983_PAGE2_CART_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
-		--size 640x480 $(EMULATOR_1983_PAGE2_CART_SCREEN)
+		--size 640x480 --min-colors 2 --max-colors 2 \
+		$(EMULATOR_1983_PAGE2_CART_SCREEN)
 
 test-1983-stubs: $(MSX1_ROM) $(STUB_PROBE_CART)
 	mkdir -p $(EMULATOR_1983_DIR)

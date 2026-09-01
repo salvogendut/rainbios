@@ -18,8 +18,8 @@ class VdpStateProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "BOOT"):
             validate_report(
                 self.make_report().replace(
-                    "BOOT=02,E0,06,FF,03,36,07,01,02,E0,06,FF,03,36,07,01,1800,0000,3800,1B00,02,20",
-                    "BOOT=02,E0,06,FF,03,36,07,01,02,A0,06,FF,03,36,07,01,1800,0000,3800,1B00,02,20",
+                    "BOOT=02,E0,06,FF,03,36,07,01,02,E0,06,FF,03,36,07,BC,1800,0000,3800,1B00,02,20",
+                    "BOOT=02,E0,06,FF,03,36,07,01,02,A0,06,FF,03,36,07,BC,1800,0000,3800,1B00,02,20",
                 )
             )
 
@@ -45,8 +45,8 @@ class VdpStateProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "INITXT"):
             validate_report(
                 self.make_report().replace(
-                    "INITXT=00,F0,00,00,01,36,07,F1,00,F0,00,00,01,36,07,F1,0000,0800,0000,0000,00,28",
-                    "INITXT=00,F0,00,00,01,36,07,F1,00,F0,00,00,01,36,07,F1,0000,0800,0000,0000,02,28",
+                    "INITXT=00,F0,00,00,01,36,07,BC,00,F0,00,00,01,36,07,BC,0000,0800,0000,0000,00,28",
+                    "INITXT=00,F0,00,00,01,36,07,BC,00,F0,00,00,01,36,07,BC,0000,0800,0000,0000,02,28",
                 )
             )
 

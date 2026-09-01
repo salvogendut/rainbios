@@ -28,7 +28,7 @@ RainBIOS normally calls `H.RUNC` (`FECBh`) at cold boot through
 to 1 when it is zero) and setting `DISK_SETUP = 0`. If an empty standalone SD
 Mapper has replaced this hook, RainBIOS instead attempts the same sector-0
 contract through the still-installed `H.PHYD` hook. A valid payload holds back
-the cold-boot call so the Space-key menu can be reached; menu option 2 re-enters
+the cold-boot call so the held-Space menu can be reached; menu option 2 re-enters
 the NMS hook with `DEVICE = 1` and `DISK_SETUP = 0` whenever the user asks to
 run the drive-A boot-sector path. Both paths read logical sector 0 into `C000h`
 and check the first byte for the MSX-DOS signature `EBh` or `E9h`.

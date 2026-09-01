@@ -87,7 +87,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | --- | --- |
 | `test-openmsx` | Machine-definition configuration |
 | `test-openmsx-boot` | Rendered boot artwork and nonblank output |
-| `test-openmsx-options` | Space-key menu route and Screen 1 rendering; host asset tests pin the title and three action labels |
+| `test-openmsx-options` | Held-Space, non-blocking menu route and Screen 1 rendering; host asset tests pin the title and three action labels |
 | `test-openmsx-audio` | Non-silent startup-jingle PCM capture |
 | `test-openmsx-m1` | Primary, split, decoy, and expanded RAM discovery layouts |
 | `test-openmsx-slots` | Primary `RSLREG`, `WSLREG`, `ENASLT`, `RDSLT`, `WRSLT`, and returning `CALSLT` incl. page-0/page-3 primary targets |
@@ -104,7 +104,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-msx2-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
 | `test-openmsx-msx2-64k` | RainBIOS MSX2 main ROM + SUB-ROM on a 64 KiB VRAM V9938: CHGMOD Screens 5/8 and even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range |
 | `test-openmsx-font` | Printable project-owned font coverage |
-| `test-openmsx-cls` | Screen 0/1/2/3 clearing and cursor state |
+| `test-openmsx-cls` | Screen 0/1/2/3 clearing, cursor state, and automatic BASIC fallback after the fixture cartridge INIT returns |
 
 ### Cartridges and payloads
 
@@ -150,7 +150,7 @@ make test-1983 \
 | --- | --- |
 | `test-1983` | MSX1 stack, RAM page map, and rendered boot frame |
 | `test-1983-expanded` | NMS 8250 expanded-slot RAM layout |
-| `test-1983-cartridge` | Primary diagnostic cartridge startup smoke test |
+| `test-1983-cartridge` | Primary diagnostic cartridge starts on a cleared Screen 0, prints yellow-on-green extension text without retained logo pixels, and preserves the cartridge entry contract |
 | `test-1983-stubs` | BIOS stub safe-return contract: all 21 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/CNVCHR/LFTQ/PUTQ and the SCALXY..SCANL group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
 | `test-1983-abi-clobber` | DCOMPR flag/carry contract (HL<DE, HL==DE, HL>DE) and BC preservation; WRTPSG/RDPSG round trip through the PSG ports |
 | `test-1983-disk-abi` | Hook-dispatching disk baseline: PHYDIO/FORMAT/OUTDLP safe defaults return carry, ISFLIO returns A=0, FORMAT dispatches to an installed H_FORM hook, and GETVCP/GETVC2 return the voice-control-block pointers |

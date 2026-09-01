@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 set throttle off
+keymatrixdown 8 0x01
+after time 0.80 {keymatrixup 8 0x01}
 
 if {![info exists payload_menu_output]} {
     set payload_menu_output /tmp/rainbios-payload-menu.txt
@@ -28,9 +30,7 @@ proc inspect_discovery {} {
             [peek 0xF301] [word_at 0xF302] \
             [lindex [get_selected_slot 1] 0]
     ]
-    keymatrixdown 8 0x01
-    after time 0.10 {keymatrixup 8 0x01}
-    after time 0.40 inspect_menu
+    inspect_menu
 }
 
 proc inspect_menu {} {

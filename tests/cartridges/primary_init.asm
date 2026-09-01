@@ -67,7 +67,21 @@ primary_init:
                 ld a,#5e
                 ld (#f304),a
 
+; Model an extension ROM such as a SCSI BIOS announcing itself. RainBIOS must
+; put INIT on a clean text screen so this line cannot overwrite boot artwork.
+                ld hl,primary_init_message
+primary_init_print:
+                ld a,(hl)
+                or a
+                jr z,primary_init_loop
+                call #00a2                     ; BIOS CHPUT
+                inc hl
+                jr primary_init_print
+
 primary_init_loop:
                 jp primary_init_loop
+
+primary_init_message:
+                db "CARTRIDGE INIT",0
 
                 defs #8000-$,#ff

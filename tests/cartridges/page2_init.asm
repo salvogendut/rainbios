@@ -66,7 +66,20 @@ page2_init:
                 ld a,#5e
                 ld (#f304),a
 
+; Exercise the same clean-console transition for mapper-style page-2 INIT.
+                ld hl,page2_init_message
+page2_init_print:
+                ld a,(hl)
+                or a
+                jr z,page2_init_loop
+                call #00a2                     ; BIOS CHPUT
+                inc hl
+                jr page2_init_print
+
 page2_init_loop:
                 jp page2_init_loop
+
+page2_init_message:
+                db "CARTRIDGE INIT",0
 
                 defs #c000-$,#ff

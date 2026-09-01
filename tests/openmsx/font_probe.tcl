@@ -20,11 +20,7 @@ proc dump_font {} {
     exit
 }
 
-proc press_space {} {
-    keymatrixdown 8 0x01
-    after time 0.05 {keymatrixup 8 0x01}
-    after time 0.5 dump_font
-}
-
-after time 1.5 press_space
+keymatrixdown 8 0x01
+after time 0.80 {keymatrixup 8 0x01}
+after time 1.00 dump_font
 after realtime 15 exit
