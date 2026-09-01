@@ -79,8 +79,14 @@ falls back to an old prebuilt payload. The default outputs include
 chain also builds the MSX2 main ROM, Sub-ROM, and generic WD2793 disk ROM. The
 independently usable exact payload and its compressed stream are copied to
 `build/payload/bbcbasic_msx_console.rom` and
-`build/payload/bbcbasic_msx_console.zx0`. Override tools or the sibling path
-when needed:
+`build/payload/bbcbasic_msx_console.zx0`.
+
+The five redistributable images bundled by 1983 are also versioned directly
+under `build/`: the MSX2 main ROM, MSX2 Sub-ROM, generic and NMS8250 disk
+ROMs, and the Omega unified image. Other generated build contents remain
+ignored.
+
+Override tools or the sibling path when needed:
 
 ```sh
 make RASM=/path/to/rasm \
