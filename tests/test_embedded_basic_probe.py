@@ -19,7 +19,7 @@ BBC BASIC (Z80) Version 3.00+1
 """
 
 EMULATOR_1983_STATE = (
-    "state frame=421 pc=14DA sp=F2F6 slot=FC subslot=00 "
+    "state frame=121 pc=14DA sp=F2F6 slot=FC subslot=00 "
     "mapper=00,00,00,00 vram_nonzero=9885 vdp_r0=00 vdp_r1=F0\n"
 )
 

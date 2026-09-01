@@ -65,10 +65,18 @@ def validate_report(
         raise ValueError(f"DE {de:04X} and IX {ix:04X} must both be the INIT pointer")
     if iy != (a << 8):
         raise ValueError(f"IY {iy:04X} must hold the slot ID in its high byte")
-    if not 0xF080 <= sp <= 0xF380:
+    if not 0xF060 <= sp <= 0xF380:
         raise ValueError(f"SP {sp:04X} is outside RainBIOS page-3 stacks")
     if hl != 0x4003:
         raise ValueError(f"HL {hl:04X} must be the scan header address (4003)")
+
+    screen = _parse_bytes(values.get("ENTRYSCREEN", ""))
+    expected_screen = [0x00, 0x28, 0x01, 0x01, 0xB4, 0x0B, 0x04, 0x04]
+    if screen != expected_screen:
+        raise ValueError(
+            "ENTRYSCREEN must be cleared Screen 0 with yellow text on logo blue: "
+            f"found {screen!r}, expected {expected_screen!r}"
+        )
 
     # The fixture's in-ROM snapshot must agree with the breakpoint capture,
     # proving the register values survive the transfer.

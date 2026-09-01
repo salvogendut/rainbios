@@ -28,7 +28,11 @@ proc init_entry_captured {} {
         [format "ENTRYDE=%04X" [reg DE]] \
         [format "ENTRYHL=%04X" [reg HL]] \
         [format "ENTRYIX=%04X" [reg IX]] \
-        [format "ENTRYIY=%04X" [reg IY]]]
+        [format "ENTRYIY=%04X" [reg IY]] \
+        [format "ENTRYSCREEN=%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X" \
+            [peek 0xFCAF] [peek 0xF3B0] [peek 0xF3DC] [peek 0xF3DD] \
+            [debug read "VDP regs" 7] [peek 0xF3E9] [peek 0xF3EA] \
+            [peek 0xF3EB]]]
     debug remove_bp $::init_breakpoint
     after time 3.0 finish_cartridge_probe
 }

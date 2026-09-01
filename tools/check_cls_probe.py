@@ -30,6 +30,7 @@ def validate_report(text: str) -> dict[str, int]:
         "SCREEN2_CSRX",
         "SCREEN2_CSRY",
         "BAKCLR",
+        "BASIC",
     )
     for key in required:
         if key not in values:
@@ -57,6 +58,8 @@ def validate_report(text: str) -> dict[str, int]:
             "Screen 2 cursor after CLS is "
             f"({values['SCREEN2_CSRX']},{values['SCREEN2_CSRY']}), expected (1,1)"
         )
+    if values["BASIC"] != 1:
+        raise ValueError("returning cartridge INIT did not fall through to BASIC")
     return values
 
 

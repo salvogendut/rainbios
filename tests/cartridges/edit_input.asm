@@ -55,7 +55,7 @@ edit_input_tick:
                 or a
                 jr nz,edit_input_wait_program
                 ld a,l
-                cp 2
+                cp 1
                 jr z,edit_input_space
                 cp 20
                 jr z,edit_input_menu

@@ -367,9 +367,9 @@ MAIN-ROM. Every build rebuilds the exact companion artifact, verifies its
 digest, and embeds a ZX0-compressed `RBC1` container. RainBIOS reconstructs the
 payload in page-1 RAM at launch. External cartridges retain their normal first
 opportunity; storage retains priority over the internal copy; a clean storage
-return leads to a bounded Space-key window and then automatic BASIC. A
-returning ordinary game/application `INIT` suppresses that automatic fallback
-because such cartridges may continue through hooks. A compatible external
+return leads to a single held-Space check and then automatic BASIC. Since issue
+160, a returning ordinary game/application `INIT` also rejoins that automatic
+fallback; non-returning cartridges retain control. A compatible external
 payload remains the upgrade override. Dedicated 1983 and openMSX probes cover
 the no-cartridge automatic path.
 
@@ -648,7 +648,7 @@ sector, and reaches a labelled spin; a separate probe confirms that a missing or
 non-bootable medium falls back to the interactive menu with the RainBIOS stack
 intact.
 
-The Space-key boot menu now offers `START BASIC`, `BOOT FLOPPY`, and
+The held-Space boot menu now offers `START BASIC`, `BOOT FLOPPY`, and
 `BOOT IDE OR SD` beneath `RainBIOS (c) salvogendut 2026`. Option 1 starts the
 selected BASIC payload. Option 2 re-enters the drive-A `H.RUNC` boot-sector
 path on demand (a valid payload holds back the cold-boot auto-boot so the menu

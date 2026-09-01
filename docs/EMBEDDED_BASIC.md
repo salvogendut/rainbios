@@ -23,7 +23,7 @@ The issue-60 implementation slice is operational:
   remains directly addressable in ROM;
 - external cartridges retain priority, storage is attempted next, and a clean
   return selects the internal payload;
-- Space has a bounded three-second window to open the options menu;
+- held Space is sampled once after cartridge discovery to open the options menu without delaying normal boot;
 - the internal container is validated before expansion, and the reconstructed
   image's `AB` header and `RBP1` descriptor are checked before launch;
 - automatic no-cartridge startup is verified in 1983 and openMSX.
@@ -65,18 +65,17 @@ The intended automatic boot policy is:
 1. initialize the machine and give ordinary external cartridges their normal
    startup opportunity;
 2. attempt an installed disk or IDE/SD boot path;
-3. if no ordinary external cartridge is present and all applicable storage
-   paths return without booting, start the built-in interpreter;
-4. allow Space during a bounded startup window to open the RainBIOS options
-   menu instead of immediately following the automatic policy.
+3. if every applicable cartridge and storage path returns without booting,
+   start the selected interpreter immediately;
+4. sample a Space key held during startup once after discovery to open the
+   RainBIOS options menu without adding a timeout.
 
 In particular:
 
 - with no cartridges present, the built-in interpreter starts;
 - with a working game or application cartridge, that cartridge keeps control;
-- if an ordinary cartridge `INIT` returns, automatic BASIC remains suppressed
-  because the cartridge may continue through hooks or interrupts; Space still
-  opens the menu for an explicit BASIC launch;
+- if an ordinary cartridge `INIT` returns, it rejoins the automatic BASIC
+  fallback; hooks and slot calls remain available to the extension;
 - with a bootable Sunrise IDE or SD Mapper setup, its operating system boots;
 - when an IDE/SD bootstrap reports failure by returning, the built-in
   interpreter starts;
@@ -264,7 +263,7 @@ try IDE/SD standard hook or RainBIOS direct bootstrap
 validate and select built-in BASIC
           |
           v
-bounded Space-key window
+single held-Space check
           |
           +-- Space --> options menu
           |
@@ -511,17 +510,17 @@ interpreter artifact.
 
 ### Automatic boot matrix in 1983 and openMSX
 
-The no-cartridge automatic prompt, bounded Space menu, exact internal header
+The no-cartridge automatic prompt, non-blocking held-Space menu, exact internal header
 and descriptor visibility, page-1 ROM write guard, and a simple interpreter
 program now have committed probes. The remainder of this list is the
 regression matrix still to promote to the internal mapping:
 
 - no external cartridges: interpreter banner and prompt appear without input;
-- Space during the bounded window: options menu appears;
+- Space held during startup: options menu appears;
 - menu BASIC selection: built-in interpreter starts;
 - normal game/application cartridge: cartridge retains control;
-- ordinary cartridge whose `INIT` returns: cartridge remains in control and
-  automatic BASIC is suppressed; Space can still request the menu;
+- ordinary cartridge whose `INIT` returns: automatic BASIC starts while the
+  extension's hooks and slot remain available;
 - bootable floppy: disk payload starts instead of BASIC;
 - empty or non-bootable floppy: policy proceeds to IDE/SD and then BASIC;
 - bootable Sunrise IDE: Nextor and GeoBench still boot;
@@ -570,8 +569,8 @@ Before making the combined image the recommended default, test at least:
 5. **Done — add internal payload launch.** The launcher validates the
    container, reconstructs the exact image in page-1 RAM, checks `AB`/`RBP1`,
    and enters it through the existing contract.
-6. **Done for clean returns — change automatic fallback policy.** Space is
-   bounded and clean storage returns converge on BASIC. A third-party INIT or
+6. **Done for clean returns — change automatic fallback policy.** The Space
+   check is non-blocking and clean cartridge/storage returns converge on BASIC. A third-party INIT or
    hook which never returns remains outside the guarantee.
 7. **In progress — run the full emulator matrix.** The internal prompt passes
    in 1983/openMSX; Arkanoid renders a complete board in both; GeoBench boots

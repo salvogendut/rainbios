@@ -36,7 +36,7 @@ menu_input_tick:
                 ret z
                 inc a
                 ld (TEST_STATE),a
-                cp 2
+                cp 1
                 jr z,menu_input_space
                 cp 20
                 ret nz

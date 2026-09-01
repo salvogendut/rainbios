@@ -57,7 +57,7 @@ tape_save_tick:
                 or a
                 jr nz,tape_save_commands
                 ld a,l
-                cp 2
+                cp 1
                 jr z,tape_save_space
                 cp 20
                 jr z,tape_save_menu

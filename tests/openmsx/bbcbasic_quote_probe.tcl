@@ -7,7 +7,7 @@ if {![info exists bbcbasic_quote_output]} {
 }
 
 # Boot RainBIOS_MSX1, which launches the embedded BBC BASIC console after the
-# storage/boot scan and the Space-key window. Then type a double quote through
+# storage/boot scan and the non-blocking held-Space check. Then type a double quote through
 # the physical keyboard matrix (Shift + apostrophe) followed by a letter, so
 # the BBC BASIC line editor echoes "A on the command line. The quote must
 # arrive as the literal 0x22 character, not latch a dead key.

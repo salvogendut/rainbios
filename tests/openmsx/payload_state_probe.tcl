@@ -45,7 +45,5 @@ proc check_payload_running {} {
     exit
 }
 
-after time 0.30 {
-    set ::payload_breakpoint [debug set_bp 0x4010 {} {capture_payload_entry}]
-}
+set ::payload_breakpoint [debug set_bp 0x4010 {} {capture_payload_entry}]
 after realtime 15 exit

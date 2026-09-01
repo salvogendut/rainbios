@@ -15,27 +15,18 @@ class InvalidPayloadProbeTests(unittest.TestCase):
         validate_report(self.make_report())
 
     def test_invalid_init_must_not_run(self) -> None:
-        with self.assertRaisesRegex(ValueError, "DISCOVERY"):
+        with self.assertRaisesRegex(ValueError, "FALLBACK"):
             validate_report(
                 self.make_report().replace(
-                    "DISCOVERY=FF,0000,04FF0000,0",
-                    "DISCOVERY=FF,0000,42414421,1",
+                    "FALLBACK=00,4010,00001040,3",
+                    "FALLBACK=FF,0000,42414421,1",
                 )
             )
 
-    def test_menu_must_report_missing(self) -> None:
-        with self.assertRaisesRegex(ValueError, "MENU"):
+    def test_internal_payload_must_be_selected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "FALLBACK"):
             validate_report(
-                self.make_report().replace("MENU=1,1", "MENU=1,0")
-            )
-
-    def test_selection_must_remain_guarded(self) -> None:
-        with self.assertRaisesRegex(ValueError, "GUARDED"):
-            validate_report(
-                self.make_report().replace(
-                    "GUARDED=0,04FF0000",
-                    "GUARDED=1,42414421",
-                )
+                self.make_report().replace("FALLBACK=00", "FALLBACK=FF")
             )
 
 

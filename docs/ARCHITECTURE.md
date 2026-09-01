@@ -224,8 +224,12 @@ trackball detection, and `GTPDL` paddle timing remain unsupported. The public
 contract and limitations are in `docs/abi/controllers.md`.
 
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
-Graphics II logo and Space-key notice, plays a short four-note PSG motif, and
-checks primary cartridges before waiting through the buffered keyboard path.
+Graphics II logo and `RainBios booting...` notice, plays a short four-note PSG
+motif, and checks primary cartridges before one buffered-keyboard sample.
+Immediately before the first conventional cartridge `INIT`, it replaces the
+logo with a cleared 40-column console using light-yellow text on the same dark
+blue used by the logo. Extension-ROM and storage diagnostics therefore start on a clean
+text display; subsequent returning extensions retain earlier messages.
 Cartridge initialization uses a temporary stack ending below `F100h`, while
 publishing the standard `F380h` `HIMEM` boundary and pre-BASIC `MEMSIZ`/`STKTOP`
 values expected by disk allocators. RainBIOS then runs `H.STKE` and any
@@ -235,7 +239,7 @@ mounted card returns to the RainBIOS boot-wait/menu path.
 The original-BIOS keyboard decoder entry at `0D89h`, used directly by Nextor
 2.1, reports the international layout without exposing that implementation as
 a public BIOS contract.
-Space switches to a Screen 1 menu headed `RainBIOS (c) salvogendut 2026`, which
+Holding Space during startup switches to a Screen 1 menu headed `RainBIOS (c) salvogendut 2026`, which
 reports whether the built-in payload is ready. `START BASIC` maps the payload
 in page 1 and transfers to its descriptor entry under the contract in
 `docs/abi/payload-v1.md`. `BOOT FLOPPY` invokes the optional disk ROM's drive-A
@@ -245,10 +249,10 @@ distinguishes Sunrise ATA from SD Mapper SPI registers, and applies the same
 control.
 
 If no external payload has been selected and each applicable storage path
-returns cleanly, RainBIOS selects the built-in payload. Space has a bounded
-180-frame window to enter the menu before automatic launch. A non-returning or
-state-corrupting third-party cartridge remains outside this fallback
-guarantee.
+returns cleanly, RainBIOS selects the built-in payload. One post-scan keyboard
+frame recognizes a held Space key without adding a boot timeout, then BASIC
+launches immediately. A non-returning or state-corrupting third-party
+cartridge remains outside this fallback guarantee.
 
 The generated logo and menu tables are stored as ZX0 streams and expanded one
 at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB

@@ -51,7 +51,7 @@ graphics_input_tick:
                 or a
                 jr nz,graphics_input_wait_program
                 ld a,l
-                cp 2
+                cp 1
                 jr z,graphics_input_space
                 cp 20
                 jr z,graphics_input_menu

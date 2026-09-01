@@ -53,7 +53,7 @@ scroll_input_tick:
                 or a
                 jr nz,scroll_input_wait_program
                 ld a,l
-                cp 2
+                cp 1
                 jr z,scroll_input_space
                 cp 20
                 jr z,scroll_input_menu

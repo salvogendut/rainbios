@@ -9,9 +9,7 @@ import pathlib
 
 
 EXPECTED = {
-    "DISCOVERY": "FF,0000,04FF0000,0",
-    "MENU": "1,1",
-    "GUARDED": "0,04FF0000",
+    "FALLBACK": "00,4010,00001040,3",
 }
 
 

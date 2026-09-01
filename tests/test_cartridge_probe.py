@@ -16,6 +16,7 @@ ENTRYDE=4010
 ENTRYHL=4003
 ENTRYIX=4010
 ENTRYIY=0100
+ENTRYSCREEN=00,28,01,01,B4,0B,04,04
 PC=402B
 SP=F088
 SLOT=F4
@@ -92,6 +93,15 @@ class CartridgeProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ENTRYPC"):
             validate_report(VALID_REPORT.replace("ENTRYPC=4010", "ENTRYPC=4020"))
 
+    def test_init_starts_on_the_clean_boot_console(self) -> None:
+        with self.assertRaisesRegex(ValueError, "yellow text on logo blue"):
+            validate_report(
+                VALID_REPORT.replace(
+                    "ENTRYSCREEN=00,28,01,01,B4,0B,04,04",
+                    "ENTRYSCREEN=02,20,01,01,01,0B,04,04",
+                )
+            )
+
     def test_page2_init_entry_is_accepted(self) -> None:
         # A page-2 cartridge INIT (mapper-style arrangement): entry and the
         # sampled loop PC live in page 2, and the slot map keeps page 2 on the
@@ -108,6 +118,8 @@ class CartridgeProbeTests(unittest.TestCase):
 
     def test_running_expanded_cartridge_is_accepted(self) -> None:
         report = VALID_REPORT.replace("SLOT=F4", "SLOT=F8")
+        report = report.replace("ENTRYSP=F088", "ENTRYSP=F07E")
+        report = report.replace("INITSP=F0,88", "INITSP=F0,7E")
         report += "EXPTBL=00,00,80,00\nSLTTBL=00,00,08,00\n"
         values = validate_report(
             report,

@@ -20,6 +20,7 @@ proc read_cls_result {} {
     puts $handle "SCREEN2_CSRX=[peek 0xf3a5]"
     puts $handle "SCREEN2_CSRY=[peek 0xf3a6]"
     puts $handle "BAKCLR=[peek 0xf3ea]"
+    puts $handle "BASIC=[expr {[string first {BBC BASIC (Z80)} [get_screen]] >= 0}]"
     close $handle
     exit
 }
