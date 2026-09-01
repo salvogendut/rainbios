@@ -19,8 +19,24 @@ DEVICE          equ #fd99
 DISK_SETUP      equ #fb29
 DRVINF          equ #fb21
 DISK_SLOT       equ #8f
+INIT_DUPLICATE  equ #f30f
 
 disk_rom_init:
+; F300h is disk-system work RAM, so a storage cartridge may overwrite it.
+; Also remember whether RainBIOS invokes this INIT more than once.
+                ld a,(H_RUNC)
+                cp #c9
+                jr z,disk_rom_init_first
+                ld a,1
+                ld (INIT_DUPLICATE),a
+                jr disk_rom_init_continue
+disk_rom_init_first:
+                xor a
+                ld (INIT_DUPLICATE),a
+disk_rom_init_continue:
+                ld a,#52
+                ld (#f300),a
+
                 push iy
                 pop de
                 ld a,d
@@ -57,6 +73,9 @@ disk_phyd:
                 ret
 
 disk_rom_boot_check:
+                ld a,(INIT_DUPLICATE)
+                or a
+                jr nz,disk_rom_boot_fail_duplicate
                 ld a,(H_PHYD)
                 cp #f7
                 jr nz,disk_rom_boot_fail_phyd
@@ -88,5 +107,7 @@ disk_rom_boot_fail_setup:
                 jr disk_rom_boot_fail_setup
 disk_rom_boot_fail_runc:
                 jr disk_rom_boot_fail_runc
+disk_rom_boot_fail_duplicate:
+                jr disk_rom_boot_fail_duplicate
 
                 defs #8000-$,#ff

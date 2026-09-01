@@ -895,10 +895,21 @@ cold_boot_scan_slot_ready:
                 ld a,(BIOSSLT)
                 cp b
                 jr z,cold_boot_scan_next_slot
+; Cartridge INIT owns all normal registers and may claim disk-system work
+; bytes, including CART_SCAN_SLOT at F300h. Preserve the candidate slot on
+; RainBIOS's stack and republish it after every returning cartridge call.
                 ld hl,#4000
+                push bc
                 call cold_boot_try_cartridge
+                pop bc
+                ld a,b
+                ld (CART_SCAN_SLOT),a
                 ld hl,#8000
+                push bc
                 call cold_boot_try_cartridge
+                pop bc
+                ld a,b
+                ld (CART_SCAN_SLOT),a
 cold_boot_scan_next_slot:
                 ld a,(CART_SCAN_SLOT)
                 bit 7,a
