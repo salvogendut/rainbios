@@ -1,3 +1,8 @@
-/build/
+/build/*
+!/build/rainbios_disk.rom
+!/build/rainbios_msx2.rom
+!/build/rainbios_msx2_sub.rom
+!/build/rainbios_nms8250_disk.rom
+!/build/rainbios_omega.rom
 __pycache__/
 *.py[cod]
