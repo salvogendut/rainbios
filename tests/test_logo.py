@@ -84,7 +84,7 @@ class LogoConversionTest(unittest.TestCase):
 
     def test_manifest_identifies_the_exact_source_asset(self):
         manifest = json.loads((OUTPUT / "logo_manifest.json").read_text())
-        self.assertEqual(BOOT_NOTICE, "RainBIOS booting...")
+        self.assertEqual(BOOT_NOTICE, "RainBios booting...")
         self.assertEqual(
             manifest["source_sha256"],
             hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
