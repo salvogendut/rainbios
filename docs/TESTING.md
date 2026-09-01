@@ -150,7 +150,7 @@ make test-1983 \
 | --- | --- |
 | `test-1983` | MSX1 stack, RAM page map, and rendered boot frame |
 | `test-1983-expanded` | NMS 8250 expanded-slot RAM layout |
-| `test-1983-cartridge` | Primary diagnostic cartridge starts on a cleared Screen 0, prints yellow-on-green extension text without retained logo pixels, and preserves the cartridge entry contract |
+| `test-1983-cartridge` | Primary diagnostic cartridge starts on a cleared Screen 0, prints yellow-on-logo-blue extension text without retained logo pixels, and preserves the cartridge entry contract |
 | `test-1983-stubs` | BIOS stub safe-return contract: all 21 callable M6 stubs (SYNCHR/CHRGTR/OUTDO/GETYPR/INITIO/STRTMS/CNVCHR/LFTQ/PUTQ and the SCALXY..SCANL group plus CALBAS) set carry and preserve A/BC/DE/HL via CALSLT. NMI (0066h) is excluded as an interrupt return, not a callable stub |
 | `test-1983-abi-clobber` | DCOMPR flag/carry contract (HL<DE, HL==DE, HL>DE) and BC preservation; WRTPSG/RDPSG round trip through the PSG ports |
 | `test-1983-disk-abi` | Hook-dispatching disk baseline: PHYDIO/FORMAT/OUTDLP safe defaults return carry, ISFLIO returns A=0, FORMAT dispatches to an installed H_FORM hook, and GETVCP/GETVC2 return the voice-control-block pointers |

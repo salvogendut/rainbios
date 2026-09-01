@@ -554,10 +554,10 @@ bootstrap_empty_hook:
                 ld (CSRX),a
                 ld a,11                         ; light-yellow text
                 ld (FORCLR),a
-                inc a                           ; dark-green background
+                ld a,4                          ; logo-matching dark blue
                 ld (BAKCLR),a
                 ld (BDRCLR),a
-                ld b,#bc
+                ld b,#b4
                 ld c,7
                 call wrtvdp
                 ld a,2
@@ -6333,7 +6333,7 @@ msx2_vdp_registers_8_23:
 ENDIF
 
 text40_vdp_registers:
-                db #00,#b0,#00,#00,#01,#36,#07,#bc
+                db #00,#b0,#00,#00,#01,#36,#07,#b4
 text32_vdp_registers:
                 db #00,#a0,#06,#80,#00,#36,#07,#f5
 graphics2_vdp_registers:

@@ -71,10 +71,10 @@ def validate_report(
         raise ValueError(f"HL {hl:04X} must be the scan header address (4003)")
 
     screen = _parse_bytes(values.get("ENTRYSCREEN", ""))
-    expected_screen = [0x00, 0x28, 0x01, 0x01, 0xBC, 0x0B, 0x0C, 0x0C]
+    expected_screen = [0x00, 0x28, 0x01, 0x01, 0xB4, 0x0B, 0x04, 0x04]
     if screen != expected_screen:
         raise ValueError(
-            "ENTRYSCREEN must be cleared Screen 0 with yellow text on green: "
+            "ENTRYSCREEN must be cleared Screen 0 with yellow text on logo blue: "
             f"found {screen!r}, expected {expected_screen!r}"
         )
 

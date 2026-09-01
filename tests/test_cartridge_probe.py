@@ -16,7 +16,7 @@ ENTRYDE=4010
 ENTRYHL=4003
 ENTRYIX=4010
 ENTRYIY=0100
-ENTRYSCREEN=00,28,01,01,BC,0B,0C,0C
+ENTRYSCREEN=00,28,01,01,B4,0B,04,04
 PC=402B
 SP=F088
 SLOT=F4
@@ -94,11 +94,11 @@ class CartridgeProbeTests(unittest.TestCase):
             validate_report(VALID_REPORT.replace("ENTRYPC=4010", "ENTRYPC=4020"))
 
     def test_init_starts_on_the_clean_boot_console(self) -> None:
-        with self.assertRaisesRegex(ValueError, "yellow text on green"):
+        with self.assertRaisesRegex(ValueError, "yellow text on logo blue"):
             validate_report(
                 VALID_REPORT.replace(
-                    "ENTRYSCREEN=00,28,01,01,BC,0B,0C,0C",
-                    "ENTRYSCREEN=02,20,01,01,01,0B,0C,0C",
+                    "ENTRYSCREEN=00,28,01,01,B4,0B,04,04",
+                    "ENTRYSCREEN=02,20,01,01,01,0B,04,04",
                 )
             )
 

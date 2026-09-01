@@ -227,8 +227,8 @@ After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and `RainBios booting...` notice, plays a short four-note PSG
 motif, and checks primary cartridges before one buffered-keyboard sample.
 Immediately before the first conventional cartridge `INIT`, it replaces the
-logo with a cleared 40-column console using light-yellow text on a dark-green
-background. Extension-ROM and storage diagnostics therefore start on a clean
+logo with a cleared 40-column console using light-yellow text on the same dark
+blue used by the logo. Extension-ROM and storage diagnostics therefore start on a clean
 text display; subsequent returning extensions retain earlier messages.
 Cartridge initialization uses a temporary stack ending below `F100h`, while
 publishing the standard `F380h` `HIMEM` boundary and pre-BASIC `MEMSIZ`/`STKTOP`
