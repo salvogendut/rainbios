@@ -55,6 +55,18 @@ class BootInfoProbeTests(unittest.TestCase):
         values = validate_report(report, FONT, 64, 16, False)
         self.assertEqual(values["ram"], "RAM      64 KB")
 
+    def test_accepts_4096k_mapper_sentinel(self):
+        report = make_report(
+            ram="RAM    4096 KB",
+            vram="VRAM     16 KB",
+            date="",
+            time="",
+            mapper="00",
+            mode="00",
+        )
+        values = validate_report(report, FONT, 4096, 16, False)
+        self.assertEqual(values["ram"], "RAM    4096 KB")
+
     def test_rejects_wrong_memory_text(self):
         with self.assertRaisesRegex(ValueError, "RAM line"):
             validate_report(

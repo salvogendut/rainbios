@@ -62,7 +62,8 @@ The main BIOS currently provides:
 - a mapper-compatible expanded `CALSLT` frame whose saved page-2/page-3
   selectors may be patched by a disk kernel before restoration;
 - a fixed 64 KiB memory-mapper baseline of segments `3,2,1,0`, boot-time
-  detection of the mapper's segment count published in `MAPPER_SEGMENTS`, and
+  detection of the mapper's segment count published in `MAPPER_SEGMENTS`
+  (`00h` represents all 256 segments of a 4096 KiB mapper), and
   publication of the discovered RAM slot through `RAMAD0`-`RAMAD3`;
 - IM 1 VBlank handling, standard `H.KEYI`/`H.TIMI` hooks, keyboard buffering,
   and `JIFFY`; the handler also captures the per-frame joystick matrix

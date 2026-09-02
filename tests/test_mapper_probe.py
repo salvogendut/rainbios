@@ -16,14 +16,14 @@ class MapperProbeTests(unittest.TestCase):
         report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
         with self.assertRaisesRegex(ValueError, "MAPPER_SEGMENTS"):
             validate_report(
-                report.replace("MAPPER_SEGMENTS=08", "MAPPER_SEGMENTS=04")
+                report.replace("MAPPER_SEGMENTS=00", "MAPPER_SEGMENTS=80")
             )
 
-    def test_segment7_must_be_distinct(self) -> None:
+    def test_segment255_must_be_distinct(self) -> None:
         report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
-        with self.assertRaisesRegex(ValueError, "SEG7"):
+        with self.assertRaisesRegex(ValueError, "SEG255"):
             validate_report(
-                report.replace("SEG7=7A\nSEG0=5A", "SEG7=5A\nSEG0=5A")
+                report.replace("SEG255=7A\nSEG0=5A", "SEG255=5A\nSEG0=5A")
             )
 
     def test_baseline_map_must_be_preserved(self) -> None:

@@ -2335,6 +2335,9 @@ cold_boot_render_logo_color_block:
 ; All writes stay under DI; the display and VBlank source are still disabled.
 cold_boot_render_system_info:
                 ld a,(MAPPER_SEGMENTS)
+                or a
+                ld de,boot_ram_4096_message
+                jr z,cold_boot_ram_message_ready
                 cp 2
                 ld de,boot_ram_32_message
                 jr z,cold_boot_ram_message_ready
@@ -5208,7 +5211,11 @@ bootstrap_size_bit:
                 add a,a
                 ld b,a
                 jr nc,bootstrap_size_bit
-                ld a,128                       ; 4 MiB maps cap at 128 segments
+                ; The 8-bit mapper register can address all 256 segments of a
+                ; 4 MiB mapper.  Publish that count as zero, matching the
+                ; natural 8-bit representation of 256 rather than truncating
+                ; the detected size to 128 segments (2 MiB).
+                xor a
                 ld (MAPPER_SEGMENTS),a
                 jr bootstrap_size_restore
 bootstrap_size_found:
@@ -6887,6 +6894,8 @@ boot_ram_1024_message:
                 db "RAM    1024 KB",0
 boot_ram_2048_message:
                 db "RAM    2048 KB",0
+boot_ram_4096_message:
+                db "RAM    4096 KB",0
 boot_vram_16_message:
                 db "VRAM     16 KB",0
 boot_vram_64_message:

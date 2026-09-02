@@ -882,7 +882,8 @@ test-openmsx-boot: $(OPENMSX_MACHINE)
 		-command 'set throttle off; after time 0.75 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_BOOT_SCREEN)
 
-test-openmsx-boot-info: $(OPENMSX_MACHINE) $(OPENMSX_MSX2_MACHINE) \
+test-openmsx-boot-info: $(OPENMSX_MACHINE) $(OPENMSX_MAPPER_MACHINE) \
+		$(OPENMSX_MSX2_MACHINE) \
 		$(OPENMSX_MSX2_64K_MACHINE) $(OPENMSX_MSX2_NO_RTC_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_BOOT_INFO_DIR)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
@@ -893,6 +894,14 @@ test-openmsx-boot-info: $(OPENMSX_MACHINE) $(OPENMSX_MSX2_MACHINE) \
 	$(PYTHON) tools/check_boot_info_probe.py \
 		--ram 64 --vram 16 \
 		$(OPENMSX_BOOT_INFO_DIR)/msx1.txt $(OPENMSX_BOOT_INFO_FONT)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_MAPPER \
+		-script "$(abspath tests/openmsx/boot_info_probe.tcl)" \
+		-command "set boot_info_output {$(abspath $(OPENMSX_BOOT_INFO_DIR))/msx1-4096k.txt}; set boot_info_expect_rtc 0"
+	$(PYTHON) tools/check_boot_info_probe.py \
+		--ram 4096 --vram 16 \
+		$(OPENMSX_BOOT_INFO_DIR)/msx1-4096k.txt $(OPENMSX_BOOT_INFO_FONT)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_MSX2 \
