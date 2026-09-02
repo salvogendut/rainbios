@@ -82,11 +82,14 @@ the target's writable page-3 RAM that restores the map, the selector, and the
 caller's stack. The openMSX slot probes cover page-0, page-3 same-slot,
 page-3 different-slot (primary and expanded), and the fail-closed cases.
 
-M1J detects the memory-mapper segment count at boot with a page-2 marker
-probe, publishes it in `MAPPER_SEGMENTS`, and restores the `3,2,1,0` baseline.
-Machines without a mapper report one segment. The `test-openmsx-mapper` target
-verifies the count and that a segment beyond the fixed 64 KiB baseline maps
-distinct RAM.
+M1J detects the memory-mapper segment count at boot with a non-destructive
+page-2 marker and write probe, publishes it in `MAPPER_SEGMENTS`, and restores
+the `3,2,1,0` baseline. Each candidate must be writable and independent, so an
+Omega with only 512 KiB of its decoded 4 MiB range populated stops at the first
+absent SRAM bank instead of being reported as 4 MiB. Machines without a mapper
+report one segment. The `test-openmsx-mapper` target verifies a complete 4 MiB
+mapper, an Omega-style 512 KiB installation with absent upper banks, and access
+to a segment beyond the fixed 64 KiB baseline.
 
 M1K services broader sources in the IM 1 handler. Each VBlank the handler
 captures the active-low joystick matrix for both connectors into a work area

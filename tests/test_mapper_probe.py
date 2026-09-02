@@ -19,6 +19,11 @@ class MapperProbeTests(unittest.TestCase):
                 report.replace("MAPPER_SEGMENTS=00", "MAPPER_SEGMENTS=80")
             )
 
+    def test_expected_segment_count_can_model_unpopulated_banks(self) -> None:
+        report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
+        report = report.replace("MAPPER_SEGMENTS=00", "MAPPER_SEGMENTS=20")
+        validate_report(report, "20")
+
     def test_segment255_must_be_distinct(self) -> None:
         report = "\n".join(f"{key}={value}" for key, value in EXPECTED.items())
         with self.assertRaisesRegex(ValueError, "SEG255"):

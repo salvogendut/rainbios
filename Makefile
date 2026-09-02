@@ -59,6 +59,10 @@ OPENMSX_MAPPER_MACHINE := \
 	$(OPENMSX_SHARE)/machines/RainBIOS_M1_MAPPER.xml
 OPENMSX_MAPPER_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/mapper.txt
+OPENMSX_OMEGA_HOLE_MAPPER_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/omega-hole-mapper.txt
+OPENMSX_OMEGA_HOLE_BOOT_INFO_REPORT := \
+	$(OPENMSX_M1_REPORT_DIR)/omega-hole-boot-info.txt
 OPENMSX_SERVICES_REPORT := $(OPENMSX_M1_REPORT_DIR)/services.txt
 OPENMSX_KEYBOARD_REPORT := $(OPENMSX_M1_REPORT_DIR)/keyboard.txt
 OPENMSX_CONTROLLER_REPORT := $(OPENMSX_M1_REPORT_DIR)/controller.txt
@@ -1155,6 +1159,20 @@ test-openmsx-mapper: $(OPENMSX_MAPPER_MACHINE)
 		-command "set mapper_output {$(abspath $(OPENMSX_MAPPER_REPORT))}" \
 		-script "$(abspath tests/openmsx/mapper_probe.tcl)"
 	$(PYTHON) tools/check_mapper_probe.py $(OPENMSX_MAPPER_REPORT)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_MAPPER \
+		-command "set mapper_output {$(abspath $(OPENMSX_OMEGA_HOLE_MAPPER_REPORT))}" \
+		-script "$(abspath tests/openmsx/omega_hole_mapper_probe.tcl)"
+	$(PYTHON) tools/check_mapper_probe.py --segments 20 \
+		$(OPENMSX_OMEGA_HOLE_MAPPER_REPORT)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_M1_MAPPER \
+		-command "set boot_info_output {$(abspath $(OPENMSX_OMEGA_HOLE_BOOT_INFO_REPORT))}; set boot_info_expect_rtc 0" \
+		-script "$(abspath tests/openmsx/omega_hole_boot_info_probe.tcl)"
+	$(PYTHON) tools/check_boot_info_probe.py --ram 512 --vram 16 \
+		$(OPENMSX_OMEGA_HOLE_BOOT_INFO_REPORT) $(OPENMSX_BOOT_INFO_FONT)
 
 test-openmsx-expanded-slots: $(OPENMSX_EXPANDED_MACHINE)
 	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)

@@ -467,9 +467,27 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
 
 - Material consulted: the openMSX `MemoryMapper` device configuration in the
   existing `tests/openmsx/RainBIOS_GeoBench.xml.in` (`<size>512</size>`)
-- Purpose: build the `RainBIOS_M1_MAPPER.xml.in` fixture with a 128 KiB mapper
-  for the sizing probe
+- Purpose: build the `RainBIOS_M1_MAPPER.xml.in` fixture with a full 4 MiB
+  mapper for the sizing probe
 - RainBIOS use: validation fixture only; no firmware code derived
+
+## 2026-09-02 — Omega populated and decoded memory-mapper ranges
+
+- Primary project documentation: `https://github.com/skiselev/omega/blob/master/Mainboard.md`
+  identifies the standard 512 KiB SRAM configuration, expansion to 4 MiB, and
+  mapper RAM in slot 3-2
+- Hardware cross-check: `https://msxmakers.design.blog/proyectos/proyectos-msx/omega-home-computer/version-de-omega-1-3-eu/`
+  documents that the original Omega mapper logic addresses the full 4 MiB even
+  when only the first 512 KiB SRAM device is fitted, leaving higher selections
+  without physical memory rather than mirroring the installed device
+- openMSX cross-check: `MSXMemoryMapperBase::writeIOImpl` and
+  `MSXMemoryMapperBase::segmentOffset` in openMSX 21.0 mask selections to the
+  configured RAM size, so the standard device cannot directly express the
+  original Omega's unpopulated decoded banks
+- Purpose: require candidate segments to pass a destructive-then-restored RAM
+  write test as well as the ordinary segment-0 alias test
+- RainBIOS use: externally observable hardware behavior only; the firmware
+  probe and openMSX watchpoint fixture are original RainBIOS work
 
 ## 2026-08-02 — Keyboard break, auto-repeat, and function-key contracts
 

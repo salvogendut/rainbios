@@ -16,13 +16,14 @@ EXPECTED = {
 }
 
 
-def validate_report(text: str) -> None:
+def validate_report(text: str, expected_segments: str = "00") -> None:
+    expected_values = {**EXPECTED, "MAPPER_SEGMENTS": expected_segments.upper()}
     values = {}
     for line in text.splitlines():
         key, separator, value = line.partition("=")
         if separator:
             values[key] = value
-    for key, expected in EXPECTED.items():
+    for key, expected in expected_values.items():
         if values.get(key) != expected:
             raise ValueError(
                 f"{key}: found {values.get(key)!r}, expected {expected!r}"
@@ -31,16 +32,23 @@ def validate_report(text: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--segments",
+        default="00",
+        type=lambda value: f"{int(value, 16):02X}",
+        help="expected hexadecimal segment count (00 represents 256)",
+    )
     parser.add_argument("report", type=pathlib.Path)
     arguments = parser.parse_args()
     try:
-        validate_report(arguments.report.read_text(encoding="utf-8"))
+        validate_report(
+            arguments.report.read_text(encoding="utf-8"), arguments.segments
+        )
     except (OSError, ValueError) as error:
         parser.error(str(error))
-    print(
-        f"validated M1 memory-mapper sizing: "
-        "256 segments (4096 KB)"
-    )
+    segments = int(arguments.segments, 16) or 256
+    print(f"validated M1 memory-mapper sizing: {segments} segments "
+          f"({segments * 16} KB)")
     return 0
 
 

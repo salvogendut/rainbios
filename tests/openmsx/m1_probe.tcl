@@ -28,4 +28,7 @@ proc capture_m1_state {attempts} {
     exit
 }
 
-after time 1.00 {capture_m1_state 100}
+# Mapper sizing now verifies candidate writes before entering the startup idle
+# state. Keep polling across the whole remaining logo interval rather than
+# depending on the old narrow instruction-timing window.
+after time 1.00 {capture_m1_state 1000}
