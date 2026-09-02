@@ -5188,16 +5188,23 @@ bootstrap_main_selector_ready:
                 ret
 
 ; Detect the memory-mapper segment count and publish it in MAPPER_SEGMENTS.
-; Page 2 is probed: map segment 0, write a marker, then test each power of two.
-; The smallest power of two that maps back to segment 0 is the segment count,
-; because the mapper register masks the value with segments-1. Machines without
-; a mapper ignore the reserved ports, so every probe keeps the marker and the
-; count is one (the plain 64 KiB). The 3,2,1,0 baseline is restored afterward.
+; Page 2 is probed: preserve segment 0, write a marker, then test each power of
+; two. A candidate must accept two complementary patterns at two addresses and
+; leave the segment-0 marker intact. The first unwritable candidate or the first
+; one that aliases segment 0 is the segment count. The write test matters on
+; machines such as a 512 KiB Omega whose mapper decodes all eight segment bits
+; while the upper SRAM banks are physically absent instead of mirrored.
+;
+; Machines without a mapper ignore the reserved ports, so candidate 1 aliases
+; the marked page and the count remains one (the plain 64 KiB). All touched RAM
+; bytes and the 3,2,1,0 mapper baseline are restored afterward.
 bootstrap_size_mapper:
                 ld a,1
                 ld (MAPPER_SEGMENTS),a
                 xor a
                 out (MAPPER_PAGE2),a           ; segment 0 in page 2
+                ld a,(#8000)
+                ld c,a                          ; preserved segment-0 byte
                 ld a,#5a
                 ld (#8000),a                   ; marker
                 ld b,1
@@ -5205,8 +5212,48 @@ bootstrap_size_bit:
                 ld a,b
                 out (MAPPER_PAGE2),a
                 ld a,(#8000)
+                ld d,a                          ; preserved candidate bytes
+                ld a,(#8001)
+                ld e,a
+
+; A read-only or physically absent bank must not pass merely because its idle
+; bus happens to equal one test value. Require both alternating patterns.
+                ld a,#55
+                ld (#8000),a
+                ld a,#aa
+                ld (#8001),a
+                ld a,(#8000)
+                cp #55
+                jr nz,bootstrap_size_unwritable
+                ld a,(#8001)
+                cp #aa
+                jr nz,bootstrap_size_unwritable
+                ld a,#aa
+                ld (#8000),a
+                ld a,#55
+                ld (#8001),a
+                ld a,(#8000)
+                cp #aa
+                jr nz,bootstrap_size_unwritable
+                ld a,(#8001)
+                cp #55
+                jr nz,bootstrap_size_unwritable
+
+; Test for the ordinary masked/mirrored mapper boundary before restoring the
+; candidate. If it aliases segment 0, the first test byte replaced the marker.
+                xor a
+                out (MAPPER_PAGE2),a
+                ld a,(#8000)
                 cp #5a
-                jr z,bootstrap_size_found
+                jr nz,bootstrap_size_alias
+
+; This is independent writable RAM. Restore it before trying the next bit.
+                ld a,b
+                out (MAPPER_PAGE2),a
+                ld a,d
+                ld (#8000),a
+                ld a,e
+                ld (#8001),a
                 ld a,b
                 add a,a
                 ld b,a
@@ -5218,10 +5265,27 @@ bootstrap_size_bit:
                 xor a
                 ld (MAPPER_SEGMENTS),a
                 jr bootstrap_size_restore
+bootstrap_size_unwritable:
+; The candidate is still selected. Restore what was readable in case this is
+; unusual partial RAM; writes to a genuinely absent bank are harmless.
+                ld a,d
+                ld (#8000),a
+                ld a,e
+                ld (#8001),a
+                jr bootstrap_size_found
+bootstrap_size_alias:
+; Segment 0 is selected. E is its original second byte because the aliased
+; candidate was sampled before the patterns were written.
+                ld a,e
+                ld (#8001),a
 bootstrap_size_found:
                 ld a,b
                 ld (MAPPER_SEGMENTS),a
 bootstrap_size_restore:
+                xor a
+                out (MAPPER_PAGE2),a
+                ld a,c
+                ld (#8000),a                   ; restore segment-0 byte
                 ld a,3
                 out (MAPPER_PAGE0),a
                 ld a,2
@@ -5230,8 +5294,6 @@ bootstrap_size_restore:
                 out (MAPPER_PAGE2),a
                 xor a
                 out (MAPPER_PAGE3),a
-                xor a
-                ld (#8000),a                   ; clear the marker
                 ret
 
 ; Inter-slot memory calls. Page-0 accesses finish from mapped RAM because the

@@ -103,7 +103,11 @@ Expanded page-3 calls keep restoration state in registers until the old
 secondary selector and primary map are both visible again. Standard memory
 mappers receive the independent 64 KiB page baseline `3,2,1,0`; the discovered
 full RAM slot is published in `RAMAD0` through `RAMAD3` for extension ROMs.
-Sizing and allocating segments beyond that baseline remain pending.
+The mapper-size probe requires each power-of-two candidate segment to be both
+writable and independent before publishing the installed segment count. This
+distinguishes ordinary mirrored mapper boundaries from hardware that decodes
+unpopulated RAM banks, while restoring all probe bytes and the baseline map.
+General mapper segment allocation beyond that baseline remains pending.
 
 The disk bring-up path invokes `H.STKE` after all extension `INIT` routines,
 preserves a nonzero `DEVICE` kernel count, clears disk setup state, and normally

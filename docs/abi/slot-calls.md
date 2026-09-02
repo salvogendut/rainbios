@@ -11,7 +11,10 @@ Handbook.
 `MAPPER_SEGMENTS` at `F345h` holds the memory-mapper segment count detected at
 boot (a power of two, or 1 when no mapper is present). Segment allocation uses
 the standard reserved mapper ports `FCh`-`FFh` with `MAPPER_SEGMENTS` as the
-upper bound.
+upper bound. Detection accepts a candidate segment only when two complementary
+write patterns stick at two addresses without changing the segment-0 marker.
+The first unwritable or mirrored candidate is the upper bound; this rejects
+decoded but physically unpopulated SRAM banks.
 
 ## Implemented calls
 
@@ -112,7 +115,9 @@ four pages through multiple secondary slots, checks the physical inverted
 selector and `SLTTBL`, tests stack-safe page-3 restoration, calls a returning
 expanded page-1 target which patches all three saved selector bytes before
 returning, and covers page-0, page-3 expanded, and page-3 primary-different
-slot targets. `test-openmsx-mapper` verifies boot-time memory-mapper sizing.
+slot targets. `test-openmsx-mapper` verifies boot-time memory-mapper sizing
+with both a full 4 MiB mapper and an Omega-style 512 KiB mapper whose upper
+decoded banks are physically absent.
 The separate `test-openmsx-services` probe exercises `CALLF` from
 `H.TIMI` while interrupts are enabled and requires the exact slot state to be
 restored.
