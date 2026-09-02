@@ -23,7 +23,9 @@ The issue-60 implementation slice is operational:
   remains directly addressable in ROM;
 - external cartridges retain priority, storage is attempted next, and a clean
   return selects the internal payload;
-- held Space is sampled once after cartridge discovery to open the options menu without delaying normal boot;
+- the completed logo remains visible for 60 VBlank frames, and Space pressed
+  during that interval or held through the final post-scan check opens the
+  options menu;
 - the internal container is validated before expansion, and the reconstructed
   image's `AB` header and `RBP1` descriptor are checked before launch;
 - automatic no-cartridge startup is verified in 1983 and openMSX.
@@ -66,9 +68,9 @@ The intended automatic boot policy is:
    startup opportunity;
 2. attempt an installed disk or IDE/SD boot path;
 3. if every applicable cartridge and storage path returns without booting,
-   start the selected interpreter immediately;
-4. sample a Space key held during startup once after discovery to open the
-   RainBIOS options menu without adding a timeout.
+   start the selected interpreter automatically;
+4. keep the boot logo visible for a bounded 60-frame interval and remember a
+   Space press there; also sample held Space once after discovery before launch.
 
 In particular:
 
@@ -263,7 +265,7 @@ try IDE/SD standard hook or RainBIOS direct bootstrap
 validate and select built-in BASIC
           |
           v
-single held-Space check
+remember logo-window Space or sample held Space
           |
           +-- Space --> options menu
           |
@@ -510,13 +512,13 @@ interpreter artifact.
 
 ### Automatic boot matrix in 1983 and openMSX
 
-The no-cartridge automatic prompt, non-blocking held-Space menu, exact internal header
-and descriptor visibility, page-1 ROM write guard, and a simple interpreter
-program now have committed probes. The remainder of this list is the
+The no-cartridge automatic prompt, bounded logo-window Space menu, exact
+internal header and descriptor visibility, page-1 ROM write guard, and a simple
+interpreter program now have committed probes. The remainder of this list is the
 regression matrix still to promote to the internal mapping:
 
 - no external cartridges: interpreter banner and prompt appear without input;
-- Space held during startup: options menu appears;
+- Space pressed while the startup logo is visible: options menu appears;
 - menu BASIC selection: built-in interpreter starts;
 - normal game/application cartridge: cartridge retains control;
 - ordinary cartridge whose `INIT` returns: automatic BASIC starts while the
@@ -570,8 +572,8 @@ Before making the combined image the recommended default, test at least:
    container, reconstructs the exact image in page-1 RAM, checks `AB`/`RBP1`,
    and enters it through the existing contract.
 6. **Done for clean returns — change automatic fallback policy.** The Space
-   check is non-blocking and clean cartridge/storage returns converge on BASIC. A third-party INIT or
-   hook which never returns remains outside the guarantee.
+   window is bounded and clean cartridge/storage returns converge on BASIC. A
+   third-party INIT or hook which never returns remains outside the guarantee.
 7. **In progress — run the full emulator matrix.** The internal prompt passes
    in 1983/openMSX; Arkanoid renders a complete board in both; GeoBench boots
    through Sunrise in both and through SD Mapper in 1983. Issue #62 corrected

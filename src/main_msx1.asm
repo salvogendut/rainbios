@@ -49,6 +49,7 @@ DISK_MOTOR      equ #f3bc
 DISK_MOTOR_TIMER equ #f3bd
 DISK_PRESENT    equ #f3be
 DISK_MOTOR_FRAMES equ 120
+BOOT_LOGO_FRAMES equ 60
 FDC_DRIVE       equ #7ffd
 MLTNAM          equ #f3d1
 MLTCOL          equ #f3d3
@@ -718,13 +719,20 @@ cold_boot_jingle_gap:
                 dec d
                 jr nz,cold_boot_jingle_note
 
-; Discover simple primary/secondary-slot cartridges after RAM, video, and sound are
-; initialized. A public MSX cartridge header begins with "AB", followed by the
-; little-endian INIT address. An INIT routine that returns lets scanning
-; continue; a game may keep control instead. M1E scans 4000h and 8000h in each
-; non-BIOS slot and can invoke INIT in page 1 or page 2.
+; Keep the completed logo visible for about one second. Keyboard interrupts are
+; active during this bounded pause, so a Space press is buffered and remembered
+; while the firmware still continues automatically when there is no input.
                 im 1
                 ld sp,EXTENSION_STACK
+                call cold_boot_logo_delay
+                push af                         ; preserve the options request
+                di
+
+; Discover simple primary/secondary-slot cartridges after RAM, video, and sound
+; are initialized. A public MSX cartridge header begins with "AB", followed by
+; the little-endian INIT address. An INIT routine that returns lets scanning
+; continue; a game may keep control instead. M1E scans 4000h and 8000h in each
+; non-BIOS slot and can invoke INIT in page 1 or page 2.
                 call cold_boot_scan_cartridges
                 call H_STKE
                 call cold_boot_init_disk
@@ -732,9 +740,13 @@ cold_boot_jingle_gap:
                 jr c,cold_boot_payload_ready
                 call cold_boot_select_internal_payload
                 jr c,cold_boot_payload_ready
+                pop af
                 jp cold_boot_options
 cold_boot_payload_ready:
+                pop af
                 ld sp,STACK_TOP
+                or a
+                jp nz,cold_boot_options
                 ei
                 halt                           ; one keyboard-scan frame
                 call chsns
@@ -744,15 +756,36 @@ cold_boot_payload_ready:
                 jp z,cold_boot_options
                 jr cold_boot_launch_payload
 
+; Return A=1 when Space was pressed during the visible logo interval, otherwise
+; A=0 after BOOT_LOGO_FRAMES VBlank interrupts. Other buffered keys are consumed
+; so they cannot leak into the payload selected later in the boot sequence.
+cold_boot_logo_delay:
+                ld b,BOOT_LOGO_FRAMES
+cold_boot_logo_delay_frame:
+                ei
+                halt
+                call chsns
+                jr z,cold_boot_logo_delay_next
+                call chget
+                cp #20
+                jr z,cold_boot_logo_delay_space
+cold_boot_logo_delay_next:
+                djnz cold_boot_logo_delay_frame
+                xor a
+                ret
+cold_boot_logo_delay_space:
+                ld a,1
+                ret
+
 ; Match the C-BIOS start-up sequence: initialize disk context and invoke the
 ; disk-ROM bootstrap hook so the selected disk device can install itself before
 ; the interactive menu is presented.
 cold_boot_init_disk:
                 jp cold_boot_init_disk_impl
 
-; Holding Space through the single post-scan keyboard frame opens a compact
-; Screen 1 menu without delaying normal boot. The selected BASIC payload starts
-; immediately when no cartridge or storage loader has retained control.
+; Space during the visible logo pause, or held through the final post-scan
+; keyboard frame, opens a compact Screen 1 menu. The selected BASIC payload
+; starts automatically when no cartridge or storage loader has retained control.
 cold_boot_options:
                 call cold_boot_render_options
                 xor a

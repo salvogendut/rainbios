@@ -70,7 +70,7 @@ def main() -> int:
         "--headless",
         "--unthrottled",
         "--exit-after",
-        "120",
+        "100",
         "--dump-state",
         "--screenshot",
         str(arguments.screenshot),
