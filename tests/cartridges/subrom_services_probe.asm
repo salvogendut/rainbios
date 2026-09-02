@@ -9,6 +9,7 @@ MAIN_RDVRM      equ #004a
 MAIN_WRTVRM     equ #004d
 MAIN_INITXT     equ #006c
 EXBRSA          equ #faf8
+ACPAGE          equ #faf6
 SCRMOD          equ #fcaf
 NAMBAS          equ #f922
 PATBAS          equ #f926
@@ -127,6 +128,64 @@ subrom_services_hmmv_out:
                 ld a,c
                 ld (marker_plt_c),a
 
+                ; SCREEN 7/8 use two 64 KiB active pages. Distinguish physical
+                ; 00300h from 10300h while the current mode is still Screen 8.
+                xor a
+                ld (ACPAGE),a
+                ld hl,#0300
+                ld a,#70
+                call subrom_call_wrvrm
+                ld a,1
+                ld (ACPAGE),a
+                ld hl,#0300
+                ld a,#71
+                call subrom_call_wrvrm
+                xor a
+                ld (ACPAGE),a
+                ld hl,#0300
+                call subrom_call_rdvrm
+                ld (marker_sc8_page0),a
+                ld a,1
+                ld (ACPAGE),a
+                ld hl,#0300
+                call subrom_call_rdvrm
+                ld (marker_sc8_page1),a
+                xor a
+                ld (ACPAGE),a
+
+                ; SCREEN 5/6 use four 32 KiB active pages. Run this last so
+                ; the host can inspect all four physical markers after the
+                ; Screen 5 clear has completed. An implementation that ignores
+                ; ACPAGE aliases these writes instead of preserving them.
+                ld a,5
+                call subrom_call_chgmod
+                ld b,0
+subrom_services_sc5_write:
+                ld a,b
+                ld (ACPAGE),a
+                add a,#50
+                ld hl,#0200
+                call subrom_call_wrvrm
+                inc b
+                ld a,b
+                cp 4
+                jr nz,subrom_services_sc5_write
+                ld b,0
+                ld de,marker_sc5_page0
+subrom_services_sc5_read:
+                ld a,b
+                ld (ACPAGE),a
+                ld hl,#0200
+                call subrom_call_rdvrm
+                ld (de),a
+                inc de
+                inc b
+                ld a,b
+                cp 4
+                jr nz,subrom_services_sc5_read
+                xor a
+                ld (ACPAGE),a
+
 subrom_services_spin:
                 jp subrom_services_spin
 
@@ -194,5 +253,11 @@ marker_plt_c     equ #f36c
 marker_low_vram  equ #f36d
 marker_high_vram equ #f36e
 marker_font_after_ce equ #f36f
+marker_sc5_page0 equ #f370
+marker_sc5_page1 equ #f371
+marker_sc5_page2 equ #f372
+marker_sc5_page3 equ #f373
+marker_sc8_page0 equ #f374
+marker_sc8_page1 equ #f375
 
                 defs #8000-$,#ff

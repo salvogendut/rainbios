@@ -77,6 +77,11 @@ ACPAGE          equ #faf6
 
 ; Graphics and screen-mode entry table. Entries that are not implemented in
 ; this slice return cleanly; implemented entries jump to their bodies below.
+; EI deliberately precedes JP at implemented fixed entries: on the Z80 the
+; JP is the required one-instruction delay, so interrupts become eligible at
+; the first instruction of the target routine. This is the MSX2 SUB-ROM ABI
+; convention; it must not be padded with a NOP or rewritten as an immediate
+; interrupt-enable sequence.
                 defs #0085-$,#c9
                 ret                             ; 0085 DOGRPH
                 defs #0089-$,#ff
@@ -226,9 +231,9 @@ sub_wrtvdp_store:
                 ld a,c
                 or #80
                 out (VDP_CONTROL),a
-                ei
                 pop hl
                 pop af
+                ei                             ; effective after RET
                 ret
 
 ; ---------------------------------------------------------------------------
@@ -248,60 +253,84 @@ sub_vdpsta:
                 out (VDP_CONTROL),a             ; restore status 0
                 ld a,#8f
                 out (VDP_CONTROL),a
-                ei
                 ld a,h
                 pop hl
+                ei                             ; effective after RET
                 ret
 
 ; ---------------------------------------------------------------------------
-; 16-bit VRAM write pointer from HL. R14 (register 14) holds the two high
-; address bits so the full 128 KiB range is reachable.
+; Set the V9938 CPU-access write pointer from the logical address in HL.
+; R14 holds physical A16-A14; sub_setaddr16 combines HL with ACPAGE according
+; to the current bitmap page size so all 128 KiB are reachable.
 sub_setwrt16:
                 push af
-                di
-                ld a,h
-                rra
-                rra
-                rra
-                rra
-                rra
-                rra
-                and #03
-                out (VDP_CONTROL),a             ; R14 value (A15,A14)
-                ld a,#8e
-                out (VDP_CONTROL),a             ; select register 14
-                ld a,l
-                out (VDP_CONTROL),a
+                call sub_setaddr16
                 ld a,h
                 and #3f
                 or #40
                 out (VDP_CONTROL),a
-                ei
                 pop af
+                ei                             ; effective after RET
                 ret
 
-; 16-bit VRAM read pointer from HL.
+; Set the V9938 CPU-access read pointer from the logical address in HL.
 sub_setrd16:
                 push af
-                di
-                ld a,h
-                rra
-                rra
-                rra
-                rra
-                rra
-                rra
-                and #03
-                out (VDP_CONTROL),a             ; R14 value (A15,A14)
-                ld a,#8e
-                out (VDP_CONTROL),a             ; select register 14
-                ld a,l
-                out (VDP_CONTROL),a
+                call sub_setaddr16
                 ld a,h
                 and #3f
                 out (VDP_CONTROL),a
-                ei
                 pop af
+                ei                             ; effective after RET
+                ret
+
+; Translate logical HL plus the active bitmap page into R14 A16-A14, then
+; emit R14 and the low VRAM-address byte as one interrupt-atomic sequence.
+;
+; With ACPAGE=0, retain the existing 16-bit mapping. For Screen 5/6 ACPAGE
+; selects one of four 32 KiB pages; its low bit toggles A15 and its high bit
+; supplies A16. For Screen 7 and later it selects one of two 64 KiB pages and
+; supplies A16. In the legacy modes a nonzero ACPAGE falls back to the 14-bit
+; MSX1 window, matching the established MSX2 BIOS behavior.
+sub_setaddr16:
+                push hl
+                ld a,h
+                rlca
+                rlca
+                and #03                         ; logical A15,A14
+                ld h,a
+                ld a,(ACPAGE)
+                or a
+                jr z,sub_setaddr16_logical
+                ld a,(SCRMOD)
+                cp 5
+                jr c,sub_setaddr16_legacy
+                cp 7
+                ld a,(ACPAGE)
+                jr c,sub_setaddr16_32k
+                and #01
+                add a,a
+                add a,a                         ; page bit 0 -> physical A16
+                or h
+                jr sub_setaddr16_program
+sub_setaddr16_32k:
+                and #03
+                add a,a                         ; page bits -> A16,A15
+                xor h                           ; documented odd-page wrap
+                jr sub_setaddr16_program
+sub_setaddr16_logical:
+                ld a,h
+                jr sub_setaddr16_program
+sub_setaddr16_legacy:
+                xor a                           ; force the 14-bit window
+sub_setaddr16_program:
+                di
+                out (VDP_CONTROL),a             ; R14: physical A16-A14
+                ld a,#8e
+                out (VDP_CONTROL),a             ; select register 14
+                pop hl
+                ld a,l
+                out (VDP_CONTROL),a             ; physical A7-A0
                 ret
 
 ; 0109h WRTVRM: write A to the 16-bit VRAM address HL.
@@ -989,9 +1018,9 @@ sub_cmd_reg:
                 ld a,c
                 or #80
                 out (VDP_CONTROL),a
-                ei
                 pop af
                 inc c
+                ei                             ; effective after RET
                 ret
 
 ; ---------------------------------------------------------------------------

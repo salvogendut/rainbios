@@ -173,7 +173,8 @@ fixed-entry layout. It implements `CHGMOD` for bitmap screens 5/6/7/8
 clear through the VDP HMMV command), the palette calls
 `INIPLT`/`RSTPLT`/`GETPLT`/`SETPLT` over the V9938 palette latch with a VRAM
 palette store, `WRTVDP`/`VDPSTA`, and 16-bit `WRTVRM`/`RDVRM` covering the full
-128 KiB range. Because it runs in its own slot, the SUB-ROM cannot call the
+128 KiB range through the `SCRMOD`/`ACPAGE` 32/64 KiB page mapping. Because
+it runs in its own slot, the SUB-ROM cannot call the
 main BIOS; it performs VDP register writes, VRAM access, and the R0-R23 shadow
 updates locally.
 
@@ -196,7 +197,7 @@ The M5 fifth slice validates the firmware on a 64 KiB VRAM V9938
 even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range.
 openMSX's 64 KiB V9938 model is known to mishandle CPU VRAM access to odd
 addresses (openMSX issue #1157), so the 64 KiB gate exercises the even-address
-range; the 128 KiB gates cover every address.
+range; the 128 KiB gates distinguish every Screen 5 and Screen 8 active page.
 
 M3A scans international keyboard-matrix rows 0-8 once per VBlank. `OLDKEY` and
 `NEWKEY` retain active-low row state, while new press edges are translated

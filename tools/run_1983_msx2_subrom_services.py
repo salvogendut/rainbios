@@ -59,10 +59,10 @@ def main() -> int:
         "--headless",
         "--unthrottled",
         "--exit-after",
-        "120",
+        "360",
         "--dump-state",
         "--dump-ram",
-        "0xF360:0x10",
+        "0xF360:0x20",
     ]
     result = subprocess.run(
         command,
@@ -97,6 +97,12 @@ def main() -> int:
             "LOW_VRAM": ram.get(0xF36D),
             "HIGH_VRAM": ram.get(0xF36E),
             "CE_FONT": ram.get(0xF36F),
+            "SC5_PAGE0": ram.get(0xF370),
+            "SC5_PAGE1": ram.get(0xF371),
+            "SC5_PAGE2": ram.get(0xF372),
+            "SC5_PAGE3": ram.get(0xF373),
+            "SC8_PAGE0": ram.get(0xF374),
+            "SC8_PAGE1": ram.get(0xF375),
         }
         expected = {
             "SC5": 0x05,
@@ -112,6 +118,12 @@ def main() -> int:
             "LOW_VRAM": 0xA5,
             "HIGH_VRAM": 0x3C,
             "CE_FONT": 0x38,
+            "SC5_PAGE0": 0x50,
+            "SC5_PAGE1": 0x51,
+            "SC5_PAGE2": 0x52,
+            "SC5_PAGE3": 0x53,
+            "SC8_PAGE0": 0x70,
+            "SC8_PAGE1": 0x71,
         }
         for name, value in expected.items():
             if markers[name] != value:
@@ -132,6 +144,9 @@ def main() -> int:
         f"Screens 5/6/7/8 SCRMOD, SC5 bases 0000/7800/7600, "
         f"16-bit VRAM=0x{markers['VRAM16']:02X}, "
         f"low-bank reset=0x{markers['LOW_VRAM']:02X}/0x{markers['HIGH_VRAM']:02X}, "
+        f"SC5 pages={markers['SC5_PAGE0']:02X}/{markers['SC5_PAGE1']:02X}/"
+        f"{markers['SC5_PAGE2']:02X}/{markers['SC5_PAGE3']:02X}, "
+        f"SC8 pages={markers['SC8_PAGE0']:02X}/{markers['SC8_PAGE1']:02X}, "
         f"async INITXT font=0x{markers['CE_FONT']:02X}, "
         f"palette B=0x{markers['PLT_B']:02X} C=0x{markers['PLT_C']:02X}, "
         f"VDP R0={fields['vdp_r0']} R1={fields['vdp_r1']}"
