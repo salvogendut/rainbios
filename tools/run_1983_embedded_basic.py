@@ -58,7 +58,7 @@ def main() -> int:
         "--headless",
         "--unthrottled",
         "--exit-after",
-        "120",
+        "180",
         "--dump-state",
         "--screenshot",
         str(arguments.screenshot),
@@ -78,7 +78,7 @@ def main() -> int:
         print(f"error: invalid 1983 embedded BASIC state: {error}", file=sys.stderr)
         return 1
     print(
-        "validated immediate 1983 embedded BASIC state: "
+        "validated automatic 1983 embedded BASIC state after logo delay: "
         f"PC={fields['pc']}, SP={fields['sp']}, slot={fields['slot']}, "
         f"VRAM nonzero={fields['vram_nonzero']}"
     )

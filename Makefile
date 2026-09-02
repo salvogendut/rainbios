@@ -874,7 +874,7 @@ test-openmsx-boot: $(OPENMSX_MACHINE)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
 	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
 	$(OPENMSX) -machine RainBIOS_MSX1 \
-		-command 'set throttle off; after time 0.10 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
+		-command 'set throttle off; after time 0.75 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_BOOT_SCREEN)
 
 test-openmsx-options: $(OPENMSX_MACHINE)

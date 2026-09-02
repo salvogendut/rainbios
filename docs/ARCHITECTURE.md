@@ -225,11 +225,13 @@ contract and limitations are in `docs/abi/controllers.md`.
 
 After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and `RainBios booting...` notice, plays a short four-note PSG
-motif, and checks primary cartridges before one buffered-keyboard sample.
+motif, and keeps the completed logo visible for 60 VBlank frames (about one
+second on NTSC or 1.2 seconds on PAL) before checking primary cartridges. A
+Space press during that interval is buffered and remembered.
 Immediately before the first conventional cartridge `INIT`, it replaces the
 logo with a cleared 40-column console using light-yellow text on the same dark
-blue used by the logo. Extension-ROM and storage diagnostics therefore start on a clean
-text display; subsequent returning extensions retain earlier messages.
+blue used by the logo. Extension-ROM and storage diagnostics therefore start
+on a clean text display; subsequent returning extensions retain earlier messages.
 Cartridge initialization uses a temporary stack ending below `F100h`, while
 publishing the standard `F380h` `HIMEM` boundary and pre-BASIC `MEMSIZ`/`STKTOP`
 values expected by disk allocators. RainBIOS then runs `H.STKE` and any
@@ -249,10 +251,10 @@ distinguishes Sunrise ATA from SD Mapper SPI registers, and applies the same
 control.
 
 If no external payload has been selected and each applicable storage path
-returns cleanly, RainBIOS selects the built-in payload. One post-scan keyboard
-frame recognizes a held Space key without adding a boot timeout, then BASIC
-launches immediately. A non-returning or state-corrupting third-party
-cartridge remains outside this fallback guarantee.
+returns cleanly, RainBIOS selects the built-in payload. A remembered Space from
+the logo interval, or Space held through one final post-scan keyboard frame,
+opens the options menu; otherwise BASIC launches automatically. A non-returning
+or state-corrupting third-party cartridge remains outside this fallback guarantee.
 
 The generated logo and menu tables are stored as ZX0 streams and expanded one
 at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB
