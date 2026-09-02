@@ -287,6 +287,10 @@ OPENMSX_MSX2_64K_MACHINE := \
 OPENMSX_MSX2_64K_REPORT := \
 	$(OPENMSX_M1_REPORT_DIR)/msx2-64k.txt
 OPENMSX_MSX2_64K_SCREEN := $(OPENMSX_ROOT)/msx2-64k.png
+OPENMSX_MSX2_NO_RTC_MACHINE := \
+	$(OPENMSX_SHARE)/machines/RainBIOS_MSX2_NO_RTC.xml
+OPENMSX_BOOT_INFO_DIR := $(OPENMSX_ROOT)/boot-info
+OPENMSX_BOOT_INFO_FONT = $(LOGO_DIR)/boot_font.bin
 EMULATOR_1983_MSX2_SUBROM_SCREEN := \
 	$(EMULATOR_1983_DIR)/rainbios_msx2_subrom.ppm
 OPENMSX_GEOBENCH_REPORT := $(OPENMSX_M1_REPORT_DIR)/geobench-sunrise.txt
@@ -405,6 +409,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	src/zx0_decompress.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
+	test-openmsx-boot-info \
 	test-openmsx-audio test-openmsx-m1 test-openmsx-slots \
 	test-openmsx-expanded-slots test-openmsx-mapper \
 	test-openmsx-services test-openmsx-keyboard 	test-openmsx-cursor \
@@ -877,6 +882,42 @@ test-openmsx-boot: $(OPENMSX_MACHINE)
 		-command 'set throttle off; after time 0.75 {set throttle on; after realtime 0.25 {screenshot -raw -size 320 $(abspath $(OPENMSX_BOOT_SCREEN)); exit}}'
 	$(PYTHON) tools/check_boot_screenshot.py $(OPENMSX_BOOT_SCREEN)
 
+test-openmsx-boot-info: $(OPENMSX_MACHINE) $(OPENMSX_MSX2_MACHINE) \
+		$(OPENMSX_MSX2_64K_MACHINE) $(OPENMSX_MSX2_NO_RTC_MACHINE)
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_BOOT_INFO_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX1 \
+		-script "$(abspath tests/openmsx/boot_info_probe.tcl)" \
+		-command "set boot_info_output {$(abspath $(OPENMSX_BOOT_INFO_DIR))/msx1.txt}; set boot_info_expect_rtc 0"
+	$(PYTHON) tools/check_boot_info_probe.py \
+		--ram 64 --vram 16 \
+		$(OPENMSX_BOOT_INFO_DIR)/msx1.txt $(OPENMSX_BOOT_INFO_FONT)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2 \
+		-script "$(abspath tests/openmsx/boot_info_probe.tcl)" \
+		-command "set boot_info_output {$(abspath $(OPENMSX_BOOT_INFO_DIR))/msx2-128k.txt}; set boot_info_expect_rtc 1; boot_info_seed_rtc"
+	$(PYTHON) tools/check_boot_info_probe.py \
+		--ram 512 --vram 128 --rtc \
+		$(OPENMSX_BOOT_INFO_DIR)/msx2-128k.txt $(OPENMSX_BOOT_INFO_FONT)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2_64K \
+		-script "$(abspath tests/openmsx/boot_info_probe.tcl)" \
+		-command "set boot_info_output {$(abspath $(OPENMSX_BOOT_INFO_DIR))/msx2-64k.txt}; set boot_info_expect_rtc 1; boot_info_seed_rtc"
+	$(PYTHON) tools/check_boot_info_probe.py \
+		--ram 512 --vram 64 --rtc \
+		$(OPENMSX_BOOT_INFO_DIR)/msx2-64k.txt $(OPENMSX_BOOT_INFO_FONT)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MSX2_NO_RTC \
+		-script "$(abspath tests/openmsx/boot_info_probe.tcl)" \
+		-command "set boot_info_output {$(abspath $(OPENMSX_BOOT_INFO_DIR))/msx2-no-rtc.txt}; set boot_info_expect_rtc 0"
+	$(PYTHON) tools/check_boot_info_probe.py \
+		--ram 512 --vram 128 \
+		$(OPENMSX_BOOT_INFO_DIR)/msx2-no-rtc.txt $(OPENMSX_BOOT_INFO_FONT)
+
 test-openmsx-options: $(OPENMSX_MACHINE)
 	mkdir -p $(OPENMSX_HOME)
 	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
@@ -970,6 +1011,14 @@ $(OPENMSX_MSX2_64K_MACHINE): \
 		-e 's|@MSX2_SUB_ROM@|$(abspath $(MSX2_SUB_ROM))|' \
 		-e 's|@SUBROM_64K_PROBE_CART@|$(abspath $(SUBROM_64K_PROBE_CART))|' \
 		$< > $@
+
+$(OPENMSX_MSX2_NO_RTC_MACHINE): \
+		tests/openmsx/RainBIOS_MSX2.xml.in $(MSX2_ROM) $(CBIOS_SUB_ROM)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
+		-e 's|@CBIOS_SUB_ROM@|$(abspath $(CBIOS_SUB_ROM))|' \
+		-e 's|RainBIOS-M2|RainBIOS-M2-NO-RTC|' \
+		-e '/<RTC id="Real time clock">/,/<\/RTC>/d' $< > $@
 
 $(SUBROM_PROBE_ROM): tests/subroms/subrom_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)

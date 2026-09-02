@@ -37,6 +37,7 @@ class MainRomLayoutTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rom = ROM_PATH.read_bytes()
+        cls.msx2_rom = MSX2_ROM_PATH.read_bytes()
         cls.basic = BBC_BASIC_ROM_PATH.read_bytes()
         cls.abi = read_abi()
 
@@ -49,22 +50,24 @@ class MainRomLayoutTest(unittest.TestCase):
         does not silently erode the 4000h boundary (see docs/EMBEDDED_BASIC.md
         and ROADMAP M6). The ceiling below is the last non-FF byte of the
         lower bank; raising it must be a deliberate, documented step."""
-        lower = self.rom[:0x4000]
-        last = len(lower)
-        while last > 0 and lower[last - 1] == 0xFF:
-            last -= 1
-        self.assertLessEqual(
-            last,
-            0x3800,
-            f"lower-bank firmware now occupies {last:#x} bytes; "
-            "the 0x3600 ceiling (>=0xA00-byte reserve) was raised",
-        )
-        self.assertGreaterEqual(
-            last,
-            0x3000,
-            f"lower-bank firmware only occupies {last:#x} bytes; "
-            "the expected 0x3000 floor no longer holds",
-        )
+        for name, rom in (("MSX1", self.rom), ("MSX2", self.msx2_rom)):
+            with self.subTest(rom=name):
+                lower = rom[:0x4000]
+                last = len(lower)
+                while last > 0 and lower[last - 1] == 0xFF:
+                    last -= 1
+                self.assertLessEqual(
+                    last,
+                    0x3C00,
+                    f"{name} lower-bank firmware occupies {last:#x} bytes; "
+                    "the 0x3c00 ceiling (>=0x400-byte reserve) was raised",
+                )
+                self.assertGreaterEqual(
+                    last,
+                    0x3000,
+                    f"{name} lower-bank firmware only occupies {last:#x} "
+                    "bytes; the expected 0x3000 floor no longer holds",
+                )
 
     def test_reset_starts_with_di_and_absolute_jump(self):
         self.assertEqual(self.rom[0], 0xF3)  # DI

@@ -9,6 +9,10 @@ SUB-ROM slot (3-0 on the test fixtures). The MSX2 main ROM reaches its
 routines through the `EXTROM` (`015Fh`) dispatch, which passes the SUB-ROM
 routine address in IX and the slot from `EXBRSA`.
 
+During the same early initialization, the main ROM probes the V9938 VRAM
+banks and publishes the standard size indication in `MODE` (`FAFCh`): bit 1
+for 64 KiB or bit 2 for 128 KiB. The boot-logo overlay uses that value.
+
 The SUB-ROM runs with the target page switched to its own slot, so it cannot
 call the main BIOS: VDP register writes, 16-bit VRAM access, and the R0-R23
 shadow work area are handled locally.
@@ -18,8 +22,8 @@ shadow work area are handled locally.
 | Address | Name | Status | Behavior |
 | --- | --- | --- | --- |
 | `00D1h` | CHGMOD | implemented | Screens 5, 6, 7, and 8 (bitmap modes). Programs R0-R11, publishes `NAMBAS`/`PATBAS`/`ATRBAS`, sets `SCRMOD`, and clears the bitmap through the VDP HMMV command. Other modes return carry |
-| `0109h` | WRTVRM | implemented | Write A to the 16-bit VRAM address in HL (R14 carries the high bits) |
-| `010Dh` | RDVRM | implemented | Read the 16-bit VRAM address in HL into A |
+| `0109h` | WRTVRM | implemented | Write A to logical VRAM address HL; `SCRMOD`/`ACPAGE` select the physical 32/64 KiB page and R14 carries A16-A14 |
+| `010Dh` | RDVRM | implemented | Read logical VRAM address HL through the same `SCRMOD`/`ACPAGE` mapping |
 | `012Dh` | WRTVDP | implemented | Write B to VDP register C and update the R0-R7/R8-R23 shadows |
 | `0131h` | VDPSTA | implemented | Read the VDP status register selected by A into A; restores status 0 |
 | `0141h` | INIPLT | implemented | Initialize the V9938 palette to the default 0GRB values and copy to the VRAM palette store |
@@ -76,9 +80,24 @@ maintain a 32-byte copy of the palette in VRAM at a screen-dependent base
 
 ## 16-bit VRAM access
 
-`WRTVRM`/`RDVRM` accept the full 16-bit address in HL and write the upper
-address bits to VDP register 14 (R14), so the complete 128 KiB VRAM range is
-reachable.
+`WRTVRM`/`RDVRM` accept a 16-bit logical address in HL. The shared address
+translator combines HL with `SCRMOD` and `ACPAGE` before writing physical
+A16-A14 to VDP register 14 (R14):
+
+- Screens 5 and 6 use four 32 KiB active pages. `ACPAGE` bits 1:0 supply the
+  page, including the standard odd-page 16-bit wrap behaviour.
+- Screens 7 and later use two 64 KiB active pages. `ACPAGE` bit 0 supplies
+  physical A16.
+- With `ACPAGE=0`, the logical 16-bit mapping is retained. A nonzero active
+  page in a legacy mode selects the MSX1-compatible 14-bit window.
+
+This makes all 128 KiB reachable while retaining the established MSX2 BIOS
+page semantics. The R14 and low/high address writes are interrupt-atomic.
+
+Implemented SUB-ROM fixed entries use `EI; JP`: Z80 `EI` takes effect after
+the following `JP`, so interrupts become eligible at the first target
+instruction. Critical-section epilogues restore saved registers before an
+`EI; RET` pair; the delayed enable therefore occurs only after the return.
 
 ## Reference
 
@@ -87,7 +106,9 @@ reachable.
   behavior; see `docs/REFERENCES.md`.
 - Verification: `test-1983-msx2-subrom-services` (1983) and
   `test-openmsx-msx2-services` (openMSX) call `EXTROM` into CHGMOD 5/6/7/8,
-  palette, and 16-bit VRAM and validate the observable state.
+  palette, and 16-bit VRAM; they distinguish all four Screen 5 pages and both
+  Screen 8 pages. The openMSX gate also inspects the physical markers at
+  `00200h`, `08200h`, `10200h`, and `18200h` directly.
   `test-1983-msx2-subrom-cmdclock` (1983) and `test-openmsx-msx2-cmdclock`
   (openMSX) call the block transfers and the RTC entries and validate the
   copied VRAM bytes, the BLTMV header/pixels, and the REDCLK/WRTCLK round

@@ -20,7 +20,9 @@ opaque palette colors.
 
 Generated pattern, color, and name tables remain under `build/logo/`; the
 hardware-palette preview is `build/logo/logo_preview.png`. The boot notice is
-rendered from the project-owned font during the same asset build.
+rendered from the project-owned font during the same asset build. RAM, VRAM,
+date, and time are runtime overlays drawn by the BIOS in the logo's empty
+upper-right field; they are not baked into the CC0 artwork.
 
 The source logo and the converted pattern, color, and name data embedded in
 RainBIOS are dedicated to the public domain under CC0-1.0. The full legal

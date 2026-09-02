@@ -39,10 +39,18 @@ proc finish_msx2_services_probe {} {
     puts $handle [format "M_LOWVR=%02X" [peek 0xF36D]]
     puts $handle [format "M_HIGHVR=%02X" [peek 0xF36E]]
     puts $handle [format "M_CEFONT=%02X" [peek 0xF36F]]
-    # Directly verify the 16-bit VRAM marker that the probe wrote.
-    set vram [debug read_block VRAM 0x8000 1]
-    binary scan $vram cu* vram_bytes
-    puts $handle [format "VRAM_8000=%02X" [lindex $vram_bytes 0]]
+    puts $handle [format "M_SC5PAGES=%02X,%02X,%02X,%02X" \
+        [peek 0xF370] [peek 0xF371] [peek 0xF372] [peek 0xF373]]
+    puts $handle [format "M_SC8PAGES=%02X,%02X" \
+        [peek 0xF374] [peek 0xF375]]
+    foreach {name address} {
+        VRAM_SC5_P0 0x00200 VRAM_SC5_P1 0x08200
+        VRAM_SC5_P2 0x10200 VRAM_SC5_P3 0x18200
+    } {
+        set vram [debug read_block VRAM $address 1]
+        binary scan $vram cu* vram_bytes
+        puts $handle [format "%s=%02X" $name [lindex $vram_bytes 0]]
+    }
     close $handle
 
     set throttle on

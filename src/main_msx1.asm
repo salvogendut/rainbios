@@ -8,6 +8,8 @@
 
 VDP_DATA        equ #98
 VDP_CONTROL     equ #99
+RTC_ADDR        equ #b4
+RTC_DATA        equ #b5
 PRINTER_DATA    equ #91
 PRINTER_CTRL    equ #90
 PSG_ADDRESS     equ #a0
@@ -100,6 +102,7 @@ EXPTBL          equ #fcc1
 SLTTBL          equ #fcc5
 HOOKBASE        equ #fd9a
 EXBRSA          equ #faf8
+MODE            equ #fafc
 
 RAM_TEST2       equ #bfff
 RAM_TEST3       equ #f37f
@@ -152,6 +155,11 @@ EXTENSION_STACK equ #f092
 STACK_TOP       equ #f380
 CALSLT_P3_FRAME equ #f360
 ASSET_BUFFER    equ #c000
+RTC_BUFFER      equ ASSET_BUFFER
+RTC_MODE_SAVE   equ ASSET_BUFFER+13
+RTC_24H_SAVE    equ ASSET_BUFFER+14
+RTC_TEXT_BUFFER equ ASSET_BUFFER+16
+RTC_TIME_TEXT   equ ASSET_BUFFER+32
 
                 org #0000
 
@@ -659,6 +667,7 @@ bootstrap_empty_hook:
 
 ; Expand the compressed logo tables in scratch RAM and upload them to VRAM.
                 call cold_boot_render_logo
+                call cold_boot_render_system_info
 
 ; The decoder workspace overlaps application RAM used by storage kernels.
 ; Restore the reset-time zero fill before cartridge discovery so embedding
@@ -2320,6 +2329,388 @@ cold_boot_render_logo_color_block:
                 jr nz,cold_boot_render_logo_color_block
                 ret
 
+; Overlay live machine information in the logo's empty upper-right field.
+; Graphics II uses one private pattern per name-table cell, so the existing
+; boot font can replace those cells without changing the generated artwork.
+; All writes stay under DI; the display and VBlank source are still disabled.
+cold_boot_render_system_info:
+                ld a,(MAPPER_SEGMENTS)
+                cp 2
+                ld de,boot_ram_32_message
+                jr z,cold_boot_ram_message_ready
+                cp 8
+                ld de,boot_ram_128_message
+                jr z,cold_boot_ram_message_ready
+                cp 16
+                ld de,boot_ram_256_message
+                jr z,cold_boot_ram_message_ready
+                cp 32
+                ld de,boot_ram_512_message
+                jr z,cold_boot_ram_message_ready
+                cp 64
+                ld de,boot_ram_1024_message
+                jr z,cold_boot_ram_message_ready
+                cp 128
+                ld de,boot_ram_2048_message
+                jr z,cold_boot_ram_message_ready
+                ; Four mapper segments and the non-mapper sentinel both
+                ; describe the supported 64 KiB baseline.
+                ld de,boot_ram_64_message
+cold_boot_ram_message_ready:
+                ld hl,#1005                    ; column 16, row 5
+                call cold_boot_print_line
+
+                IFDEF MSX2
+                ld a,(MODE)
+                bit 2,a
+                ld de,boot_vram_128_message
+                jr nz,cold_boot_vram_message_ready
+                bit 1,a
+                ld de,boot_vram_64_message
+                jr nz,cold_boot_vram_message_ready
+                ENDIF
+                ld de,boot_vram_16_message
+cold_boot_vram_message_ready:
+                ld hl,#1007                    ; column 16, row 7
+                call cold_boot_print_line
+
+                IFDEF MSX2
+                call cold_boot_read_rtc
+                ret nc                         ; absent or invalid RTC
+                call cold_boot_render_rtc
+                ENDIF
+                ret
+
+; Print a zero-terminated string from DE at the one-based column/row in H/L.
+; The logo name table is sequential, so each cell's pattern address is
+; ((row-1) * 256) + ((column-1) * 8).
+cold_boot_print_line:
+                push ix
+                push de
+                pop ix
+                ld a,l
+                dec a
+                ld d,a
+                ld a,h
+                dec a
+                add a,a
+                add a,a
+                add a,a
+                ld e,a
+cold_boot_print_line_loop:
+                ld a,(ix)
+                inc ix
+                or a
+                jr z,cold_boot_print_line_done
+                call cold_boot_draw_character
+                ld a,e
+                add a,8
+                ld e,a
+                jr cold_boot_print_line_loop
+cold_boot_print_line_done:
+                pop ix
+                ret
+
+; Draw character A into the Graphics II cell whose pattern address is DE.
+; This boot-only path deliberately avoids the public VRAM helpers because
+; those restore EI on return while early startup must remain interrupt-masked.
+cold_boot_draw_character:
+                ld l,a
+                ld h,0
+                add hl,hl
+                add hl,hl
+                add hl,hl
+                ld bc,boot_font
+                add hl,bc
+                ex de,hl                       ; HL=cell, DE=glyph
+                call cold_boot_setwrt
+                ex de,hl                       ; HL=glyph, DE=cell
+                ld b,8
+                ld c,VDP_DATA
+                otir
+
+                ld hl,#2000
+                add hl,de                      ; matching colour cell
+                call cold_boot_setwrt
+                ld a,(FORCLR)
+                and #0f
+                rlca
+                rlca
+                rlca
+                rlca
+                ld b,a
+                ld a,(BAKCLR)
+                and #0f
+                or b
+                ld b,8
+cold_boot_draw_colour:
+                out (VDP_DATA),a
+                djnz cold_boot_draw_colour
+                ret
+
+cold_boot_setwrt:
+                ld a,l
+                out (VDP_CONTROL),a
+                ld a,h
+                and #3f
+                or #40
+                out (VDP_CONTROL),a
+                ret
+
+                IFDEF MSX2
+; Capture block 0 of the RP-5C01-compatible RTC twice around the seconds
+; field. The original mode register is restored before returning. Carry is
+; set only for a coherent snapshot containing plausible BCD date/time fields;
+; an absent B4h/B5h device reads as all-F and follows the same failure path.
+cold_boot_read_rtc:
+                ld a,13
+                out (RTC_ADDR),a
+                in a,(RTC_DATA)
+                and #0f
+                ld (RTC_MODE_SAVE),a
+                ld d,2
+cold_boot_rtc_retry:
+                ld a,13
+                out (RTC_ADDR),a
+                ld a,(RTC_MODE_SAVE)
+                and #fc
+                out (RTC_DATA),a               ; block 0
+                ld hl,RTC_BUFFER
+                ld c,0
+                ld b,13
+cold_boot_rtc_read_loop:
+                ld a,c
+                out (RTC_ADDR),a
+                in a,(RTC_DATA)
+                and #0f
+                ld (hl),a
+                inc hl
+                inc c
+                djnz cold_boot_rtc_read_loop
+
+                xor a
+                out (RTC_ADDR),a
+                in a,(RTC_DATA)
+                and #0f
+                ld hl,RTC_BUFFER
+                cp (hl)
+                jr nz,cold_boot_rtc_changed
+                ld a,1
+                out (RTC_ADDR),a
+                in a,(RTC_DATA)
+                and #0f
+                inc hl
+                cp (hl)
+                jr z,cold_boot_rtc_stable
+cold_boot_rtc_changed:
+                dec d
+                jr nz,cold_boot_rtc_retry
+                call cold_boot_restore_rtc_mode
+                or a                            ; clear carry
+                ret
+
+cold_boot_rtc_stable:
+                ; Block 1 register 10 selects 12- or 24-hour representation.
+                ld a,13
+                out (RTC_ADDR),a
+                ld a,(RTC_MODE_SAVE)
+                and #fc
+                or 1
+                out (RTC_DATA),a
+                ld a,10
+                out (RTC_ADDR),a
+                in a,(RTC_DATA)
+                and 1
+                ld (RTC_24H_SAVE),a
+                call cold_boot_restore_rtc_mode
+                jp cold_boot_validate_rtc
+
+cold_boot_restore_rtc_mode:
+                ld a,13
+                out (RTC_ADDR),a
+                ld a,(RTC_MODE_SAVE)
+                out (RTC_DATA),a
+                ret
+
+; Validate BCD ranges and normalize the RTC's 12-hour 20..31 PM encoding to
+; 24-hour BCD in the snapshot buffer before it is formatted for display.
+cold_boot_validate_rtc:
+                ld a,(RTC_BUFFER)               ; seconds units
+                cp 10
+                ret nc
+                ld a,(RTC_BUFFER+1)             ; seconds tens
+                cp 6
+                ret nc
+                ld a,(RTC_BUFFER+2)             ; minutes units
+                cp 10
+                ret nc
+                ld a,(RTC_BUFFER+3)             ; minutes tens
+                cp 6
+                ret nc
+                ld a,(RTC_BUFFER+4)             ; hours units
+                cp 10
+                ret nc
+
+                ld a,(RTC_24H_SAVE)
+                or a
+                jr z,cold_boot_validate_rtc_12h
+                ld a,(RTC_BUFFER+5)
+                cp 3
+                ret nc
+                cp 2
+                jr nz,cold_boot_validate_rtc_date
+                ld a,(RTC_BUFFER+4)
+                cp 4
+                ret nc
+                jr cold_boot_validate_rtc_date
+
+cold_boot_validate_rtc_12h:
+                ld a,(RTC_BUFFER+5)
+                cp 4
+                ret nc
+                cp 2
+                jr c,cold_boot_validate_rtc_am
+                jr z,cold_boot_validate_rtc_pm20
+                ld a,(RTC_BUFFER+4)             ; 30/31 -> 22/23
+                cp 2
+                ret nc
+                add a,2
+                ld (RTC_BUFFER+4),a
+                ld a,2
+                ld (RTC_BUFFER+5),a
+                jr cold_boot_validate_rtc_date
+cold_boot_validate_rtc_pm20:
+                ld a,(RTC_BUFFER+4)             ; 20..29 -> 12..21
+                cp 8
+                jr nc,cold_boot_validate_rtc_pm20_high
+                add a,2
+                ld (RTC_BUFFER+4),a
+                ld a,1
+                ld (RTC_BUFFER+5),a
+                jr cold_boot_validate_rtc_date
+cold_boot_validate_rtc_pm20_high:
+                sub 8
+                ld (RTC_BUFFER+4),a
+                ld a,2
+                ld (RTC_BUFFER+5),a
+                jr cold_boot_validate_rtc_date
+cold_boot_validate_rtc_am:
+                or a
+                jr z,cold_boot_validate_rtc_date
+                ld a,(RTC_BUFFER+4)             ; 10/11 only
+                cp 2
+                ret nc
+
+cold_boot_validate_rtc_date:
+                ld a,(RTC_BUFFER+6)             ; weekday
+                cp 7
+                ret nc
+                ld a,(RTC_BUFFER+7)             ; day units
+                cp 10
+                ret nc
+                ld b,a
+                ld a,(RTC_BUFFER+8)             ; day tens
+                cp 4
+                ret nc
+                or b
+                ret z                           ; day 00
+                ld a,(RTC_BUFFER+8)
+                cp 3
+                jr nz,cold_boot_validate_rtc_month
+                ld a,b
+                cp 2
+                ret nc                          ; reject day 32..39
+cold_boot_validate_rtc_month:
+                ld a,(RTC_BUFFER+9)             ; month units
+                cp 10
+                ret nc
+                ld b,a
+                ld a,(RTC_BUFFER+10)            ; month tens
+                cp 2
+                ret nc
+                or b
+                ret z                           ; month 00
+                ld a,(RTC_BUFFER+10)
+                or a
+                jr z,cold_boot_validate_rtc_year
+                ld a,b
+                cp 3
+                ret nc                          ; reject month 13..19
+cold_boot_validate_rtc_year:
+                ld a,(RTC_BUFFER+11)
+                cp 10
+                ret nc
+                ld a,(RTC_BUFFER+12)
+                cp 10
+                ret nc
+                ; The MSX clock stores years as an offset from 1980. Convert
+                ; that BCD offset to the last two digits of the calendar year
+                ; for display: 00..19 -> 80..99, 20..99 -> 00..79.
+                cp 2
+                jr nc,cold_boot_rtc_year_2000
+                add a,8
+                jr cold_boot_rtc_year_ready
+cold_boot_rtc_year_2000:
+                sub 2
+cold_boot_rtc_year_ready:
+                ld (RTC_BUFFER+12),a
+                scf
+                ret
+
+cold_boot_render_rtc:
+                ld hl,boot_date_template
+                ld de,RTC_TEXT_BUFFER
+                ld bc,14
+                ldir
+                ld a,(RTC_BUFFER+8)
+                add a,'0'
+                ld (RTC_TEXT_BUFFER+5),a
+                ld a,(RTC_BUFFER+7)
+                add a,'0'
+                ld (RTC_TEXT_BUFFER+6),a
+                ld a,(RTC_BUFFER+10)
+                add a,'0'
+                ld (RTC_TEXT_BUFFER+8),a
+                ld a,(RTC_BUFFER+9)
+                add a,'0'
+                ld (RTC_TEXT_BUFFER+9),a
+                ld a,(RTC_BUFFER+12)
+                add a,'0'
+                ld (RTC_TEXT_BUFFER+11),a
+                ld a,(RTC_BUFFER+11)
+                add a,'0'
+                ld (RTC_TEXT_BUFFER+12),a
+                ld de,RTC_TEXT_BUFFER
+                ld hl,#100a                    ; column 16, row 10
+                call cold_boot_print_line
+
+                ld hl,boot_time_template
+                ld de,RTC_TIME_TEXT
+                ld bc,14
+                ldir
+                ld a,(RTC_BUFFER+5)
+                add a,'0'
+                ld (RTC_TIME_TEXT+5),a
+                ld a,(RTC_BUFFER+4)
+                add a,'0'
+                ld (RTC_TIME_TEXT+6),a
+                ld a,(RTC_BUFFER+3)
+                add a,'0'
+                ld (RTC_TIME_TEXT+8),a
+                ld a,(RTC_BUFFER+2)
+                add a,'0'
+                ld (RTC_TIME_TEXT+9),a
+                ld a,(RTC_BUFFER+1)
+                add a,'0'
+                ld (RTC_TIME_TEXT+11),a
+                ld a,(RTC_BUFFER)
+                add a,'0'
+                ld (RTC_TIME_TEXT+12),a
+                ld de,RTC_TIME_TEXT
+                ld hl,#100c                    ; column 16, row 12
+                jp cold_boot_print_line
+                ENDIF
+
 cold_boot_render_options:
                 di                              ; VDP control pairs must be atomic
                 xor a
@@ -3875,6 +4266,8 @@ IFDEF MSX2
 ; Screen 7 handoff). When found, publish the SUB-ROM slot in EXBRSA and load
 ; the V9938 R8-R23 shadow baseline through the extended-register WRTVDP path.
 bootstrap_msx2:
+                xor a
+                ld (MODE),a
                 call v9938_subrom_present
                 jr nz,bootstrap_msx2_no_v9938
                 ld a,e
@@ -3889,7 +4282,61 @@ bootstrap_msx2_register_loop:
                 inc c
                 dec d
                 jr nz,bootstrap_msx2_register_loop
+                call bootstrap_size_vram
 bootstrap_msx2_no_v9938:
+                ret
+
+; Detect whether the V9938 exposes 64 or 128 KiB of VRAM. This runs before
+; the logo upload, so the two probe bytes are immediately replaced in the
+; visible bank. A real upper bank must retain 5Ah while bank zero retains A5h;
+; aliasing or an unimplemented upper bank therefore selects the 64 KiB path.
+; MODE follows the established MSX2 convention: bit 1 means 64 KiB and bit 2
+; means 128 KiB. R14 is restored to bank zero before normal BIOS VRAM calls.
+bootstrap_size_vram:
+                ld c,#40                       ; write address
+                xor a                          ; physical address 00000h
+                call bootstrap_vram_address
+                ld a,#a5
+                out (VDP_DATA),a
+                ld a,4                         ; physical address 10000h
+                call bootstrap_vram_address
+                ld a,#5a
+                out (VDP_DATA),a
+
+                ld c,0                         ; read address
+                xor a
+                call bootstrap_vram_address
+                in a,(VDP_DATA)
+                cp #a5
+                jr nz,bootstrap_vram_64k
+                ld a,4
+                call bootstrap_vram_address
+                in a,(VDP_DATA)
+                cp #5a
+                jr nz,bootstrap_vram_64k
+                ld a,#04                       ; MODE bit 2: 128 KiB
+                jr bootstrap_vram_done
+bootstrap_vram_64k:
+                ld a,#02                       ; MODE bit 1: 64 KiB
+bootstrap_vram_done:
+                ld (MODE),a
+                xor a
+                ld (RG14SAV),a
+                out (VDP_CONTROL),a
+                ld a,#8e
+                out (VDP_CONTROL),a
+                ret
+
+; A is the V9938 R14 value and C is the second address byte (00h read, 40h
+; write). The low address byte is always zero for the bank-aliasing probe.
+bootstrap_vram_address:
+                out (VDP_CONTROL),a
+                ld a,#8e
+                out (VDP_CONTROL),a
+                xor a
+                out (VDP_CONTROL),a
+                ld a,c
+                out (VDP_CONTROL),a
                 ret
 ENDIF
 
@@ -6425,6 +6872,33 @@ sd_boot_choice_message:
 
 storage_boot_failed_message:
                 db "STORAGE BOOT FAILED",0
+
+boot_ram_32_message:
+                db "RAM      32 KB",0
+boot_ram_64_message:
+                db "RAM      64 KB",0
+boot_ram_128_message:
+                db "RAM     128 KB",0
+boot_ram_256_message:
+                db "RAM     256 KB",0
+boot_ram_512_message:
+                db "RAM     512 KB",0
+boot_ram_1024_message:
+                db "RAM    1024 KB",0
+boot_ram_2048_message:
+                db "RAM    2048 KB",0
+boot_vram_16_message:
+                db "VRAM     16 KB",0
+boot_vram_64_message:
+                db "VRAM     64 KB",0
+boot_vram_128_message:
+                db "VRAM    128 KB",0
+                IFDEF MSX2
+boot_date_template:
+                db "DATE 00/00/00",0
+boot_time_template:
+                db "TIME 00:00:00",0
+                ENDIF
 
 boot_font:
                 incbin "boot_font.bin"

@@ -38,10 +38,11 @@ Run host validation after every source change:
 make test
 ```
 
-Run a basic configuration and rendered-boot check in openMSX:
+Run a basic configuration, rendered-boot check, and boot-information matrix in
+openMSX:
 
 ```sh
-make test-openmsx test-openmsx-boot \
+make test-openmsx test-openmsx-boot test-openmsx-boot-info \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
@@ -87,6 +88,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | --- | --- |
 | `test-openmsx` | Machine-definition configuration |
 | `test-openmsx-boot` | Rendered boot artwork and nonblank output |
+| `test-openmsx-boot-info` | Exact Graphics II RAM/VRAM/RTC overlay text on MSX1, 64 KiB and 128 KiB VRAM MSX2 machines, and an MSX2 machine without an RTC; also validates `MAPPER_SEGMENTS` and the published `MODE` size bits |
 | `test-openmsx-options` | Held-Space, non-blocking menu route and Screen 1 rendering; host asset tests pin the title and three action labels |
 | `test-openmsx-audio` | Non-silent startup-jingle PCM capture |
 | `test-openmsx-m1` | Primary, split, decoy, and expanded RAM discovery layouts |
@@ -100,7 +102,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-geobench-sunrise` | Sunrise/Nextor reaches the mapped GeoBench desktop application in active Screen 7 with the full desktop geometry (status bar, blue background plane, red UI accents) against the byte-verified unmodified image |
 | `test-openmsx-msx2` | MSX2 main-ROM boot on a V9938 machine with the C-BIOS SUB-ROM: generation byte, `EXBRSA`, R8-R23 shadows, and rendered boot frame |
 | `test-openmsx-msx2-subrom` | MSX2 SUB-ROM calling contract into a fixture SUB-ROM: `SUBROM`/`EXTROM`/`CHKSLZ` markers and the SUB-ROM spin PC |
-| `test-openmsx-msx2-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8, palette GETPLT, 16-bit WRTVRM/RDVRM, and VDP registers |
+| `test-openmsx-msx2-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8, palette GETPLT, and 16-bit WRTVRM/RDVRM across all four Screen 5 `ACPAGE` values and both Screen 8 pages; physical VRAM markers are checked below and above `10000h` |
 | `test-openmsx-msx2-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
 | `test-openmsx-msx2-64k` | RainBIOS MSX2 main ROM + SUB-ROM on a 64 KiB VRAM V9938: CHGMOD Screens 5/8 and even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range |
 | `test-openmsx-font` | Printable project-owned font coverage |
@@ -173,7 +175,7 @@ make test-1983 \
 | `test-1983-embedded-basic` | No-cartridge automatic launch of the embedded payload and clean top-of-screen banner/prompt |
 | `test-1983-msx2` | MSX2 main-ROM boot on the `msx2` model with the C-BIOS SUB-ROM: generation byte, `EXBRSA=83h`, `RG8SAV=08h`, and rendered boot frame |
 | `test-1983-msx2-subrom` | MSX2 SUB-ROM calling contract into a fixture SUB-ROM: CHKSLZ carry/EXBRSA, EXTROM write marker, SUBROM write marker, and the SUB-ROM spin PC |
-| `test-1983-msx2-subrom-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8 SCRMOD and table bases, palette SETPLT/GETPLT, and 16-bit WRTVRM/RDVRM |
+| `test-1983-msx2-subrom-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8 SCRMOD and table bases, palette SETPLT/GETPLT, and distinct WRTVRM/RDVRM round trips on all four Screen 5 `ACPAGE` values and both Screen 8 pages |
 | `test-1983-msx2-subrom-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
 | `test-1983-bbcbasic-graphics` | Independently rendered Graphics II workload |
 | `test-1983-tape` | Raw cassette fixture through public `TAP*` calls |
