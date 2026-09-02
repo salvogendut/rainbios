@@ -108,6 +108,13 @@ adopts the helper: `disk_phydio` now arms the timer on success and error, and
 `test-1983-disk-read` verifies the motor is left on after the access and then
 stopped by the IM 1 handler (reaching `disk_phydio_motor_pass`).
 
+M1M adds live machine information to the boot-logo page. The selected boot
+mapper size is shown as RAM, MSX1 reports 16 KiB VRAM, and MSX2 distinguishes
+64/128 KiB V9938 configurations. A coherent valid MSX2 RTC snapshot adds the
+date and 24-hour time; absent or invalid clock hardware is omitted. The
+`test-openmsx-boot-info` matrix decodes the exact Graphics II patterns for all
+four cases and checks `MAPPER_SEGMENTS` and `MODE` alongside the visible text.
+
 - run the original diagnostic cartridge on hardware;
 
 Exit criterion: cold boot reaches the diagnostic cartridge on representative
@@ -502,11 +509,12 @@ file exists, external components pin a repository and commit, the manifest and
 matches `deps/bbcbasic-z80-msx.lock.json`. A full SPDX JSON export remains a
 follow-up; the manifest format is chosen to be translatable to SPDX later.
 
-The lower-bank headroom is now a host-suite gate:
-`test_lower_bank_preserves_headroom_ceiling` fails if the last non-`FF` byte
-of the lower bank rises above `3600h` (reserve below `0xA00` bytes) or falls
-below `3000h`, so substantial new page-0 work must be a deliberate, documented
-step rather than an accidental boundary erosion.
+The lower-bank headroom is a host-suite gate:
+`test_lower_bank_preserves_headroom_ceiling` checks both main-ROM variants and
+fails if the last non-`FF` byte rises above `3C00h` (reserve below 1 KiB) or
+falls below `3000h`, so substantial new page-0 work must be a deliberate,
+documented step rather than accidental boundary erosion. The current MSX1 and
+MSX2 reserves are 1,991 and 1,279 bytes respectively.
 
 The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
 all 21 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,

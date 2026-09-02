@@ -9,6 +9,10 @@ SUB-ROM slot (3-0 on the test fixtures). The MSX2 main ROM reaches its
 routines through the `EXTROM` (`015Fh`) dispatch, which passes the SUB-ROM
 routine address in IX and the slot from `EXBRSA`.
 
+During the same early initialization, the main ROM probes the V9938 VRAM
+banks and publishes the standard size indication in `MODE` (`FAFCh`): bit 1
+for 64 KiB or bit 2 for 128 KiB. The boot-logo overlay uses that value.
+
 The SUB-ROM runs with the target page switched to its own slot, so it cannot
 call the main BIOS: VDP register writes, 16-bit VRAM access, and the R0-R23
 shadow work area are handled locally.

@@ -228,7 +228,13 @@ After that bootstrap, the ROM programs the TMS9918, uploads a converted
 Graphics II logo and `RainBios booting...` notice, plays a short four-note PSG
 motif, and keeps the completed logo visible for 60 VBlank frames (about one
 second on NTSC or 1.2 seconds on PAL) before checking primary cartridges. A
-Space press during that interval is buffered and remembered.
+Space press during that interval is buffered and remembered. Before enabling
+the display, RainBIOS overlays the selected boot RAM and detected VRAM size in
+the logo's empty upper-right field. MSX1 reports its 16 KiB VRAM baseline;
+MSX2 probes the V9938 for 64/128 KiB and publishes the result in the standard
+`MODE` bits. On MSX2, a coherent valid clock snapshot adds `DD/MM/YY` and
+24-hour time. An absent or invalid RTC leaves those two rows untouched. The
+clock read restores the RTC mode register and never writes calendar data.
 Immediately before the first conventional cartridge `INIT`, it replaces the
 logo with a cleared 40-column console using light-yellow text on the same dark
 blue used by the logo. Extension-ROM and storage diagnostics therefore start
@@ -261,8 +267,9 @@ The generated logo and menu tables are stored as ZX0 streams and expanded one
 at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB
 font remains uncompressed because `CGTABL` points directly at it. The simpler
 CC0 boot logo reduces its three compressed tables from 3,922 bytes to 917
-bytes. The lower bank currently ends at `3350h`, leaving 3,247 bytes before the
-hard `4000h` boundary.
+bytes. The MSX1 lower bank currently ends at `3839h`, leaving 1,991 bytes
+before the hard `4000h` boundary; the larger MSX2 build ends at `3B01h`,
+leaving 1,279 bytes.
 
 ## Embedded BASIC payload
 

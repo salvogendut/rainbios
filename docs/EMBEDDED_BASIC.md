@@ -92,13 +92,14 @@ replacing the system ROM and preserves the prior optional-cartridge behavior.
 ### RainBIOS
 
 The MAIN-ROM is exactly 32 KiB and is mapped at `0000h-7FFFh`. In the current
-issue-62 build, the lower bank has this measured layout:
+build, the lower bank has this measured layout:
 
-- the 68-byte ZX0 decoder begins at `242Eh`;
-- the directly addressable 2 KiB `CGTABL` font begins at `25EBh`;
-- compressed menu assets occupy `2DEBh-2FBBh`;
-- compressed logo assets occupy `2FBCh-3350h`;
-- `3351h-3FFFh` is `FFh` padding (3,247 bytes);
+- in MSX1, the ZX0 decoder begins at `2745h`, the directly addressable 2 KiB
+  `CGTABL` font at `2998h`, the menu streams at `3198h`, and the logo streams
+  at `3369h`; the final stream ends at `3839h`, leaving 1,991 bytes;
+- in MSX2, the corresponding decoder begins at `29DBh`, the font at `2C5Ah`,
+  the menu streams at `345Ah`, and the logo streams at `362Bh`; the final
+  stream ends at `3B01h`, leaving 1,279 bytes;
 - the `RBC1` header occupies `4000h-4007h`, the 11,764-byte compressed
   interpreter occupies `4008h-6DFBh`, and `6DFCh-7FFFh` is erased padding.
 
@@ -194,15 +195,16 @@ logo/menu tests cover 1983 and openMSX. The build fails if the lower-half image
 reaches `4000h`; silently truncating or overlapping the interpreter is
 unacceptable.
 
-The simpler logo and current menu still leave 3,247 bytes of lower-bank
-reserve, providing useful development headroom. Committing the entire upper half
-to the BASIC container remains the principal long-term technical cost of a traditional
+The simpler logo and current menu leave 1,991 bytes of lower-bank reserve in
+MSX1 and 1,279 bytes in MSX2. Committing the entire upper half to the BASIC
+container remains the principal long-term technical cost of a traditional
 combined ROM, so the assembly boundary and size reporting remain mandatory.
 
 The host suite gates the headroom: `test_lower_bank_preserves_headroom_ceiling`
-fails if the last non-`FF` byte of the lower bank rises above `3600h` (i.e. the
-reserve drops below `0xA00` bytes) or falls below `3000h`. Raising the ceiling
-is a deliberate, documented step before substantial new page-0 work.
+checks both main-ROM variants and fails if the last non-`FF` byte rises above
+`3C00h` (i.e. the reserve drops below 1 KiB) or falls below `3000h`. Raising
+the ceiling is a deliberate, documented step before substantial new page-0
+work.
 
 ## Internal launch design
 

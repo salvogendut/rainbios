@@ -38,10 +38,11 @@ Run host validation after every source change:
 make test
 ```
 
-Run a basic configuration and rendered-boot check in openMSX:
+Run a basic configuration, rendered-boot check, and boot-information matrix in
+openMSX:
 
 ```sh
-make test-openmsx test-openmsx-boot \
+make test-openmsx test-openmsx-boot test-openmsx-boot-info \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
@@ -87,6 +88,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | --- | --- |
 | `test-openmsx` | Machine-definition configuration |
 | `test-openmsx-boot` | Rendered boot artwork and nonblank output |
+| `test-openmsx-boot-info` | Exact Graphics II RAM/VRAM/RTC overlay text on MSX1, 64 KiB and 128 KiB VRAM MSX2 machines, and an MSX2 machine without an RTC; also validates `MAPPER_SEGMENTS` and the published `MODE` size bits |
 | `test-openmsx-options` | Held-Space, non-blocking menu route and Screen 1 rendering; host asset tests pin the title and three action labels |
 | `test-openmsx-audio` | Non-silent startup-jingle PCM capture |
 | `test-openmsx-m1` | Primary, split, decoy, and expanded RAM discovery layouts |

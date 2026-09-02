@@ -25,7 +25,8 @@ reviewable.
   for the M5C RainBIOS SUB-ROM; later, the `BLTVV`/`BLTVM`/`BLTMV` command
   register programming, the LMMC/LMCM CPU-transfer handshake, and the
   `REDCLK`/`WRTCLK` RTC port protocol in `src/sub.asm` for the M5D RainBIOS
-  SUB-ROM slice
+  SUB-ROM slice; later, the boot-time V9938 VRAM-size probe in `src/main.asm`
+  solely as an open-source behavioral cross-check
 - Purpose: make the official release the canonical open-source cross-check for
   standardized interface addresses and build conventions
 - Excluded: copying or adapting device or service implementation routines,
@@ -890,3 +891,16 @@ boot state. This diagnosis is not used to derive RainBIOS firmware code.
   68-byte decoder expands one table at a time to transient `C000h-D7FFh` RAM
   before the original RainBIOS VRAM upload path. Host tests decode every stream
   independently and require an exact round trip.
+
+## 2026-09-02 — Boot clock representation
+
+- Source: openMSX 21.0 source distribution, GPL-2.0, file consulted:
+  `src/RP5C01.cc`
+- SHA-256:
+  `5f217cbba362a5da6cf78af291c3b4251f51343cd82714be095808a7be8ebecf`
+- Material consulted: the emulated RP-5C01's BCD field representation, the
+  year offset from 1980, and the 12/24-hour register interpretation
+- Purpose: define deterministic RTC fixtures and the calendar representation
+  used by the boot-page display
+- RainBIOS use: externally observable device behavior only; the validation,
+  snapshot, conversion, and rendering routines are original RainBIOS work
