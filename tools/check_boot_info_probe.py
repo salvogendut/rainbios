@@ -81,7 +81,12 @@ def validate_report(
         raise ValueError(
             f"MODE is {fields['MODE']!r}, expected {expected_mode!r}"
         )
-    expected_mapper = "01" if expected_ram == 64 else f"{expected_ram // 16:02X}"
+    if expected_ram == 64:
+        expected_mapper = "01"
+    elif expected_ram == 4096:
+        expected_mapper = "00"
+    else:
+        expected_mapper = f"{expected_ram // 16:02X}"
     if fields["MAPPER"] != expected_mapper:
         raise ValueError(
             f"MAPPER is {fields['MAPPER']!r}, expected {expected_mapper!r}"

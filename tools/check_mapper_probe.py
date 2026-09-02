@@ -9,9 +9,9 @@ import pathlib
 
 
 EXPECTED = {
-    "MAPPER_SEGMENTS": "08",
+    "MAPPER_SEGMENTS": "00",
     "BASELINE_MAP": "F0",
-    "SEG7": "7A",
+    "SEG255": "7A",
     "SEG0": "5A",
 }
 
@@ -39,7 +39,7 @@ def main() -> int:
         parser.error(str(error))
     print(
         f"validated M1 memory-mapper sizing: "
-        f"{EXPECTED['MAPPER_SEGMENTS']} segments"
+        "256 segments (4096 KB)"
     )
     return 0
 
