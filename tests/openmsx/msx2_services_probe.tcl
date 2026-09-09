@@ -62,7 +62,9 @@ proc capture_msx2_services {} {
     exit
 }
 
-after time 2.00 {
+# Full-width bitmap clears with the display enabled take longer than the old
+# accidental 1/2-pixel clears. Leave time for the entire multi-mode workload.
+after time 5.00 {
     set throttle on
     after realtime 0.4 finish_msx2_services_probe
 }

@@ -199,11 +199,83 @@ hmmv_command:
                 db #c0                         ; HMMV
 
 subrom_call_chgmod:
+                IFDEF MAIN_CHGMOD_PROBE
+                ; Same workload through the public MAIN BIOS entry, exactly
+                ; the slot-call route used by a DOS application such as GeoBench.
+                push af
+                ; Poison the last visible byte. A width of 1/2 instead of
+                ; 256/512 used to leave almost the entire bitmap uncleared.
+                call main_bitmap_end
+                ld a,#ee
+                call subrom_call_wrvrm
+                ld a,1
+                ld (#f3ea),a                   ; BAKCLR, packed by CHGMOD
+                pop af
+                push af
+                push ix
+                push iy
+                ld ix,#005f
+                ld iy,(#fcc0)                  ; EXPTBL-1: main BIOS slot in IYH
+                call #001c                     ; CALSLT
+                pop iy
+                pop ix
+                jr c,main_chgmod_failed
+                pop af
+                ld c,a
+                ld a,(SCRMOD)
+                cp c
+                jr nz,main_chgmod_failed
+                ; Check each mode's register shadows before the next switch;
+                ; the host also verifies real VRAM and the final VDP registers.
+                ld a,c
+                sub 5
+                ld e,a
+                ld d,0
+                ld hl,main_mode_r0
+                add hl,de
+                ld a,(#f3df)                   ; RG0SAV
+                and #0e
+                cp (hl)
+                jr nz,main_chgmod_failed
+                ld a,(#f3e0)                   ; display/VBlank on, text bits off
+                and #78
+                cp #60
+                jr nz,main_chgmod_failed
+                ld a,c
+                push af
+                call main_bitmap_end
+                call subrom_call_rdvrm
+                ld b,a
+                pop af
+                ld c,#11                       ; SCREEN 5/7: two 4-bit pixels
+                cp 6
+                jr nz,main_clear_not6
+                ld c,#55                       ; SCREEN 6: four 2-bit pixels
+main_clear_not6:
+                cp 8
+                jr nz,main_clear_check
+                ld c,1                         ; SCREEN 8: one 8-bit pixel
+main_clear_check:
+                ld a,b
+                cp c
+                jr nz,main_chgmod_failed
+                ret
+main_bitmap_end:
+                ld hl,#69ff                    ; SCREEN 5/6: 128 bytes * 212 lines
+                cp 7
+                ret c
+                ld hl,#d3ff                    ; SCREEN 7/8: 256 bytes * 212 lines
+                ret
+main_chgmod_failed:
+                jp main_chgmod_failed
+main_mode_r0:   db 6,8,10,14
+                ELSE
                 push ix
                 ld ix,SUB_CHGMOD
                 call EXTROM
                 pop ix
                 ret
+                ENDIF
 
 subrom_call_wrvrm:
                 push ix

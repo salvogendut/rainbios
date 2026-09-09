@@ -1527,7 +1527,8 @@ inimlt_col:
                 ld (LINLEN),a
                 jp enascr
 
-; Partial mode dispatcher for MSX1 Screens 0-3 and guarded V9938 Screen 7.
+; Main-BIOS mode dispatcher. MSX2 bitmap modes use the canonical SUB-ROM
+; provider; keep the historical guarded Screen 7 path for MSX1 builds.
 chgmod:
                 or a
                 jp z,initxt
@@ -1537,9 +1538,13 @@ chgmod:
                 jp z,initgrp
                 cp 3
                 jp z,inimlt
+                IFDEF MSX2
+                jp chgmod_bitmap
+                ELSE
                 cp 7
                 jp z,initv9938_screen7
                 jp unsupported_call
+                ENDIF
 
 ; Program all eight TMS9918 registers from HL. The public WRTVDP path updates
 ; the corresponding RAM shadows for every register.
@@ -4403,10 +4408,34 @@ chkslz_not_found:
                 or a                            ; clear carry
                 ret
 
-; Partial Screen 7 handoff for software that runs this MSX1 ROM on MSX2
-; hardware. A discovered SUB-ROM is used only as the V9938 capability guard;
-; RainBIOS programs the documented register interface directly and leaves the
-; broader MSX2 MAIN/SUB-ROM ABI to M5.
+                IFDEF MSX2
+; Keep the forwarding body outside the section pinned by Nextor's #0D89
+; compatibility entry. Do not change MSX1's supported mode set.
+chgmod_bitmap:
+                cp 5
+                jp c,unsupported_call
+                cp 9
+                jp nc,unsupported_call
+                ; Discover a CD SUB-ROM instead of trusting an absent/stale
+                ; EXBRSA; EXTROM owns the slot and interrupt-state handoff.
+                push af
+                call v9938_subrom_present
+                jr nz,chgmod_no_subrom
+                ld a,e
+                ld (EXBRSA),a
+                pop af
+                push ix
+                ld ix,#00d1                    ; SUB-ROM CHGMOD
+                call extrom
+                pop ix
+                ret
+chgmod_no_subrom:
+                pop af
+                jp unsupported_call
+                ENDIF
+
+; Historical guarded Screen 7 handoff for software running the MSX1 ROM on
+; MSX2 hardware. MSX2 ROM builds use the SUB-ROM provider above instead.
 initv9938_screen7:
                 call v9938_subrom_present
                 jp nz,unsupported_call
