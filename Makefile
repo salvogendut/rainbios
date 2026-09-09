@@ -1049,6 +1049,36 @@ $(SUBROM_SERVICES_PROBE_CART): \
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@
 
+# Reuse the full bitmap/VRAM/palette workload through MAIN CHGMOD via CALSLT.
+MAIN_CHGMOD_PROBE_CART := $(BUILD_DIR)/cartridges/main_chgmod_probe.rom
+$(MAIN_CHGMOD_PROBE_CART): tests/cartridges/subrom_services_probe.asm | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(RASM) $< -DMAIN_CHGMOD_PROBE=1 -ob $@
+
+.PHONY: test-1983-main-chgmod test-openmsx-main-chgmod
+test-1983-main-chgmod: $(MSX2_ROM) $(MSX2_SUB_ROM) $(MAIN_CHGMOD_PROBE_CART)
+	$(PYTHON) tools/run_1983_msx2_subrom_services.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)" \
+		--cartridge "$(MAIN_CHGMOD_PROBE_CART)"
+
+$(OPENMSX_SHARE)/machines/RainBIOS_MAIN_CHGMOD.xml: \
+		tests/openmsx/RainBIOS_MSX2_SERVICES.xml.in $(MSX2_ROM) \
+		$(MSX2_SUB_ROM) $(MAIN_CHGMOD_PROBE_CART)
+	mkdir -p $(@D)
+	sed -e 's|@RAINBIOS_ROM@|$(abspath $(MSX2_ROM))|' \
+		-e 's|@MSX2_SUB_ROM@|$(abspath $(MSX2_SUB_ROM))|' \
+		-e 's|@SUBROM_SERVICES_PROBE_CART@|$(abspath $(MAIN_CHGMOD_PROBE_CART))|' $< > $@
+
+test-openmsx-main-chgmod: $(OPENMSX_SHARE)/machines/RainBIOS_MAIN_CHGMOD.xml
+	mkdir -p $(OPENMSX_HOME) $(OPENMSX_M1_REPORT_DIR)
+	OPENMSX_HOME=$(abspath $(OPENMSX_HOME)) \
+	OPENMSX_USER_DATA=$(abspath $(OPENMSX_SHARE)) \
+	$(OPENMSX) -machine RainBIOS_MAIN_CHGMOD \
+		-command "set msx2_services_output {$(abspath $(OPENMSX_M1_REPORT_DIR)/main-chgmod.txt)}; set msx2_services_screenshot {$(abspath $(OPENMSX_ROOT)/main-chgmod.png)}" \
+		-script "$(abspath tests/openmsx/msx2_services_probe.tcl)"
+	$(PYTHON) tools/check_msx2_services_probe.py $(OPENMSX_M1_REPORT_DIR)/main-chgmod.txt
+
 $(SUBROM_CMDCLOCK_PROBE_CART): \
 		tests/cartridges/subrom_cmdclock_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)

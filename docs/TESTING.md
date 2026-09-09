@@ -103,6 +103,7 @@ Pass it to any target below as `OPENMSX="$OPENMSX"`.
 | `test-openmsx-msx2` | MSX2 main-ROM boot on a V9938 machine with the C-BIOS SUB-ROM: generation byte, `EXBRSA`, R8-R23 shadows, and rendered boot frame |
 | `test-openmsx-msx2-subrom` | MSX2 SUB-ROM calling contract into a fixture SUB-ROM: `SUBROM`/`EXTROM`/`CHKSLZ` markers and the SUB-ROM spin PC |
 | `test-openmsx-msx2-services` | RainBIOS SUB-ROM bitmap/palette/VRAM services: CHGMOD Screens 5/6/7/8, palette GETPLT, and 16-bit WRTVRM/RDVRM across all four Screen 5 `ACPAGE` values and both Screen 8 pages; physical VRAM markers are checked below and above `10000h` |
+| `test-openmsx-main-chgmod` | The same full workload through MAIN CHGMOD (`005Fh`) via CALSLT, plus per-mode R0/R1 shadows, enabled display/VBlank and a poisoned far-edge byte proving full-width clear (#169) |
 | `test-openmsx-msx2-cmdclock` | RainBIOS SUB-ROM VDP command transfers and clock: BLTVV/BLTVM VRAM results, BLTMV header/pixels, and REDCLK/WRTCLK round trip |
 | `test-openmsx-msx2-64k` | RainBIOS MSX2 main ROM + SUB-ROM on a 64 KiB VRAM V9938: CHGMOD Screens 5/8 and even-address 16-bit WRTVRM/RDVRM round trips across the full 64 KiB range |
 | `test-openmsx-font` | Printable project-owned font coverage |
@@ -160,6 +161,7 @@ make test-1983 \
 | `test-1983-inifnk` | INIFNK fills FNKSTR with the ten default function-key strings (LIST..SCREEN 0) and leaves FNKFLG untouched |
 | `test-1983-iscntc` | ISCNTC/CKCNTC break consumption: clears INTFLG and the key buffer and returns carry on a latched break (Ctrl-STOP/STOP), then carry clear on a subsequent call |
 | `test-1983-chgmod` | CHGMOD screen-mode dispatch: modes 0-3 set SCRMOD; unsupported modes return carry set with SCRMOD untouched |
+| `test-1983-main-chgmod` | MSX2 MAIN CHGMOD via CALSLT, modes 5/6/7/8, mode/display/VBlank shadows, far-edge bitmap clear and the palette/VRAM/text-return workload; use the current 1983 source build |
 | `test-1983-keyint` | KEYINT VBlank bookkeeping: JIFFY advances by one per tick and STATFL holds the VDP status byte |
 | `test-1983-embedded-basic-graphics` | Internal payload graphics workload: the embedded BASIC runs the Graphics II program in the payload RAM slot (FC) with R0=02/R1=E0 and a rendered three-colour pattern |
 | `test-1983-embedded-basic-tape` | Internal payload cassette workload: the embedded BASIC LOAD/RUNs the tape fixture to PC=4400 in the same page-1 slot (F8) as the external path with non-blank VRAM |

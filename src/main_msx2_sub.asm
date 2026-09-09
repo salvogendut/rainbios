@@ -967,17 +967,17 @@ sub_clear_bitmap_zero:
                 jr z,sub_clear_bitmap_nx256
                 cp 8
                 jr z,sub_clear_bitmap_nx256
-                ld b,#02
+                ld b,0                         ; NX low byte
                 ld c,40
                 call sub_cmd_reg
-                ld b,0
+                ld b,#02                       ; NX high byte: 512 pixels
                 call sub_cmd_reg
                 jr sub_clear_bitmap_ny
 sub_clear_bitmap_nx256:
-                ld b,#01
+                ld b,0                         ; NX low byte
                 ld c,40
                 call sub_cmd_reg
-                ld b,0
+                ld b,#01                       ; NX high byte: 256 pixels
                 call sub_cmd_reg
 sub_clear_bitmap_ny:
                 ; NY = 212 (R42/43).
@@ -1024,14 +1024,16 @@ sub_cmd_reg:
                 ret
 
 ; ---------------------------------------------------------------------------
+; Bitmap display and VBlank interrupts must both be enabled on return. The
+; main BIOS and DOS clients rely on CHGMOD to start a usable display/IRQ source.
 sub_sc5_regs:
-                db #06,#20,#1f,#00,#00,#ef,#0f,#01,#08,#00,#00,#00
+                db #06,#60,#1f,#00,#00,#ef,#0f,#01,#08,#00,#00,#00
 sub_sc6_regs:
-                db #08,#00,#1f,#00,#00,#ef,#0f,#01,#08,#00,#00,#00
+                db #08,#60,#1f,#00,#00,#ef,#0f,#01,#08,#00,#00,#00
 sub_sc7_regs:
-                db #0a,#00,#1f,#00,#00,#f7,#1e,#01,#08,#00,#00,#01
+                db #0a,#60,#1f,#00,#00,#f7,#1e,#01,#08,#00,#00,#01
 sub_sc8_regs:
-                db #0e,#00,#1f,#00,#00,#f7,#1e,#01,#08,#00,#00,#01
+                db #0e,#60,#1f,#00,#00,#f7,#1e,#01,#08,#00,#00,#01
 
 ; Default 0GRB palette, two bytes per entry: low (R in 6-4, B in 2-0) then
 ; high (G in 2-0), little-endian of the documented 16-entry table.
