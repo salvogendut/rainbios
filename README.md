@@ -145,7 +145,7 @@ Selected emulator images are collected under [screenshots/](screenshots/).
 With no controlling external cartridge and no successful storage boot,
 RainBIOS automatically launches the embedded
 [BBC BASIC for Z80 on MSX](https://github.com/salvogendut/bbcbasic-z80-msx)
-payload automatically after a bounded one-second logo interval and a final
+payload after a bounded one-second logo interval and a final
 non-blocking keyboard check. Pressing Space while the logo is visible, or
 holding it through the final check, opens the options menu. A compatible
 external payload can still override the embedded copy, and the standalone 16
@@ -156,6 +156,10 @@ boot policy, licensing analysis, and release gates are in
 [docs/abi/payload-v1.md](docs/abi/payload-v1.md). The code licenses permit this
 combination, but public use of the `BBC BASIC` name still requires permission
 or a rename before release.
+
+Ready-to-type programs for text scrolling, MSX1 graphics, PSG sound, hardware
+sprites, and MSX2 bitmap modes are collected in the
+[embedded BASIC examples](docs/BBC_BASIC_EXAMPLES.md).
 
 The menu deliberately uses the generic `START BASIC` label. BASIC initializes
 a clean 40-column text screen, and RainBIOS's `ERAFNK` service clears the
@@ -218,6 +222,8 @@ freely available option and is the currently validated system path.
 - Validation: [testing guide](docs/TESTING.md),
   [cartridge compatibility](docs/CARTRIDGE_COMPATIBILITY.md), and
   [hardware checklist](docs/HARDWARE_TEST.md).
+- BASIC: [example programs](docs/BBC_BASIC_EXAMPLES.md) and
+  [media-extension behavior](docs/BBC_BASIC_MEDIA.md).
 - Provenance: [development policy](docs/DEVELOPMENT_POLICY.md),
   [references](docs/REFERENCES.md), and [asset record](docs/ASSETS.md).
 
