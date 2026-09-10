@@ -4428,6 +4428,11 @@ chgmod_bitmap:
                 ld ix,#00d1                    ; SUB-ROM CHGMOD
                 call extrom
                 pop ix
+                ; Match the text/graphics CHGMOD paths: bitmap mode setup must
+                ; return with maskable interrupts live so KEYINT can continue
+                ; advancing JIFFY and scanning the keyboard.  EI takes effect
+                ; after the following RET, once the caller is restored.
+                ei
                 ret
 chgmod_no_subrom:
                 pop af
