@@ -162,6 +162,27 @@ a clean 40-column text screen, and RainBIOS's `ERAFNK` service clears the
 function-key row without moving the homed cursor, so the sign-on banner begins
 at the top of the screen.
 
+### BBC BASIC media extensions
+
+The embedded interpreter is complemented by MSX-specific media extensions,
+implemented in the companion `bbcbasic-z80-msx` adapter (tracked in
+[docs/BBC_BASIC_MEDIA.md](docs/BBC_BASIC_MEDIA.md)):
+
+- **Sound** — `SOUND channel, amplitude, pitch, duration` drives the
+  AY-3-8910/YM2149 PSG: channel 0 is the noise channel and channels 1-3 map to
+  tone A/B/C, amplitude 0..-15 maps to the 4-bit volume, and the BBC
+  logarithmic pitch scale is approximated by a linear PSG period. `ENVELOPE`
+  programs the PSG hardware envelope (period R11/R12 and shape R13), and
+  `ADVAL(n)` reads joystick direction/trigger state through `GTSTCK`/`GTTRIG`.
+- **Sprites** — `*SPRITE n,x,y,pattern,colour`, `*SPRITEOFF n`,
+  `*SPRITEPAT n,b0..b7`, and `*SPRITECLR` drive the Screen 2 sprite attribute
+  and pattern tables through the `*` (OSCLI) command hook, so the
+  byte-identical BBC language core is never modified.
+- **Screen modes** — `MODE n` selects MSX Screen `n` for `n` in 0-3 (the
+  TMS9918 text, Graphics I, Graphics II, and multicolor modes, available on any
+  MSX1) and 5-8 (the V9938/V9958 bitmap modes on MSX2, which program the
+  extended VDP registers R0-R11 and the 16-colour palette directly).
+
 ### Disk and storage boot
 
 The optional NMS 8250 extension provides `PHYDIO` read and write, `DSKCHG`,
