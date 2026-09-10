@@ -4,8 +4,8 @@
 
 RainBIOS is an independent, open-source firmware project for MSX and MSX2
 computers. The repository currently produces a deliberately incomplete 32 KiB
-MSX1 main BIOS and an optional 16 KiB disk extension for the Philips
-NMS 8250 WD2793 layout.
+MSX1/MSX2 main BIOS, a 16 KiB MSX2 SUB-ROM, an optional 16 KiB disk extension
+for the Philips NMS 8250 WD2793 layout, and a 512 KiB Omega unified image.
 
 The compatibility target is externally visible behavior, not byte identity
 with proprietary firmware. Public specifications, original tests, authorized
@@ -28,6 +28,7 @@ discard unrelated changes in a dirty worktree.
 | Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | First slice built | `build/rainbios_msx2.rom` | Distinct 32 KiB build sharing the MSX1 source: MSX2 ID byte, V9938 CD-scan detection, EXBRSA publication, R8-R23 shadow baseline and WRTVDP dispatch |
 | MSX2 SUB-ROM | Services + command/clock slices built | `build/rainbios_msx2_sub.rom` | Self-contained 16 KiB extended-VDP ROM: CHGMOD Screens 5/6/7/8, palette, WRTVDP/VDPSTA, 16-bit WRTVRM/RDVRM, BLTVV/BLTVM/BLTMV block transfers, REDCLK/WRTCLK. Disk-file transfers, screens 10-12 pending |
+| Omega unified image | `make omega` | `build/rainbios_omega.rom` | Deterministic 512 KiB image containing the MSX2 main BIOS, SUB-ROM, disk ROM, and embedded BASIC payload in both selectable halves |
 
 The main BIOS and disk ROM remain separate components. `make all` builds only
 the combined main BIOS; the model-specific disk ROM is explicitly optional.
@@ -88,8 +89,9 @@ The main BIOS currently provides:
   descriptors, menu launch of external or built-in BASIC, and automatic
   built-in fallback after clean storage returns;
 - ZX0-compressed boot/menu tables expanded one at a time through transient
-  `C000h-D7FFh` RAM, leaving the public font directly addressable and 3,247
-  bytes free below the hard `4000h` lower-bank boundary;
+  `C000h-D7FFh` RAM, leaving the public font directly addressable and 1,879
+  bytes free in MSX1 (1,135 bytes in MSX2) below the hard `4000h` lower-bank
+  boundary;
 - safe disk BIOS defaults, disk hook dispatch, extension `H.STKE` processing,
   and guarded `H.RUNC` disk bootstrap context.
 
@@ -100,9 +102,10 @@ of truth for which fixed entries are implemented, partial, or stubs.
 
 Issue #60 implements the embedded-payload development slice. The normal 32 KiB
 image dedicates `4000h-7FFFh` to an `RBC1` container: the exact pinned
-companion ROM is compressed to 11,764 bytes at build time, stored from `4008h`,
+companion ROM is compressed to 12,502 bytes at build time, stored from `4008h`,
 and expanded into page-1 RAM before launch. The current simpler CC0 boot logo
-leaves `3351h-3FFFh` as 3,247 bytes of guarded lower-bank padding. The font
+leaves `38A9h-3FFFh` as 1,879 bytes of guarded MSX1 lower-bank padding; MSX2
+leaves `3B91h-3FFFh`, or 1,135 bytes. The font
 stays raw for `CGTABL`, while the menu and logo tables are also losslessly
 ZX0-compressed and expanded into transient RAM before VRAM upload.
 
@@ -122,11 +125,15 @@ fallback. BASIC's startup `INITXT` clears and homes the text screen; `ERAFNK`
 now clears the function-key row directly without moving that cursor, keeping
 the sign-on banner at the top.
 
-The new no-cartridge probes pass in 1983 and openMSX, including the rendered
+The no-cartridge probes pass in 1983 and openMSX, including the rendered
 prompt, simple arithmetic, page-1 RAM slot state, decompressed
-header/descriptor bytes, and zero writes to the ROM page. The broader internal
-graphics, cassette, mixed-storage, and
-hardware matrix remains to be promoted. Public release is also blocked on
+header/descriptor bytes, and zero writes to the ROM page. Internal Graphics
+II, cassette load, scrolling, and editing workloads are also gated. The
+current companion revision adds reviewed PSG sound, Screen 2 sprites, and
+MSX2 Screens 5-8; its tests verify physical high VRAM, packed Screen 6/7
+pixels, full bitmap clearing, mixer/envelope state, and a visibly rendered
+sprite. Random-access BASIC file channels, full BBC software envelopes, and
+the right half of Screens 6/7 remain future work. Public release is also blocked on
 permission to use the `BBC BASIC` name or a distinct rename. Human-readable
 combined notices are present in `THIRD_PARTY_NOTICES.md` and `LICENSES/`; the
 machine-readable component manifest is `components.json`, validated by the
@@ -328,7 +335,8 @@ now initializes the PSG hardware and the full PLAY statement work area
 queues) atomically; its public entry enables interrupts on return while cold
 boot uses a private DI body.
 
-Current verification: 256 RainBIOS host tests and all 20 companion tests pass.
+Current verification: all 417 RainBIOS host tests and all 23 companion tests
+pass.
 The dedicated embedded no-cartridge probes pass in 1983 and openMSX, including
 the clean top-of-screen BASIC banner. The openMSX
 controller, keyboard, cursor, VRAM, screen-mode, sprite, GRPPRT, text-control,
@@ -358,8 +366,8 @@ expectations. The former list of “five remaining failures” is stale: GeoBenc
 was subsequently user-confirmed through both Sunrise and SD Mapper with
 RainBIOS, and issue #60 does not reinstate that list as current truth.
 
-The current local `../geobench/QA/GBMSX.IMG` has SHA-256
-`c826c90ee7eb02261ed1e8fa5c3600c1c86ac356ad3cba16a7f4c78bd0e22e60`.
+The current local `../geobench/QA/MSX/GBMSX.IMG` has SHA-256
+`e04e549075f0f7c3ddb37a2991e772bb0e672d2230719cc0f51ee5fb2bde2a05`.
 Earlier handover text blamed this image for a storage stall; issue #62
 disproved that explanation by booting the same bytes with a known-good
 RainBIOS revision and bisecting the failure to `BREAKX`. Do not reinstate the
@@ -562,17 +570,20 @@ is:
 
 ## Recommended Next Work
 
-The simpler boot logo leaves 3,247 bytes of page-0 headroom and passes the 1983
-rendered-boot gate; the host suite now gates that headroom (the lower-bank last
-non-`FF` byte must stay within `3000h`-`3600h`). Issue #62 now covers the
+The simpler boot logo leaves 1,879 bytes of MSX1 page-0 headroom and 1,135
+bytes in MSX2, and passes the 1983 rendered-boot gate; the host suite gates
+that headroom (the lower-bank last non-`FF` byte must stay below `3C00h`).
+Issue #62 now covers the
 Arkanoid application-cartridge
 gate, corrected keyboard/`BREAKX` semantics, compressed internal payload, and
-GeoBench through 1983 Sunrise/SD plus openMSX Sunrise. The next embedded-payload
-priority is to promote the existing external-payload graphics, cassette,
-scrolling, and editing workloads to the internal mapping, then run the wider
-storage-precedence matrix. Add the combined machine-readable component
-manifest and resolve `BBC BASIC` branding before any public combined-ROM
-release.
+GeoBench through 1983 Sunrise/SD plus openMSX Sunrise. The next
+embedded-payload priority is to retain the internal graphics, cassette,
+scrolling, and editing gates while extending the media matrix. PSG sound,
+Screen 2 sprites, and MSX2 Screens 5-8 are now validated in the companion
+project and through the rebuilt Omega image; the next media gaps are full
+software envelopes, 16-bit X coordinates for the right half of Screens 6/7,
+and random-access BASIC file channels. Resolve `BBC BASIC` branding before
+any public combined-ROM release.
 
 The GeoBench storage boot matrix is now automated. `test-openmsx-geobench-sunrise`
 applies the same full-desktop geometry gate as both 1983 targets against the

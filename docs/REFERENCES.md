@@ -331,6 +331,12 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
   `186b2cc7fcbfa8bf21d1dfa7ce8987d4f0c4711f`
 - MSX `POINT()` parsing revision:
   `6ddaa57afe51e45c0ebec88666c846b01841e05b`
+- Reviewed media/MSX2 revision:
+  `c9ed73ddd228f1dae8528f39ce590511ece7d00d`
+- Official BBC BASIC keyword reference:
+  `https://www.bbcbasic.co.uk/bbcbasic/mancpm/bbckey1.html`
+- Official BBC BASIC `SOUND` reference:
+  `https://www.bbcbasic.co.uk/bbcwin/manual/bbcwin7.html`
 - Preserved-history tag: `upstream-cpmish-d70c643`
 - License: permissive notice in the imported `COPYING`; new MSX port files
   use BSD-3-Clause
@@ -358,14 +364,15 @@ places state at `8000h-82FFh`, and produces a nonfunctional 16 KiB layout ROM
 with SHA-256
 `b92d38754db7451e3e14acd0c1ae05efea2c50c99a2b920ee36e35bfc906be11`.
 The current cartridge uses published MSX BIOS calls and work-area variables
-for console, keyboard, cursor, timing, Graphics II, and sequential cassette
-services. It places the unchanged core at `4400h-74C1h`, the independently
-written graphics adapter at `74C2h-77AAh`, the cassette adapter at
-`77ABh-794Eh`, fixed and adapter state at `8000h-8321h`, and user memory from
-`8322h`. Its 16 KiB ROM has SHA-256
-`29691e2ac6498988b15ef8e80687f902ae834fd886585bcc1f753a49e0434678`
+for console, keyboard, cursor, timing, graphics, PSG/controller, sprites,
+MSX2 bitmap access, and sequential cassette services. It places the unchanged
+core at `4400h-74C1h`, the independently written sprite/MSX2 adapters at
+`4248h-43F7h`, graphics/sound at `74C2h-7E45h`, cassette storage at
+`7E46h-7FE9h`, fixed and adapter state at `8000h-833Dh`, and user memory from
+`833Eh`. Its 16 KiB ROM has SHA-256
+`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`
 and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`, requiring the
-console, keyboard, timing, graphics, and cassette capability bits.
+console, keyboard, timing, graphics, cassette, and PSG capability bits.
 An openMSX smoke test exercises language, editing, error, clock, and timeout
 paths with zero writes to the selected ROM window. The adjacent 1983 emulator
 separately renders the banner and prompt, avoiding reliance on openMSX raw
@@ -384,6 +391,14 @@ The cassette revision adds only original MSX platform code. A deterministic
 CAS fixture loads and runs under RainBIOS in 1983, while openMSX records and
 the host checker decodes BBC BASIC SAVE output. Slow sampled-WAV replay is
 recorded as follow-up decoder work rather than claimed compatibility.
+The reviewed media revision uses the official keyword and `SOUND` references
+above for language-level parameter semantics. It corrects fixed versus
+envelope amplitude selection, pitch direction, duration -1, envelope argument
+order, mixer restoration, and BBC true (`-1`) controller results. MSX2 pixel
+access calls published `CHGMOD` and SUB-ROM 16-bit VRAM services. The gates
+inspect physical high VRAM, Screen 6/7 packed bytes, PSG registers, and a
+rendered hardware sprite; no proprietary BIOS source or ROM disassembly was
+consulted.
 
 ## 2026-07-30 — SE BASIC IV 4.2 Cordelia
 
@@ -795,8 +810,9 @@ future experiment, and the adjacent upstream checkout is to remain unmodified.
   - `docs/MSX2.md`:
     `969562a84011d708982a308bb3a925c840978ac3820ae3d28529dd1ca92cd66d`
 
-The local `QA/GBMSX.IMG` integration input is 33,554,432 bytes with SHA-256
-`47d19058e4096a3f1de497e223d749bf0195cf3c10019c1be8b52a0b77630e8f`.
+The current local `QA/MSX/GBMSX.IMG` integration input is 33,554,432 bytes with
+SHA-256
+`e04e549075f0f7c3ddb37a2991e772bb0e672d2230719cc0f51ee5fb2bde2a05`.
 It is not a RainBIOS release artifact. The adjacent GeoBench worktree already
 contained unrelated generated-file modifications and was kept read-only.
 

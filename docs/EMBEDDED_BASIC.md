@@ -94,14 +94,14 @@ replacing the system ROM and preserves the prior optional-cartridge behavior.
 The MAIN-ROM is exactly 32 KiB and is mapped at `0000h-7FFFh`. In the current
 build, the lower bank has this measured layout:
 
-- in MSX1, the ZX0 decoder begins at `2745h`, the directly addressable 2 KiB
-  `CGTABL` font at `2998h`, the menu streams at `3198h`, and the logo streams
-  at `3369h`; the final stream ends at `3839h`, leaving 1,991 bytes;
-- in MSX2, the corresponding decoder begins at `29DBh`, the font at `2C5Ah`,
-  the menu streams at `345Ah`, and the logo streams at `362Bh`; the final
-  stream ends at `3B01h`, leaving 1,279 bytes;
-- the `RBC1` header occupies `4000h-4007h`, the 11,764-byte compressed
-  interpreter occupies `4008h-6DFBh`, and `6DFCh-7FFFh` is erased padding.
+- in MSX1, the ZX0 decoder begins at `27A5h`, the directly addressable 2 KiB
+  `CGTABL` font at `2A07h`, the menu streams at `3207h`, and the logo streams
+  at `33D8h`; the final stream ends at `38A9h`, leaving 1,879 bytes;
+- in MSX2, the corresponding decoder begins at `2A60h`, the font at `2CEEh`,
+  the menu streams at `34EEh`, and the logo streams at `36BFh`; the final
+  stream ends at `3B91h`, leaving 1,135 bytes;
+- the `RBC1` header occupies `4000h-4007h`, the 12,502-byte compressed
+  interpreter occupies `4008h-70DDh`, and `70DEh-7FFFh` is erased padding.
 
 Appending a third 16 KiB page would not produce a standard MAIN-ROM mapping.
 A Z80 has only the `0000h-7FFFh` BIOS window available for the conventional
@@ -128,14 +128,14 @@ designed for `4000h-7FFFh`. Its relevant layout is:
 | `4000h-4012h` | ordinary `AB` cartridge header and entry veneer |
 | `4013h-4247h` | MSX console adapter |
 | `4248h-434Dh` | sprite command adapter |
-| `4350h-43F5h` | MSX2 bitmap pixel adapter |
+| `4350h-43F7h` | MSX2 bitmap pixel adapter |
 | `4400h-74C1h` | preserved Z80 language core |
-| `74C2h-7E49h` | graphics, sound, and remaining platform services |
-| `7E4Ah-7FEDh` | cassette storage adapter |
+| `74C2h-7E45h` | graphics, sound, and remaining platform services |
+| `7E46h-7FE9h` | cassette storage adapter |
 | `7FF0h-7FFFh` | RainBIOS `RBP1` descriptor |
 | `8000h-82FFh` | interpreter fixed RAM |
-| `8300h-833Ch` | MSX adapter state |
-| `833Dh-F2FFh` | initial program and dynamic-memory area |
+| `8300h-833Dh` | MSX adapter state |
+| `833Eh-F2FFh` | initial program and dynamic-memory area |
 
 It already executes safely from ROM in the page-1 cartridge window and has
 tests which reject writes to that window. The combined target reconstructs
@@ -144,8 +144,8 @@ interpreter build; the standalone cartridge continues to execute directly
 from ROM.
 
 The pinned sibling checkout is at commit
-`9eff44008fcf6d2eab915afcfe93b44f8817acb0`. Its built ROM has SHA-256
-`51d818506d32e1e407be1ebda44efd65f9ea6a91d58ee9c4e8af4d9ddecb3bcd`.
+`c9ed73ddd228f1dae8528f39ce590511ece7d00d`. Its built ROM has SHA-256
+`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`.
 RainBIOS's dependency lock records both exact identities and rejects drift.
 
 ## Implemented 32 KiB layout
@@ -197,8 +197,8 @@ logo/menu tests cover 1983 and openMSX. The build fails if the lower-half image
 reaches `4000h`; silently truncating or overlapping the interpreter is
 unacceptable.
 
-The simpler logo and current menu leave 1,991 bytes of lower-bank reserve in
-MSX1 and 1,279 bytes in MSX2. Committing the entire upper half to the BASIC
+The simpler logo and current menu leave 1,879 bytes of lower-bank reserve in
+MSX1 and 1,135 bytes in MSX2. Committing the entire upper half to the BASIC
 container remains the principal long-term technical cost of a traditional
 combined ROM, so the assembly boundary and size reporting remain mandatory.
 
@@ -337,7 +337,7 @@ firmware growth matters more than a traditional drop-in MAIN-ROM image.
 
 ### Compressed interpreter copied to RAM (implemented after regression testing)
 
-The interpreter compresses to 11,764 bytes with the already-vendored ZX0
+The interpreter compresses to 12,502 bytes with the already-vendored ZX0
 toolchain, fitting in the 16 KiB upper bank with an erased tail. The initial
 byte-for-byte ROM mapping worked for BASIC but exposed interpreter data and its
 `RBP1` tail to storage firmware scans; issue #62 demonstrated that those bytes
@@ -583,9 +583,10 @@ Before making the combined image the recommended default, test at least:
    in 1983/openMSX; Arkanoid renders a complete board in both; GeoBench boots
    through Sunrise in both and through SD Mapper in 1983. Issue #62 corrected
    the `BREAKX` interrupt/matrix regression and the raw upper-page storage-probe
-   collision. Broader internal graphics/cassette and hardware promotion is
-   still pending. The current GeoBench image digest is
-   `c826c90ee7eb02261ed1e8fa5c3600c1c86ac356ad3cba16a7f4c78bd0e22e60`.
+   collision. Internal Graphics II, cassette, scrolling, editing, PSG sound,
+   Screen 2 sprites, and MSX2 Screens 5-8 are now exercised; real-hardware
+   promotion is still pending. The current GeoBench image digest is
+   `e04e549075f0f7c3ddb37a2991e772bb0e672d2230719cc0f51ee5fb2bde2a05`.
 8. **Pending — validate hardware and release packaging.** Only then consider
    presenting the combined ROM as the default end-user image.
 

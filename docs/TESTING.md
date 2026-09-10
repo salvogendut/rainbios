@@ -23,7 +23,7 @@ Optional integration suites require:
   `../1983/1983` and `../1983/1983-models.conf`;
 - the official open-source C-BIOS 0.29a SUB-ROM at
   `../cbios-0.29a/roms/cbios_sub.rom` for the current V9938 fixture;
-- a local GeoBench `GBMSX.IMG` at `../geobench/QA/GBMSX.IMG`;
+- a local GeoBench `GBMSX.IMG` at `../geobench/QA/MSX/GBMSX.IMG`;
 - local cartridge/storage ROMs for explicitly named black-box tests.
 
 External ROMs and generated media are not RainBIOS release artifacts. Their
@@ -71,6 +71,21 @@ git diff --check
 it runs the companion repository's tests and audit, rebuilds its ROM, checks
 the pinned digest, and embeds a ZX0 stream from that exact copy in the main
 ROM. Runtime probes verify the decompressed page-1 image.
+
+### Companion payload media targets
+
+Run these targets from `../bbcbasic-z80-msx`; pass the same `ZMAC`, `LD80`,
+openMSX, 1983, and model-path overrides when they are not on their defaults.
+
+| Target | Coverage |
+| --- | --- |
+| `test-msx-sound-openmsx` | Fixed and envelope amplitudes, pitch direction, noise-to-tone routing, PSG period/volume/mixer, and hardware-envelope registers |
+| `test-msx-sprite-openmsx` | Exact Screen 2 sprite pattern and attribute VRAM |
+| `test-msx-mode-openmsx` | Screens 0-3 and rejection of Screen 5 on MSX1 |
+| `test-msx-msx2-openmsx` | Screens 5-8 on C-BIOS MSX2, physical high VRAM, Screen 6/7 packing, logical colours, and full bitmap clearing |
+| `test-msx-msx2-modes-1983` | V9958 mode-register selection for Screens 5-8 |
+| `test-msx-msx2-plot-1983` | Distinct low/high-VRAM `PLOT`/`POINT` results in Screens 5-8 |
+| `test-msx-media-1983` | Visible hardware sprite and execution continuing after indefinite `SOUND` |
 
 ## openMSX targets
 
@@ -271,7 +286,7 @@ make test-openmsx-geobench-sunrise \
   OPENMSX='flatpak run org.openmsx.openMSX'
 ```
 
-The defaults are `../geobench/QA/GBMSX.IMG`, the Sunrise and SD Mapper ROMs
+The defaults are `../geobench/QA/MSX/GBMSX.IMG`, the Sunrise and SD Mapper ROMs
 under `../1983/ROMS`, and the C-BIOS 0.29a open-source SUB-ROM named above.
 These are local test inputs and are not release artifacts. Both 1983 targets
 mount the image read-only and require R0=`0Ah`, R1=`62h`, `SCRMOD=7`, mapper
