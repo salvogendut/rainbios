@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = {
     "src/logo-simple.png": (
         (295, 192),
-        "4487be3b3b0c5d2953668a645b5ee3796b55aac5fd121cf1977756b4eec6bd09",
+        "2f9b17ef35d8f1d84a46c04b27afee534afa67931a7a44b3664edff1506de0f7",
     ),
     "rainbios.png": (
         (1448, 1086),
