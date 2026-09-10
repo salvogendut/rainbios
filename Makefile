@@ -444,6 +444,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-openmsx-msx2-64k \
 	test-openmsx-bbcbasic test-openmsx-bbcbasic-menu \
 	test-openmsx-bbcbasic-graphics test-1983-bbcbasic-graphics \
+	test-1983-embedded-basic-msx2-inkey \
 	test-1983-embedded-basic-graphics test-1983-embedded-basic-tape \
 	test-1983-bbcbasic-scroll test-1983-embedded-basic-scroll \
 	test-1983-bbcbasic-edit test-1983-embedded-basic-edit \
@@ -1880,6 +1881,12 @@ test-1983-embedded-basic: $(MSX1_ROM)
 		--screenshot "$(EMULATOR_1983_EMBEDDED_BASIC_SCREEN)"
 	$(PYTHON) tools/check_bbcbasic_screenshot.py \
 		$(EMULATOR_1983_EMBEDDED_BASIC_SCREEN)
+
+test-1983-embedded-basic-msx2-inkey: $(MSX2_ROM) $(MSX2_SUB_ROM)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_bitmap_inkey.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX2_ROM)" --subrom "$(MSX2_SUB_ROM)"
 
 test-1983-embedded-basic-graphics: \
 		$(MSX1_ROM) $(GRAPHICS_INPUT_CART)

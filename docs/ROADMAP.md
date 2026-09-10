@@ -469,6 +469,12 @@ access to odd addresses (openMSX issue #1157), so the 64 KiB gate exercises
 the even-address range; the 128 KiB gates distinguish every Screen 5 and
 Screen 8 active page.
 
+M5F keeps maskable interrupts live when MAIN `CHGMOD` returns from the SUB-ROM
+after selecting Screens 5-8. The 1983 regression gate launches the embedded
+BBC BASIC, enters Screen 8, waits in `INKEY(100)`, requires the timeout and its
+completion marker, and returns to Screen 0. This catches stalled VBlank
+`KEYINT`, `JIFFY`, and keyboard scanning at the public MAIN-BIOS boundary.
+
 The disk-file transfer commands (`BLTVD`/`BLTDV`/`BLTMD`/`BLTDM`) are left as
 documented safe returns and screen 10-12 remains out of scope. A real disk-file
 implementation streams whole files through the DOS API (BDOS open/create/set

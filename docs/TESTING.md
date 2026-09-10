@@ -178,6 +178,7 @@ make test-1983 \
 | `test-1983-chgmod` | CHGMOD screen-mode dispatch: modes 0-3 set SCRMOD; unsupported modes return carry set with SCRMOD untouched |
 | `test-1983-main-chgmod` | MSX2 MAIN CHGMOD via CALSLT, modes 5/6/7/8, mode/display/VBlank shadows, far-edge bitmap clear and the palette/VRAM/text-return workload; use the current 1983 source build |
 | `test-1983-keyint` | KEYINT VBlank bookkeeping: JIFFY advances by one per tick and STATFL holds the VDP status byte |
+| `test-1983-embedded-basic-msx2-inkey` | Embedded BBC BASIC enters Screen 8, completes an `INKEY(100)` timeout with interrupts and keyboard scanning live, writes its completion marker, and returns to Screen 0 |
 | `test-1983-embedded-basic-graphics` | Internal payload graphics workload: the embedded BASIC runs the Graphics II program in the payload RAM slot (FC) with R0=02/R1=E0 and a rendered three-colour pattern |
 | `test-1983-embedded-basic-tape` | Internal payload cassette workload: the embedded BASIC LOAD/RUNs the tape fixture to PC=4400 in the same page-1 slot (F8) as the external path with non-blank VRAM |
 | `test-1983-bbcbasic-scroll` | External scrolling text workload: the BBC BASIC PRINT loop completes (marker at F3C8), runs in the external slot (F4) on Screen 0 |
