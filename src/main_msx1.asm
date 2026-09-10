@@ -1075,7 +1075,7 @@ cold_boot_payload_checksum:
                 inc hl
                 ld a,(CART_SCAN_SLOT)
                 call rdslt                       ; required service bits
-                and #e0
+                and #c0
                 jp nz,cold_boot_payload_claimed
 
 ; Record and validate a page-1 entry address.

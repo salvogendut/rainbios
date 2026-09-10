@@ -126,14 +126,16 @@ designed for `4000h-7FFFh`. Its relevant layout is:
 | Address | Purpose |
 | --- | --- |
 | `4000h-4012h` | ordinary `AB` cartridge header and entry veneer |
-| `4013h-423Ah` | MSX console adapter |
+| `4013h-423Fh` | MSX console adapter |
+| `4240h-4345h` | sprite command adapter |
+| `4346h-43E1h` | MSX2 bitmap pixel adapter |
 | `4400h-74C1h` | preserved Z80 language core |
-| `74C2h-7B75h` | graphics and remaining platform services |
-| `7B76h-7D19h` | cassette storage adapter |
+| `74C2h-7DFAh` | graphics, sound, and remaining platform services |
+| `7DFBh-7F9Eh` | cassette storage adapter |
 | `7FF0h-7FFFh` | RainBIOS `RBP1` descriptor |
 | `8000h-82FFh` | interpreter fixed RAM |
-| `8300h-8339h` | MSX adapter state |
-| `833Ah-F2FFh` | initial program and dynamic-memory area |
+| `8300h-833Ch` | MSX adapter state |
+| `833Dh-F2FFh` | initial program and dynamic-memory area |
 
 It already executes safely from ROM in the page-1 cartridge window and has
 tests which reject writes to that window. The combined target reconstructs
@@ -142,8 +144,8 @@ interpreter build; the standalone cartridge continues to execute directly
 from ROM.
 
 The pinned sibling checkout is at commit
-`34540d468d3f39da0d283da49c0feb2dab9a1313`. Its built ROM has SHA-256
-`82b0ff999ae85d4105875ad6e8c5a33f37662fbcde1642044c56a430de9759a6`.
+`c2a04a383fb04532cb5f1f2502c4ec2afbf2c4e4`. Its built ROM has SHA-256
+`6069639438fdf5b376a46e97f9f952f7b526bb2df5d0dc16dd41c2de1094beb9`.
 RainBIOS's dependency lock records both exact identities and rejects drift.
 
 ## Implemented 32 KiB layout
