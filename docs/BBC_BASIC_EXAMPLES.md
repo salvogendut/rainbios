@@ -131,6 +131,57 @@ Screens 6 and 7 currently expose only their left 256-pixel half through the
 BASIC graphics adapter. Text output is intentionally suppressed while a
 bitmap mode is active, so always return to `MODE 0` before printing results.
 
+## MSX2 colourful sinc surface
+
+This independently written MSX2 demonstration plots the radial function
+`sin(r)/r` as a projected wireframe. Its coloured rows cycle through all seven
+visible logical drawing colours, while light-blue cross-lines reveal the
+surface shape. Press a printable key after drawing completes to return to text
+mode:
+
+```bbc
+10 REM MSX2 COLOURFUL SINC SURFACE
+20 MODE 5
+30 DIM H(16,12)
+40 FOR J%=0 TO 12
+50 Y=(J%-6)/1.3
+60 FOR I%=0 TO 16
+70 X=(I%-8)/1.3:R=SQR(X*X+Y*Y)
+80 H(I%,J%)=1:IF R<>0 THEN H(I%,J%)=SIN(R)/R
+90 NEXT:NEXT
+100 FOR J%=0 TO 12
+110 GCOL 0,1+(J% MOD 7)
+120 FOR I%=0 TO 16
+130 X%=640+(I%-8)*55+(J%-6)*25
+140 Y%=420+INT(H(I%,J%)*300)+(J%-6)*20
+150 IF I%=0 THEN MOVE X%,Y% ELSE DRAW X%,Y%
+160 NEXT:NEXT
+170 GCOL 0,4
+180 FOR I%=0 TO 16 STEP 2
+190 FOR J%=0 TO 12
+200 X%=640+(I%-8)*55+(J%-6)*25
+210 Y%=420+INT(H(I%,J%)*300)+(J%-6)*20
+220 IF J%=0 THEN MOVE X%,Y% ELSE DRAW X%,Y%
+230 NEXT:NEXT
+240 REPEAT
+250 K%=INKEY(10)
+260 UNTIL K%<>-1
+270 MODE 0
+280 PRINT "SINC SURFACE COMPLETE"
+```
+
+The program uses Screen 5 because its 256-pixel width fills the current BASIC
+graphics viewport. Screens 6 and 7 are 512 pixels wide but, as noted above,
+the adapter currently exposes only their left half. Computing the 17x13 grid
+uses floating-point square roots and sines, so completion takes several
+minutes at original MSX speed.
+
+The mathematical subject was suggested by K. Moerman's
+[`pcsurf.bas`](https://github.com/oonap0oo/PC-BASIC-projects/blob/main/pcsurf.bas)
+for GW-BASIC. That repository does not currently declare source licensing, so
+the example above is an independent BBC BASIC/MSX implementation and imports
+no source code from it.
+
 ## MSX2 high-VRAM PLOT/POINT check
 
 This is a compact diagnostic for Screens 5-8. Set `M%` on line 10 to the mode
