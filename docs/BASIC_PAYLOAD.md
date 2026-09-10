@@ -81,11 +81,11 @@ payload with interpreter state at `8000h` plausible.
 
 The current build places its cartridge veneer at `4000h`, independently written
 console adapter at `4013h-423Ah`, unchanged core at `4400h-74C1h`, graphics
-adapter at `74C2h-7B75h`, cassette adapter at `7B76h-7D19h`, fixed state at
-`8000h-8339h`, and user memory from `833Ah`. Its deterministic 16 KiB ROM ends
+adapter at `74C2h-7DFAh`, cassette adapter at `7DFBh-7F9Eh`, fixed state at
+`8000h-833Ch`, and user memory from `833Dh`. Its deterministic 16 KiB ROM ends
 with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
-`34540d468d3f39da0d283da49c0feb2dab9a1313`, and has SHA-256
-`82b0ff999ae85d4105875ad6e8c5a33f37662fbcde1642044c56a430de9759a6`.
+`c2a04a383fb04532cb5f1f2502c4ec2afbf2c4e4`, and has SHA-256
+`6069639438fdf5b376a46e97f9f952f7b526bb2df5d0dc16dd41c2de1094beb9`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983

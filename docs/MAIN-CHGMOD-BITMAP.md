@@ -83,7 +83,7 @@ Candidate SHA-256:
 
 - MSX2 main: `2c5dd90e6994f409f852312bd1f4fe47439b1e19a9400fa4a8733eaa31727337`
 - SUB-ROM: `7b06e3e10990d2d815cf8b9a640e689167ab47b0f90df821cb48d0e7158049a0`
-- Omega: `5e6b6ffd0a59fe8154d9743f7bf6ee2306549fd0ae75e6233207a231333114f8`
+- Omega: `0c33ea9d4f5efa9330071c1f240410bd61a4ae19b9db5da410e48049c8c2bd59`
 
 The fix was prepared in a separate worktree under GEOBENCH's
 `build/rainbios-169`, leaving the normal sibling RainBIOS checkout on clean
