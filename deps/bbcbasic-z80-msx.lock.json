@@ -1,11 +1,11 @@
 {
   "artifact": {
     "path": "build/msx-console/bbcbasic_msx_console.rom",
-    "sha256": "6069639438fdf5b376a46e97f9f952f7b526bb2df5d0dc16dd41c2de1094beb9",
+    "sha256": "51d818506d32e1e407be1ebda44efd65f9ea6a91d58ee9c4e8af4d9ddecb3bcd",
     "size": 16384
   },
   "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
-  "revision": "c2a04a383fb04532cb5f1f2502c4ec2afbf2c4e4",
+  "revision": "9eff44008fcf6d2eab915afcfe93b44f8817acb0",
   "upstream_snapshot": "d70c643a5db24007ad6533f92b701fd714a99b7f",
   "upstream_tag": "upstream-cpmish-d70c643",
   "upstream_tip": "d4f2987a95f194a3431930340afbf1fc69f42125",

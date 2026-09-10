@@ -126,12 +126,12 @@ designed for `4000h-7FFFh`. Its relevant layout is:
 | Address | Purpose |
 | --- | --- |
 | `4000h-4012h` | ordinary `AB` cartridge header and entry veneer |
-| `4013h-423Fh` | MSX console adapter |
-| `4240h-4345h` | sprite command adapter |
-| `4346h-43E1h` | MSX2 bitmap pixel adapter |
+| `4013h-4247h` | MSX console adapter |
+| `4248h-434Dh` | sprite command adapter |
+| `4350h-43F5h` | MSX2 bitmap pixel adapter |
 | `4400h-74C1h` | preserved Z80 language core |
-| `74C2h-7DFAh` | graphics, sound, and remaining platform services |
-| `7DFBh-7F9Eh` | cassette storage adapter |
+| `74C2h-7E49h` | graphics, sound, and remaining platform services |
+| `7E4Ah-7FEDh` | cassette storage adapter |
 | `7FF0h-7FFFh` | RainBIOS `RBP1` descriptor |
 | `8000h-82FFh` | interpreter fixed RAM |
 | `8300h-833Ch` | MSX adapter state |
@@ -144,8 +144,8 @@ interpreter build; the standalone cartridge continues to execute directly
 from ROM.
 
 The pinned sibling checkout is at commit
-`c2a04a383fb04532cb5f1f2502c4ec2afbf2c4e4`. Its built ROM has SHA-256
-`6069639438fdf5b376a46e97f9f952f7b526bb2df5d0dc16dd41c2de1094beb9`.
+`9eff44008fcf6d2eab915afcfe93b44f8817acb0`. Its built ROM has SHA-256
+`51d818506d32e1e407be1ebda44efd65f9ea6a91d58ee9c4e8af4d9ddecb3bcd`.
 RainBIOS's dependency lock records both exact identities and rejects drift.
 
 ## Implemented 32 KiB layout
@@ -565,8 +565,9 @@ Before making the combined image the recommended default, test at least:
 1. **Partly done — resolve naming and release terms.** The combined-release
    notice bundle is present. Obtain permission to use the `BBC BASIC` name or
    select a new product name, and add a machine-readable component manifest.
-2. **Done — reconcile the dependency lock.** Revision `34540d4...` and payload
-   digest `82b0ff...` are pinned and checked around every source build.
+2. **Done — reconcile the dependency lock.** The companion revision and
+   payload digest are pinned in `deps/bbcbasic-z80-msx.lock.json` and checked
+   around every source build.
 3. **Done — compact boot assets.** Vendored ZX0 is licensed and recorded, the
    page-0 limit is enforced, and exact/rendered round trips pass.
 4. **Done — produce the combined image.** The normal 32 KiB output embeds an
