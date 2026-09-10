@@ -1,165 +1,128 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 
-# BBC BASIC media integration plan
+# BBC BASIC media integration
 
-This document is the working plan for completing the media surface of the
-embedded BBC BASIC payload: sound, sprites, and MSX2 graphic modes. It tracks
-issue #172 and describes work across two repositories:
+This document records the implemented sound, sprite, and MSX2 graphics slice
+of the embedded BBC BASIC payload. The work was tracked in issue #172 and
+spans two repositories:
 
-- `../bbcbasic-z80-msx` — the interpreter port whose `platform/msx/` adapter
-  contains the currently stubbed `SOUND`, `ENVELOPE`, `ADVAL`, `COLOUR`, and
-  sprite entries.
-- this repository — the firmware that embeds and launches the payload and
-  already exposes the underlying PSG, sprite, and extended-VDP services.
+- `../bbcbasic-z80-msx` owns the independently written MSX adapter and its
+  standalone emulator tests;
+- RainBIOS pins, rebuilds, verifies, compresses, and embeds that exact payload,
+  while providing the published BIOS and SUB-ROM services it calls.
 
-## Current state
+The review which promoted this document from a plan to an implementation
+record found and corrected several tests that had accepted internally
+consistent but physically aliased VRAM. The current gates inspect raw high
+VRAM as well as BASIC-level `POINT` results.
 
-The payload reaches the prompt and supports editing, expressions, stored
-programs, cassette `SAVE`/`LOAD`, and an MSX1 Graphics II subset:
+## Implemented surface
 
-| Surface | Implemented | Missing |
+| Surface | Implemented | Deliberate limitation |
 | --- | --- | --- |
-| Graphic modes | `MODE 2` (Screen 2), `MODE 7` (Screen 0) | Screen 1, Screen 3, MSX2 Screens 5-8 |
-| Colour | `GCOL 0,c` (8 fixed TMS9918 colours) | `COLOUR`, 16/256-colour palettes |
-| Plot | `CLG`, `MOVE`, `DRAW`, `PLOT` lines/points/triangles, `POINT` | `PLOT` 96+ (rectangles, fills, circles, ellipses) |
-| Sound | — | `SOUND`, `ENVELOPE`, `ADVAL` (all `Sorry` stubs) |
-| Sprites | — | no sprite access at all |
+| Sound | `SOUND`, `ENVELOPE`, digital `ADVAL` controller reads | AY hardware-envelope approximation, synchronous finite notes, no full BBC software ADSR/pitch sweep |
+| Sprites | `*SPRITE`, `*SPRITEOFF`, `*SPRITEPAT`, `*SPRITECLR` in Screen 2 | MSX-specific OSCLI extension; 8x8 pattern definition only |
+| MSX1 graphics | Screens 0-3; Graphics II `CLG`, `GCOL`, `MOVE`, `DRAW`, supported `PLOT`, `POINT` | Existing cell-colour and raster-operation limits remain |
+| MSX2 graphics | Screens 5-8, full bitmap clear, high-VRAM pixel access | Screens 6/7 expose the left 256 pixels until the adapter accepts a 16-bit X coordinate; Screens 10-12 are outside scope |
 
-`SOUND`, `ENVELOPE`, `ADVAL`, `COLOUR`, `GETIMS`, and `PUTIMS` currently share
-the trailing `Sorry` error block in `platform/msx/graphics.z80`. `VDU`
-(`exec.z80`) writes each byte through `OSWRCH`/`CHPUT`, so BBC's native
-`VDU 23` user-graphics route cannot reach the VDP and must be re-interpreted
-by the adapter rather than inherited.
+Random-access file channels remain unsupported. Sequential cassette program
+`SAVE`/`LOAD` is a separate completed slice.
 
-## Layers and existing firmware services
+## Sound semantics
 
-The payload adapter already calls published MSX BIOS entries directly
-(`CHPUT`, `CHGET`, `RDVRM`, `WRTVRM`, `FILVRM`, `INITXT`, `INITGRP`). The
-media work reuses the same discipline and the services RainBIOS already
-provides:
+`SOUND channel,amplitude,pitch,duration` maps channel 0 to noise and channels
+1-3 to AY tone A/B/C. The adapter follows the BBC sign convention:
 
-| Service | Entry | Status |
-| --- | --- | --- |
-| PSG initialize / write / read | `GICINI` `0090h`, `WRTPSG` `0093h`, `RDPSG` `0096h` | implemented |
-| Joystick / trigger | `GTSTCK` `00D5h`, `GTTRIG` `00D8h` | implemented |
-| Sprite utilities | `CLRSPR` `0069h`, `CALPAT` `0084h`, `CALATR` `0087h`, `GSPSIZ` `008Ah` | implemented (M2G) |
-| Extended VDP dispatch | `EXTROM` `015Fh` → SUB-ROM `CHGMOD` Screens 5-8, palette, 16-bit VRAM | implemented (M5) |
+- amplitudes `-15..0` select fixed volume (zero is silence);
+- a positive amplitude selects the most recently defined matching envelope;
+- higher pitches produce higher frequencies;
+- duration `-1` leaves the note playing, while `0..254` is a synchronous
+  JIFFY-timed note which is silenced on completion.
 
-The payload descriptor (`docs/abi/payload-v1.md`) currently declares required
-services for console, keyboard, timing, Graphics II VDP/VRAM, and cassette.
-Bits 5-7 are reserved and zero; this plan assigns them meaning.
+The compact pitch conversion is octave-linear rather than an exact BBC
+quarter-semitone table. `ENVELOPE` parses the documented parameter order and
+maps attack timing and direction to the single shared AY hardware envelope.
+The remaining pitch and ADSR phases are accepted but approximated. Selecting
+an envelope retriggers AY register 13. Playing noise and then tone A restores
+the tone/noise mixer routing correctly.
 
-## Sound (PSG)
+`ADVAL(0)` and `ADVAL(2)` return joystick directions for ports 1 and 2;
+`ADVAL(1)` and `ADVAL(3)` return trigger state as BBC false/true (`0`/`-1`).
+This is a documented digital approximation of BBC analogue channels.
 
-Goal: `SOUND`, `ENVELOPE`, and `ADVAL` produce audio and controller reads
-instead of `Sorry`.
+The implementation uses published `WRTPSG`, `RDPSG`, `GTSTCK`, and `GTTRIG`
+BIOS entries. Payload descriptor required-service bit 5 declares that sound
+dependency; bits 6-7 remain reserved.
 
-Adapter work (`bbcbasic-z80-msx/platform/msx/`):
+## Sprite commands
 
-1. Implement `SOUND ch,amp,pitch,dur` by mapping the BBC three-voice model
-   onto the PSG's three tone channels through `WRTPSG` (or the `A0h`/`A1h`
-   ports as a fallback). BBC amplitude 0-15 and logarithmic pitch must be
-   converted to the PSG's 12-bit period and 4-bit volume registers.
-2. Implement `ENVELOPE` shaping. The AY-3-8910/YM2149 hardware envelope (R13)
-   covers only a fixed saw/triangle/decay family; a BBC-compatible ADSR shape
-   needs a software envelope driven from the VBlank hook (`H.TIMI`) updating
-   the volume registers. The first slice maps the standard shapes onto the
-   hardware envelope and documents the remainder.
-3. Implement `ADVAL` for the joystick/controller path via `GTSTCK`/`GTTRIG`
-   (and PSG `R14`/`R15`), returning the BBC analogue-channel convention.
-4. Initialise the PSG GPIO directions at entry (`GICINI`) so joystick reads
-   are well-defined.
+BBC BASIC has no portable sprite keyword, so the adapter exposes a small
+MSX-specific OSCLI surface without changing the preserved language core:
 
-Firmware work:
+```text
+*SPRITE n,x,y,pattern,colour
+*SPRITEOFF n
+*SPRITEPAT n,b0,b1,b2,b3,b4,b5,b6,b7
+*SPRITECLR
+```
 
-- Confirm `GICINI` leaves R15 in a known controller state for the payload's
-  entry; the existing controller snapshot in the IM 1 handler already does.
-- No new BIOS entries are required.
+The commands write the Screen 2 sprite attribute and pattern tables through
+the published main-BIOS VRAM interface. `*SPRITEPAT` defines one 8x8 pattern;
+`*SPRITE` selects its position and colour; `*SPRITEOFF` hides one sprite; and
+`*SPRITECLR` hides all 32. The commands are visible after `MODE 2`.
 
-## Sprites
+## MSX2 bitmap modes
 
-Goal: expose MSX hardware sprites from BBC BASIC.
+`MODE 5`-`8` first checks the published `MSXVER` generation byte and rejects
+the request on MSX1 without changing the active mode. On MSX2 it calls the
+public main-BIOS `CHGMOD` entry, allowing RainBIOS to dispatch through its
+SUB-ROM and initialize and clear the whole bitmap screen.
 
-Adapter work:
+Pixel operations use the public SUB-ROM 16-bit `WRTVRM`/`RDVRM` entries, not
+the main-BIOS 14-bit calls. This distinction is essential: using only the
+main-BIOS calls aliases addresses at every 16 KiB boundary and can make a
+write/read round trip appear correct while corrupting another scanline.
 
-1. Decide the keyword surface. BBC BASIC has no sprite keyword; the least
-   invasive options are (a) a VDU-based extension (`VDU 23` and `VDU 25`
-   families re-interpreted by `OSWRCH`) or (b) new `*`-command / `OSCLI`
-   forms. A small dedicated set (e.g. `SPRITE n,x,y,pattern,colour` /
-   `SPRITEOFF n`) is the most readable and is the recommended slice.
-2. Drive the VDP sprite attribute table (`ATRBAS`, four bytes per sprite:
-   Y, X, pattern, colour/EC) and pattern table (`PATBAS`, 8 bytes per sprite,
-   32 bytes for 16x16) through the existing `RDVRM`/`WRTVRM`/`FILVRM` paths.
-3. Use `CLRSPR`/`CALPAT`/`CALATR`/`GSPSIZ` where they save work, and preserve
-   R1 sprite-size bits when switching modes (already guaranteed by the
-   firmware's mode init).
+The packed formats are:
 
-Firmware work:
+- Screen 5: 256x212, 4 bits per pixel;
+- Screen 6: 512x212, 2 bits per pixel, most-significant pixel first;
+- Screen 7: 512x212, 4 bits per pixel;
+- Screen 8: 256x212, 8 bits per pixel.
 
-- The sprite utilities are already implemented; the descriptor only needs to
-  declare the requirement (see the contract section).
+The interpreter's current X coordinate becomes one byte during physical
+scaling. It therefore covers the full width of Screens 5/8 and the left half
+of Screens 6/7. Screen 6 logical colours map directly to physical colours
+0-3. Bitmap-mode character output is suppressed so a subsequent BASIC prompt
+cannot overwrite bitmap VRAM.
 
-## MSX2 graphic modes
+## Validation
 
-Goal: `MODE 5`-`8` reach V9938/V9958 bitmap screens with palette and correct
-resolution, and `COLOUR` works.
+The companion project provides the primary implementation gates:
 
-Adapter work:
+| Target | Coverage |
+| --- | --- |
+| `test-msx-sound-openmsx` | fixed/envelope amplitude, rising pitch, noise-to-tone mixer restoration, periods, volumes, and envelope registers |
+| `test-msx-sprite-openmsx` | command parsing plus exact sprite pattern/attribute VRAM |
+| `test-msx-mode-openmsx` | Screens 0-3 and clean rejection of Screen 5 on MSX1 |
+| `test-msx-msx2-openmsx` | C-BIOS MSX2 Screens 5-8, distinct raw high-VRAM bytes, Screen 6/7 packing, logical colours, and full `CLG` |
+| `test-msx-msx2-modes-1983` | Screen 5-8 VDP mode selection on the Omega V9958 model |
+| `test-msx-msx2-plot-1983` | distinct low/high-VRAM `PLOT`/`POINT` results in all four bitmap modes |
+| `test-msx-media-1983` | visibly rendered hardware sprite and continued execution after an indefinite `SOUND` |
 
-1. In `MODE`, accept 5, 6, 7, and 8. Under RainBIOS the payload runs on an
-   MSX2 whose SUB-ROM already implements `CHGMOD`; call it through `EXTROM`
-   (`015Fh`) with the mode in the documented register. The standalone
-   cartridge build needs a self-contained V9938 setup path (or documents its
-   MSX1 limitation).
-2. Map the BBC `1280x1024` logical grid to each screen's physical resolution
-   (256x212, 256x424, 512x212, 256x212) in `PARSEXY`/`PARSEXYREL`, and extend
-   `PLOT`/`POINT` to the 16-colour palette via `SETPLT`/`INIPLT` and 16-bit
-   `WRTVRM`/`RDVRM` for the larger VRAM range.
-3. Implement `COLOUR` (text foreground/background) against the current mode.
-4. `PLOT` modes 96+ (rectangles, fills, circles, ellipses) remain a separate
-   later slice; the current explicit "Unsupported graphics operation" error
-   stays for them until then.
+RainBIOS additionally rebuilds the pinned companion revision on every normal
+build, verifies its exact 16 KiB digest, and checks that the compressed `RBC1`
+container reconstructs the same payload. The unified Omega artifact is tested
+with the internal payload selected and no external BASIC cartridge.
 
-Firmware work:
+## Compatibility and clean-room boundary
 
-- The SUB-ROM already provides `CHGMOD`, palette, and 16-bit VRAM, but the
-  adapter instead programs the V9938/V9958 registers directly, so no new
-  firmware service is required; the payload degrades gracefully on MSX1 (the
-  `MODE 5`-`8` registers alias the TMS9918 ones and should be avoided there).
+The adapter calls only published MSX BIOS/SUB-ROM interfaces and documented
+work-area variables. Implementation and tests must not use proprietary BIOS
+or BASIC source, ROM data, disassembly, or derived tables. Public references
+used for this slice are recorded in the companion project's
+`docs/REFERENCES.md` and this repository's `docs/REFERENCES.md`.
 
-## Descriptor and launch contract
-
-Extend `docs/abi/payload-v1.md` required-service bits:
-
-- bit 5: PSG sound (`WRTPSG`/`RDPSG`, and the controller reads `GTSTCK`/`GTTRIG`).
-
-Hardware sprites and the MSX2 bitmap screens need no new bits: the sprite
-adapter drives the VDP sprite attribute/pattern tables through the existing
-VRAM calls (bit 3), and `MODE 5`-`8` program the V9938/V9958 registers
-directly, so the payload still runs on an MSX1 (without those screens).
-RainBIOS's descriptor validation accepts bit 5 and still rejects the reserved
-bits 6-7; the existing fail-closed rule (invalid descriptor ⇒ no `INIT`)
-covers the rest.
-
-## Sequencing and tests
-
-Suggested order, each slice with its own gate:
-
-1. **Sound** — `test-1983-bbcbasic-sound` / openMSX: run `SOUND`/`BEEP`, then
-   inspect the PSG register writes (or capture the produced envelope) and the
-   `ADVAL` controller result.
-2. **Sprites** — `test-1983-bbcbasic-sprite` / openMSX: write a sprite via the
-   new keywords, verify the attribute/pattern tables and a visible sprite on a
-   captured frame.
-3. **MSX2 modes** — `test-1983-bbcbasic-msx2` / openMSX: `MODE 7` then a bitmap
-   mode, verify `SCRMOD`, the R0/R1 shadow, palette, and a `POINT` round trip.
-4. **Contract** — host test that the descriptor bits are correctly parsed and
-   that menu availability follows the required-service mask.
-
-## Boundaries
-
-- Clean-room policy (`docs/DEVELOPMENT_POLICY.md`): no proprietary BIOS or
-  BASIC source, tables, or disassembly; only published interfaces and
-  independently written code.
-- Public release remains gated on `BBC BASIC` branding (permission or rename),
-  independent of this media work.
+The code-license combination remains redistributable with the recorded
+notices. Permission to use the `BBC BASIC` name, or a distinct product rename,
+is still a separate public-release gate.

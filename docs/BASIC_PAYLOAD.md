@@ -81,12 +81,12 @@ payload with interpreter state at `8000h` plausible.
 
 The current build places its cartridge veneer at `4000h`, independently written
 console adapter at `4013h-4247h`, sprite and MSX2 bitmap adapters in the
-`4248h-43F5h` ROM gap, unchanged core at `4400h-74C1h`, graphics adapter at
-`74C2h-7E49h`, cassette adapter at `7E4Ah-7FEDh`, fixed state at
-`8000h-833Ch`, and user memory from `833Dh`. Its deterministic 16 KiB ROM ends
+`4248h-43F7h` ROM gap, unchanged core at `4400h-74C1h`, graphics adapter at
+`74C2h-7E45h`, cassette adapter at `7E46h-7FE9h`, fixed state at
+`8000h-833Dh`, and user memory from `833Eh`. Its deterministic 16 KiB ROM ends
 with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
-`9eff44008fcf6d2eab915afcfe93b44f8817acb0`, and has SHA-256
-`51d818506d32e1e407be1ebda44efd65f9ea6a91d58ee9c4e8af4d9ddecb3bcd`.
+`c9ed73ddd228f1dae8528f39ce590511ece7d00d`, and has SHA-256
+`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983
@@ -94,6 +94,13 @@ emulator independently confirms that the banner and prompt render visibly.
 An executable graphics example adds mode and colour selection, lines,
 absolute plotting, and pixel readback; it passes on C-BIOS and through
 RainBIOS in openMSX, with rendered output independently confirmed in 1983.
+The reviewed media slice adds PSG-backed `SOUND`/`ENVELOPE`, digital
+controller `ADVAL`, Screen 2 sprite commands, and MSX2 Screens 5-8. Its gates
+inspect physical high VRAM to prevent 16 KiB address aliases from masquerading
+as successful `POINT` round trips, verify Screen 6/7 packed pixels and full
+bitmap clearing, inspect PSG mixer/envelope registers, and require a visibly
+rendered sprite in 1983. Full BBC software envelopes and the right half of
+the 512-pixel-wide Screens 6/7 remain documented limitations.
 The sequential storage adapter writes the public MSX binary-tape envelope:
 ten `D0h` bytes and a case-insensitive six-character filename, followed by
 start/end/execute metadata and the tokenized program. `LOAD` and `RUN` pass
@@ -112,7 +119,7 @@ The BBC BASIC project owns:
 - the interpreter and its retained upstream license;
 - the standalone cartridge startup adapter;
 - console, keyboard, cursor, centisecond-clock, Graphics II, and sequential
-  cassette program services;
+  cassette program services, plus sound, sprite, and MSX2 bitmap adapters;
 - a replacement for the CP/M-specific file/operating-system layer;
 - its writable memory map and minimum-RAM requirements;
 - standalone payload builds and interpreter smoke tests.

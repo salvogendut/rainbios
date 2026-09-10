@@ -28,7 +28,7 @@ class BasicDependencyLockTests(unittest.TestCase):
         self.assertEqual(artifact["size"], 16_384)
         self.assertEqual(
             artifact["sha256"],
-            "51d818506d32e1e407be1ebda44efd65f9ea6a91d58ee9c4e8af4d9ddecb3bcd",
+            "5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027",
         )
 
     def test_boot_menu_uses_the_generic_basic_label(self) -> None:

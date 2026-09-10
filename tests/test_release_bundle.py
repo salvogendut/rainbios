@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 import unittest
 
@@ -35,6 +36,9 @@ def sha256(path: Path) -> str:
 
 
 def find_bundle() -> Path | None:
+    configured = os.environ.get("RAINBIOS_RELEASE_DIR")
+    if configured:
+        return Path(configured)
     releases = BUILD / "release"
     if not releases.is_dir():
         return None

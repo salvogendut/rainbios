@@ -170,18 +170,21 @@ implemented in the companion `bbcbasic-z80-msx` adapter (tracked in
 
 - **Sound** — `SOUND channel, amplitude, pitch, duration` drives the
   AY-3-8910/YM2149 PSG: channel 0 is the noise channel and channels 1-3 map to
-  tone A/B/C, amplitude 0..-15 maps to the 4-bit volume, and the BBC
-  logarithmic pitch scale is approximated by a linear PSG period. `ENVELOPE`
-  programs the PSG hardware envelope (period R11/R12 and shape R13), and
-  `ADVAL(n)` reads joystick direction/trigger state through `GTSTCK`/`GTTRIG`.
+  tone A/B/C. Amplitudes -15..0 select fixed volume, positive amplitudes
+  select the most recently defined envelope, higher pitches produce higher
+  frequencies, and duration -1 leaves a note playing. `ENVELOPE` approximates
+  the BBC shape with the PSG hardware envelope, and `ADVAL(n)` reads digital
+  joystick direction/trigger state through `GTSTCK`/`GTTRIG`.
 - **Sprites** — `*SPRITE n,x,y,pattern,colour`, `*SPRITEOFF n`,
   `*SPRITEPAT n,b0..b7`, and `*SPRITECLR` drive the Screen 2 sprite attribute
   and pattern tables through the `*` (OSCLI) command hook, so the
   byte-identical BBC language core is never modified.
 - **Screen modes** — `MODE n` selects MSX Screen `n` for `n` in 0-3 (the
   TMS9918 text, Graphics I, Graphics II, and multicolor modes, available on any
-  MSX1) and 5-8 (the V9938/V9958 bitmap modes on MSX2, which program the
-  extended VDP registers R0-R11 and the 16-colour palette directly).
+  MSX1) and 5-8 (the V9938/V9958 bitmap modes on MSX2). The adapter uses the
+  published `CHGMOD` and 16-bit SUB-ROM VRAM calls, supporting Screen 5/7 4bpp,
+  Screen 6 2bpp, and Screen 8 8bpp without 16 KiB aliasing. Screens 6/7
+  currently expose their left 256-pixel half.
 
 ### Disk and storage boot
 

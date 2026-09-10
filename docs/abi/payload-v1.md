@@ -33,9 +33,10 @@ Required-service bits are:
 - bits 6-7: reserved and zero.
 
 The media extensions do not add further required bits: hardware sprites are
-driven through the existing VRAM calls (bit 3), and the MSX2 bitmap screens
-(`MODE 5`-`8`) are programmed directly into the V9938/V9958 registers, so a
-payload that uses them still runs on an MSX1 (without those screens).
+driven through the existing VRAM calls (bit 3). The MSX2 bitmap screens
+(`MODE 5`-`8`) call the published main-BIOS `CHGMOD` entry and SUB-ROM 16-bit
+VRAM entries after checking `MSXVER`; the payload therefore still runs on an
+MSX1, where those mode requests fail explicitly without changing the screen.
 
 The descriptor describes requirements; successful validation authorizes the
 menu entry, not immediate cartridge startup. RainBIOS also verifies that pages

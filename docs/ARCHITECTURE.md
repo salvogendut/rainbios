@@ -271,9 +271,9 @@ The generated logo and menu tables are stored as ZX0 streams and expanded one
 at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB
 font remains uncompressed because `CGTABL` points directly at it. The simpler
 CC0 boot logo reduces its three compressed tables from 3,922 bytes to 917
-bytes. The MSX1 lower bank currently ends at `3839h`, leaving 1,991 bytes
-before the hard `4000h` boundary; the larger MSX2 build ends at `3B01h`,
-leaving 1,279 bytes.
+bytes. The MSX1 lower bank currently ends at `38A9h`, leaving 1,879 bytes
+before the hard `4000h` boundary; the larger MSX2 build ends at `3B91h`,
+leaving 1,135 bytes.
 
 ## Embedded BASIC payload
 

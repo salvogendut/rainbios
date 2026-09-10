@@ -16,7 +16,7 @@ SD_MAPPER_ROM ?= ../1983/ROMS/SDM V2 Nextor2.1.1.rom
 NEXTOR_SYS ?= ../1983/DOS/NEXTOR.SYS
 NEXTOR_COMMAND ?= ../1983/DOS/COMMAND2.COM
 CBIOS_SUB_ROM ?= ../cbios-0.29a/roms/cbios_sub.rom
-GEOBENCH_IMAGE ?= ../geobench/QA/GBMSX.IMG
+GEOBENCH_IMAGE ?= ../geobench/QA/MSX/GBMSX.IMG
 GEOBENCH_FLOPPY ?= ../geobench/QA/MSX/Floppies/GEOBENCH.DSK
 OPENMSX_GEOBENCH_CAPTURE_TIME ?= 15
 
@@ -850,6 +850,7 @@ test: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(OMEGA_ROM) \
 	RAINBIOS_DISK_BOOT_SECTOR=$(DISK_BOOT_SECTOR_BIN) \
 	RAINBIOS_IDE_BOOT_SECTOR=$(IDE_BOOT_SECTOR_BIN) \
 	RAINBIOS_SD_BOOT_SECTOR=$(SD_BOOT_SECTOR_BIN) \
+	RAINBIOS_RELEASE_DIR=$(RELEASE_DIR) \
 	$(PYTHON) -m unittest discover -s tests -v
 
 $(OPENMSX_MACHINE): tests/openmsx/RainBIOS_MSX1.xml.in $(MSX1_ROM)
@@ -1143,14 +1144,6 @@ $(FNKEY_PROBE_CART): tests/cartridges/fnkey_probe.asm | $(BUILD_DIR)
 KBD_PROBE_CART := $(BUILD_DIR)/cartridges/kbd_probe.rom
 
 $(KBD_PROBE_CART): tests/cartridges/kbd_probe.asm | $(BUILD_DIR)
-	mkdir -p $(@D)
-	$(RASM) $< -ob $@
-
-SUBROM_CMDCLOCK_PROBE_CART := \
-	$(BUILD_DIR)/cartridges/subrom_cmdclock_probe.rom
-
-$(SUBROM_CMDCLOCK_PROBE_CART): \
-		tests/cartridges/subrom_cmdclock_probe.asm | $(BUILD_DIR)
 	mkdir -p $(@D)
 	$(RASM) $< -ob $@
 

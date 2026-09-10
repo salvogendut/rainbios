@@ -495,8 +495,9 @@ it into page-1 RAM at launch. The build asserts the boundary, validates the
 container and reconstructed markers, and retains the companion ROM as a
 separate artifact. The initial lower-bank reserve was only 440 bytes, so a simpler
 lower-entropy logo was added; it reduced the compressed logo tables from 3,922
-bytes to 917 bytes. The current menu copy leaves a 3,247-byte reserve;
-continuing size gates are still required before substantial new page-0 work.
+bytes to 917 bytes. The current layout leaves 1,879 bytes in MSX1 and 1,135
+bytes in MSX2; continuing size gates are still required before substantial
+new page-0 work.
 Human-readable component notices are complete; public release remains gated
 on branding permission or a rename, a machine-readable component manifest,
 broader emulator regression coverage, and real hardware.
@@ -517,7 +518,7 @@ The lower-bank headroom is a host-suite gate:
 fails if the last non-`FF` byte rises above `3C00h` (reserve below 1 KiB) or
 falls below `3000h`, so substantial new page-0 work must be a deliberate,
 documented step rather than accidental boundary erosion. The current MSX1 and
-MSX2 reserves are 1,991 and 1,279 bytes respectively.
+MSX2 reserves are 1,879 and 1,135 bytes respectively.
 
 The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
 all 21 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
@@ -641,6 +642,17 @@ deliberate trailing-hex typos corrected with Backspace (`08h`) and Delete
 (`7Fh`); the editor must remove the stray digit so the markers (`F3C8`/
 `F3C9`) evaluate to `5Ah`, discriminating a successful edit from an ignored
 one (`FAh`), across the external and embedded payloads.
+
+M6L reviews and gates the payload media extensions. `SOUND` now follows the
+BBC fixed-volume/envelope sign convention, raises frequency with pitch,
+restores tone routing after noise, and treats duration -1 as indefinite;
+`ENVELOPE` parses the documented argument order while explicitly approximating
+the BBC software envelope on the AY hardware envelope. Screen 2 sprite
+commands are verified both in VRAM and as rendered output. MSX2 Screens 5-8
+use public `CHGMOD` and 16-bit SUB-ROM VRAM calls, with raw high-VRAM tests
+preventing false passes caused by 16 KiB aliasing and packing tests covering
+Screen 6/7. Screen 6/7 currently expose only their left 256 pixels, and full
+BBC ADSR/pitch sweeps remain future work.
 
 ## M7 — Disk boot
 
