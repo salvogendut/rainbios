@@ -122,23 +122,24 @@ Adapter work:
 
 Firmware work:
 
-- The SUB-ROM already provides `CHGMOD`, palette, and 16-bit VRAM; the
-  descriptor must declare MSX2 extended-VDP as a required service so menu
-  selection only offers the payload on MSX2-capable machines (or the adapter
-  degrades gracefully on MSX1).
+- The SUB-ROM already provides `CHGMOD`, palette, and 16-bit VRAM, but the
+  adapter instead programs the V9938/V9958 registers directly, so no new
+  firmware service is required; the payload degrades gracefully on MSX1 (the
+  `MODE 5`-`8` registers alias the TMS9918 ones and should be avoided there).
 
 ## Descriptor and launch contract
 
 Extend `docs/abi/payload-v1.md` required-service bits:
 
-- bit 5: PSG sound (`GICINI`/`WRTPSG`/`RDPSG`, `BEEP`, PLAY work area);
-- bit 6: sprite utilities (`CLRSPR`/`CALPAT`/`CALATR`/`GSPSIZ`);
-- bit 7: MSX2 extended VDP (`EXTROM`/`CHGMOD` Screens 5-8, palette, 16-bit VRAM).
+- bit 5: PSG sound (`WRTPSG`/`RDPSG`, and the controller reads `GTSTCK`/`GTTRIG`).
 
-A payload that sets these bits is offered only when RainBIOS implements the
-corresponding services; bit 7 additionally requires the MSX2 build and a live
-SUB-ROM. The existing fail-closed rule (invalid descriptor ⇒ no `INIT`)
-already covers this.
+Hardware sprites and the MSX2 bitmap screens need no new bits: the sprite
+adapter drives the VDP sprite attribute/pattern tables through the existing
+VRAM calls (bit 3), and `MODE 5`-`8` program the V9938/V9958 registers
+directly, so the payload still runs on an MSX1 (without those screens).
+RainBIOS's descriptor validation accepts bit 5 and still rejects the reserved
+bits 6-7; the existing fail-closed rule (invalid descriptor ⇒ no `INIT`)
+covers the rest.
 
 ## Sequencing and tests
 
