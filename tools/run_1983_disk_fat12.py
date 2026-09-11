@@ -118,7 +118,10 @@ def main() -> int:
     except ValueError as error:
         print(f"error: invalid 1983 FS.LOAD result: {error}", file=sys.stderr)
         return 1
-    print("validated 1983 FS.LOAD read path: cluster chain and content verified")
+    print(
+        "validated 1983 FS.LOAD read path: sparse 2->256->257 chain, "
+        "odd-cluster EOC, and content verified"
+    )
     return 0
 
 

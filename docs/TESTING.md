@@ -220,7 +220,7 @@ make test-1983 \
 | `test-1983-disk-dskchg-no-media` | Media-change/DPB behavior without media |
 | `test-1983-disk-write-guard` | Write rejection without changing a writable host image |
 | `test-1983-disk-partial-error` | Exact completed-sector count on a later failure |
-| `test-1983-disk-fat12` | Three-cluster FAT12 FS.LOAD with exact source-pattern validation |
+| `test-1983-disk-fat12` | Sparse three-cluster FAT12 FS.LOAD (`2 -> 256 -> 257 -> EOC`) with an odd terminal entry, 16-bit FAT offsets, and exact source-pattern validation |
 | `test-1983-disk-fsdir` | BPB-derived root-directory enumeration and raw entry delivery |
 | `test-1983-disk-fswrite` | 2,500-byte multi-cluster create/replace, bounded-load rejection before writes, identical FAT copies, one directory entry, exact persisted bytes, and reclaimed old chain |
 | `test-1983-nms8250-disk-rom` | Production INIT, hook, and drive registration |

@@ -511,11 +511,9 @@ disk_fat12_next:
                 ld l,(ix+FS_L_CLUSTER)
                 ld h,(ix+FS_L_CLUSTER+1)
                 ld e,l
-                ld d,0
-                ld a,l
-                srl a
-                ld l,a
-                ld h,0
+                ld d,h                           ; DE = complete cluster number
+                srl h
+                rr l                             ; HL = cluster / 2
                 add hl,de                        ; byte offset = cluster * 1.5
                 push hl
                 push ix
@@ -544,8 +542,7 @@ disk_fat12_next_odd:
                 srl h
                 rr l
                 srl h
-                rr l
-                ld h,0                           ; value = word >> 4
+                rr l                             ; value = word >> 4
 disk_fat12_next_store:
                 ld (ix+FS_L_CLUSTER),l
                 ld (ix+FS_L_CLUSTER+1),h
