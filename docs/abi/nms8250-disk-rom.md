@@ -173,8 +173,9 @@ storage:
 | --- | --- |
 | `4037h-403Ah` | ASCII `RBFS` signature |
 | `403Bh` | ABI version 1 |
-| `403Ch` | capabilities `07h`: bounded load, multi-cluster write, replacement |
+| `403Ch` | capabilities `0Fh`: bounded load, multi-cluster write, replacement, text catalogue |
 | `403Dh` | `JP` to bounded FS.LOAD |
+| `404Dh` | `JP` to the private text-catalogue service |
 
 RainBIOS discovers the active disk-system slot from `H.PHYD`; it does not
 assume an Omega or NMS slot number. The private entry is called only after the
@@ -211,6 +212,20 @@ partial sector cannot overwrite the byte following the program.
 
 Returns carry clear with A = 0 and BC = bytes written (entries * 32). Carry set
 propagates a PHYDIO error.
+
+### Text catalogue (404Dh, private)
+
+| Input | Value |
+| --- | --- |
+| A | `00h`, drive A |
+| DE | Work area, 2080 bytes, in page-2/3 RAM |
+
+Returns carry clear with A = 0 after writing a `Drive A:` heading and one
+printable 8.3 name per line through the main-BIOS `CHPUT` entry. Deleted,
+long-filename, and volume-label entries are omitted; an empty root directory
+prints `(empty)`. Carry set propagates parameter and PHYDIO errors. This
+streaming interface is private because it emits console text rather than raw
+directory records; public `FS.DIR` remains unchanged.
 
 ### FS.WRITE (402Bh)
 

@@ -49,7 +49,7 @@
       "origin": "external",
       "source_identity": {
         "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
-        "commit": "f9034e91a78e741e1cff513515e1ebd70f4f6c9c"
+        "commit": "e198bb17666d3e001a2f1468cf583beeadb37397"
       },
       "license": "Zlib-style",
       "license_file": "LICENSES/BBCBASIC-Z80.txt",
@@ -62,7 +62,7 @@
       "origin": "this repository",
       "source_identity": {
         "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
-        "commit": "f9034e91a78e741e1cff513515e1ebd70f4f6c9c"
+        "commit": "e198bb17666d3e001a2f1468cf583beeadb37397"
       },
       "license": "BSD-3-Clause",
       "license_file": "LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt"

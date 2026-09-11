@@ -614,6 +614,9 @@ disk_fs_dir:
                 ld (ix+FS_L_SIZE+1), b       ; buffer size high
                 ld (ix+FS_L_CLUSTER), 0      ; entries-written low
                 ld (ix+FS_L_CLUSTER+1), 0    ; entries-written high
+                ld (ix+FS_L_FLAGS), 0        ; raw-directory mode
+
+dfd_boot:
 
                 ; Load boot sector to parse BPB.
                 push ix
@@ -627,7 +630,14 @@ disk_fs_dir:
                 call disk_phydio
                 ret c
 
+                ld a,(ix+FS_L_FLAGS)
+                or a
+                jr z,dfd_geometry
+                ld hl,dfd_catalog_header
+                call dfd_print_text
+
                 ; Root-directory sectors = ceil(root-entries * 32 / 512).
+dfd_geometry:
                 ld l, (ix+FS_DIR+FS_ROOT_ENTRIES)
                 ld h, (ix+FS_DIR+FS_ROOT_ENTRIES+1)
                 add hl, hl
@@ -698,7 +708,22 @@ dfd_entry:
                 cp #e5
                 jr z, dfd_next           ; deleted: skip
 
+                ld a,(ix+FS_L_FLAGS)
+                or a
+                jr z,dfd_buffer_entry
+                push hl
+                ld de,11
+                add hl,de
+                ld a,(hl)
+                pop hl
+                bit 3,a                  ; volume labels and LFN entries
+                jr nz,dfd_next
+                push hl
+                call dfd_print_name
+                jr dfd_counted
+
                 ; Check buffer space: FS_L_SIZE >= 32?
+dfd_buffer_entry:
                 ld a, (ix+FS_L_SIZE+1)
                 or a
                 jr nz, dfd_room
@@ -734,6 +759,7 @@ dfd_copy:
                 ; HL = source + 32 = next entry
 
                 ; Increment entries-written counter.
+dfd_counted:
                 ld l, (ix+FS_L_CLUSTER)
                 ld h, (ix+FS_L_CLUSTER+1)
                 inc hl
@@ -749,6 +775,19 @@ dfd_next:
                 jp dfd_sector              ; next directory sector
 
 dfd_ret:
+                ld a,(ix+FS_L_FLAGS)
+                or a
+                jr z,dfd_raw_ret
+                ld a,(ix+FS_L_CLUSTER)
+                or (ix+FS_L_CLUSTER+1)
+                jr nz,dfd_catalog_ret
+                ld hl,dfd_catalog_empty
+                call dfd_print_text
+dfd_catalog_ret:
+                xor a
+                ret
+
+dfd_raw_ret:
                 ld l, (ix+FS_L_CLUSTER)
                 ld h, (ix+FS_L_CLUSTER+1) ; HL = entries written
                 ld b, h
@@ -771,6 +810,64 @@ disk_fs_dir_nop:
                 ld bc, 0
                 xor a
                 ret
+
+; Private FS.CATALOGUE service advertised by RBFS capability bit 3.
+; A=0 selects drive A and DE points to the standard 2080-byte work area.
+; Output is sent through the published main-BIOS CHPUT entry.
+disk_fs_catalog:
+                or a
+                jp nz,disk_fs_error_12
+                ld a,d
+                cp #80
+                jp c,disk_fs_error_12
+                push de
+                pop ix
+                xor a
+                ld (ix+FS_L_CLUSTER),a
+                ld (ix+FS_L_CLUSTER+1),a
+                inc a
+                ld (ix+FS_L_FLAGS),a
+                jp dfd_boot
+
+dfd_print_name:
+                push bc
+                ld b,8
+                call dfd_print_field
+                ld a,(hl)
+                cp ' '
+                jr z,dfd_print_name_end
+                ld a,'.'
+                call #00a2
+                ld b,3
+                call dfd_print_field
+dfd_print_name_end:
+                ld a,#0d
+                call #00a2
+                ld a,#0a
+                call #00a2
+                pop bc
+                ret
+
+dfd_print_field:
+                ld a,(hl)
+                inc hl
+                cp ' '
+                call nz,#00a2
+                djnz dfd_print_field
+                ret
+
+dfd_print_text:
+                ld a,(hl)
+                or a
+                ret z
+                call #00a2
+                inc hl
+                jr dfd_print_text
+
+dfd_catalog_header:
+                db "Drive A:",#0d,#0a,0
+dfd_catalog_empty:
+                db "(empty)",#0d,#0a,0
 
 
 ; FAT12 entry-write helper: store the 12-bit value in BC at cluster DE in

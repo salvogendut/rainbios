@@ -165,6 +165,7 @@ BASIC_CASS_SAVE equ #400a                 ; PAYLOAD HEADER PRIVATE POINTERS
 BASIC_CASS_LOAD equ #400c
 BASIC_EXTERR    equ #400e
 BASIC_FS_LOAD   equ #403d                 ; RBFS BOUNDED LOAD VECTOR
+BASIC_FS_CAT    equ #404d                 ; RBFS TEXT CATALOGUE VECTOR
 BASIC_FS_WRITE  equ #402b
 BASIC_FS_SIG    equ #4037
 FS_SLOT_OFFSET  equ 31
@@ -313,9 +314,88 @@ FS_SLOT_OFFSET  equ 31
                 jp chkslz                       ; 0162 CHKSLZ
 
                 db "RBFS"                       ; 0165 BASIC STORAGE SIGNATURE
-                jp basic_storage_dispatch       ; 0169 BASIC SAVE/LOAD BRIDGE
+                jp basic_storage_dispatch       ; 0169 BASIC STORAGE/OSCLI BRIDGE
 
-; Keep implementation code away from the fixed ABI area.
+; Private operation 2 implementation. Keeping the compact command parser in
+; the otherwise unused tail of the private RBFS area preserves the documented
+; 512-byte MSX2 lower-bank reserve.
+basic_storage_oscli:
+                call basic_storage_skip_spaces
+                ld a,(hl)
+                and #df
+                cp 'C'
+                jr z,basic_storage_oscli_cat
+                cp 'D'
+                jr nz,basic_storage_oscli_unclaimed
+                inc hl
+                ld a,(hl)
+                and #df
+                cp 'I'
+                jr nz,basic_storage_oscli_unclaimed
+                inc hl
+                ld a,(hl)
+                and #df
+                cp 'R'
+                jr z,basic_storage_oscli_end
+                jr basic_storage_oscli_unclaimed
+basic_storage_oscli_cat:
+                inc hl
+                ld a,(hl)
+                and #df
+                cp 'A'
+                jr nz,basic_storage_oscli_unclaimed
+                inc hl
+                ld a,(hl)
+                and #df
+                cp 'T'
+                jr nz,basic_storage_oscli_unclaimed
+basic_storage_oscli_end:
+                inc hl
+                call basic_storage_skip_spaces
+                ld a,(hl)
+                cp #0d
+                jr nz,basic_storage_oscli_unclaimed
+
+                push hl                         ; CORE EXPECTS HL AT TERMINATOR
+                call basic_storage_disk_slot
+                jr nc,basic_storage_oscli_unavailable
+                ld hl,BASIC_FS_SIG+5
+                ld a,(BASIC_FS_WORK+FS_SLOT_OFFSET)
+                call rdslt
+                bit 3,a                         ; TEXT CATALOGUE CAPABILITY
+                jr z,basic_storage_oscli_unavailable
+                ld a,(BASIC_FS_WORK+FS_SLOT_OFFSET)
+                push ix
+                push iy                         ; BASIC KEEPS TEXT IN IY
+                push af
+                pop iy
+                ld ix,BASIC_FS_CAT
+                ld de,BASIC_FS_WORK
+                xor a
+                call calslt
+                pop iy
+                pop ix
+                jr c,basic_storage_oscli_error
+                pop hl
+                scf
+                ret
+basic_storage_oscli_unavailable:
+                pop hl
+                jp basic_storage_unavailable
+basic_storage_oscli_error:
+                pop hl
+                jp basic_storage_disk_error
+basic_storage_oscli_unclaimed:
+                or a
+                ret
+basic_storage_skip_spaces:
+                ld a,(hl)
+                cp ' '
+                ret nz
+                inc hl
+                jr basic_storage_skip_spaces
+
+; Keep the remaining implementation code away from the fixed ABI area.
                 defs #0200-$,#ff
 
 cold_boot:

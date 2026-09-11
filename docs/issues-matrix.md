@@ -106,4 +106,4 @@ milestone percentages are estimates derived from the roadmap slices
 | 86 | CLOSED | M6 | M6: characterize function-key and text-cursor contracts |
 | 88 | CLOSED | M6 | M6: characterize keyboard buffer contracts |
 | 149 | OPEN | M7 | Allow the internal NMS8250 floppy to boot under Nextor |
-| 184 | OPEN | M7 | Add persistent floppy SAVE/LOAD for embedded BASIC |
+| 184 | MERGED | M7 | Add persistent floppy SAVE/LOAD for embedded BASIC |

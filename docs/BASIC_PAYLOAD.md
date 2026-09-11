@@ -86,13 +86,13 @@ target the separate 768-byte RAM module. This makes a 16 KiB page-1 ROM
 payload with interpreter state at `8000h` plausible.
 
 The current build places its cartridge veneer at `4000h`, independently written
-console adapter at `4013h-4247h`, sprite and MSX2 bitmap adapters in the
-`4248h-43F7h` ROM gap, unchanged core at `4400h-74C1h`, graphics adapter at
+console adapter at `4013h-424Bh`, sprite and MSX2 bitmap adapters in the
+`424Ch-43F9h` ROM gap, unchanged core at `4400h-74C1h`, graphics adapter at
 `74C2h-7E45h`, storage adapter at `7E46h-7FEFh`, fixed state at
 `8000h-833Dh`, and user memory from `833Eh-E6DFh`. Its deterministic 16 KiB ROM ends
 with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
-`f9034e91a78e741e1cff513515e1ebd70f4f6c9c`, and has SHA-256
-`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
+`e198bb17666d3e001a2f1468cf583beeadb37397`, and has SHA-256
+`e64ba3c3e72bf562d835cebfbb274283b3f0bb4bc0997123d6a00fdd38ceaa67`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983

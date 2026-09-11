@@ -182,7 +182,7 @@ make test-1983 \
 | `test-1983-embedded-basic-msx2-inkey` | Embedded BBC BASIC enters Screen 8, completes an `INKEY(100)` timeout with interrupts and keyboard scanning live, writes its completion marker, and returns to Screen 0 |
 | `test-1983-embedded-basic-graphics` | Internal payload graphics workload: the embedded BASIC runs the Graphics II program in the payload RAM slot (FC) with R0=02/R1=E0 and a rendered three-colour pattern |
 | `test-1983-embedded-basic-tape` | Internal payload cassette workload: the embedded BASIC LOAD/RUNs the tape fixture to PC=4400 in the same page-1 slot (F8) as the external path with non-blank VRAM |
-| `test-1983-embedded-basic-floppy` | Embedded BASIC saves `TEST.BBC` to a writable FAT12 disk, restarts, CHAINs the persisted program, proves LOAD is read-only, and checks explicit write-protect/no-media errors |
+| `test-1983-embedded-basic-floppy` | Embedded BASIC saves `TEST.BBC` to a writable FAT12 disk, lists it with `*CAT` and `*DIR`, restarts, CHAINs the persisted program, proves LOAD/catalogue are read-only, and checks explicit write-protect/no-media errors |
 | `test-1983-bbcbasic-scroll` | External scrolling text workload: the BBC BASIC PRINT loop completes (marker at F3C8), runs in the external slot (F4) on Screen 0 |
 | `test-1983-embedded-basic-scroll` | Internal payload scrolling text workload: same PRINT loop completes with the marker, payload RAM slot (FC), identical VRAM to external |
 | `test-1983-bbcbasic-edit` | External editing workload: Backspace/Delete corrections produce the 5Ah markers (external slot F4) |

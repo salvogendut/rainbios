@@ -37,7 +37,7 @@ DISK_HAS_BDOS           equ 1
                 jp disk_dos_bios               ; 4034 $$BIOS
                 db "RBFS"                       ; 4037 PRIVATE FS ABI SIGNATURE
                 db 1                            ; 403B ABI VERSION
-                db %00000111                    ; 403C BOUNDED LOAD/MULTI/REPLACE
+                db %00001111                    ; 403C + TEXT CATALOGUE
                 jp disk_fs_load_bounded         ; 403D FS.LOAD.BOUNDED
 disk_rom_init:
                 ld a,(DEVICE)
@@ -45,6 +45,7 @@ disk_rom_init:
                 jp nz,disk_driver_init_slave
                 call disk_driver_init
                 jp disk_driver_init_boot
+                jp disk_fs_catalog              ; 404D FS.CATALOGUE
                 defs #4078-$,#ff
                 jp disk_dos_console_in         ; 4078 $IN
                 defs #408f-$,#ff

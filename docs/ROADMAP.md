@@ -765,12 +765,14 @@ an oversize file before changing its destination.
 
 Issue #184 connects those services to the source-built embedded BASIC without
 modifying the language core. `SAVE "A:NAME"`, `LOAD "A:NAME"`, and `CHAIN
-"A:NAME"` use drive A and a fixed `.BBC` extension; unprefixed names retain
-cassette behavior. The payload's exclusive RAM limit is `E6E0h`, leaving a
+"A:NAME"` use drive A and a fixed `.BBC` extension; `*CAT` and `*DIR` list
+that drive's root directory, while unprefixed names retain cassette behavior.
+The payload's exclusive RAM limit is `E6E0h`, leaving a
 guard, the `E7E0h-EFFFh` FAT workspace, and the disk system's private
 `F000h-F2FFh` state disjoint. `test-1983-embedded-basic-floppy` proves a save,
-fresh emulator restart, persistent CHAIN, unchanged image after load, and
-explicit read-only/no-media errors. `test-1983-disk-fswrite` separately writes
+fresh emulator restart, persistent CHAIN, equivalent catalogues, unchanged
+image after load/catalogue, and explicit read-only/no-media errors.
+`test-1983-disk-fswrite` separately writes
 and replaces a 2,500-byte file, verifies both FAT copies and exact bytes from
 the host, confirms old-chain reclamation, and gates bounded-load no-write
 failure. `make basic-blank-disk` produces the non-bootable FAT12 data disk now

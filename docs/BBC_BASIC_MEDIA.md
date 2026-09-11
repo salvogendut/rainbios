@@ -25,7 +25,7 @@ VRAM as well as BASIC-level `POINT` results.
 | Sprites | `*SPRITE`, `*SPRITEOFF`, `*SPRITEPAT`, `*SPRITECLR` in Screen 2 | MSX-specific OSCLI extension; 8x8 pattern definition only |
 | MSX1 graphics | Screens 0-3; Graphics II `CLG`, `GCOL`, `MOVE`, `DRAW`, supported `PLOT`, `POINT` | Existing cell-colour and raster-operation limits remain |
 | MSX2 graphics | Screens 5-8, full bitmap clear, high-VRAM pixel access | Screens 6/7 expose the left 256 pixels until the adapter accepts a 16-bit X coordinate; Screens 10-12 are outside scope |
-| Program storage | Cassette `SAVE`/`LOAD`; RainBIOS FAT12 `SAVE`/`LOAD`/`CHAIN` selected by `A:` | Tokenized programs only; drive A, fixed `.BBC` extension, 720 KiB F9 FAT12 media; random-access channels remain unsupported |
+| Program storage | Cassette `SAVE`/`LOAD`; RainBIOS FAT12 `SAVE`/`LOAD`/`CHAIN` selected by `A:`; drive-A `*CAT`/`*DIR` | Tokenized programs only; drive A, fixed `.BBC` extension, 720 KiB F9 FAT12 media; random-access channels remain unsupported |
 
 Random-access file channels remain unsupported.
 
@@ -43,6 +43,11 @@ existing directory entry; the old chain is reclaimed after the directory
 commit. `LOAD "A:NAME"` bounds the directory length against the interpreter's
 available program area before writing any destination byte. `CHAIN` uses the
 same LOAD path and immediately runs the recovered program.
+
+`*CAT` and `*DIR` are equivalent, case-insensitive OSCLI commands which list
+the active drive-A root directory as readable 8.3 filenames. They take no
+arguments. RainBIOS streams the catalogue through `CHPUT`, so the BASIC
+payload does not need to reserve a 3.5 KiB raw-directory buffer.
 
 The payload advertises an exclusive RAM limit of `E6E0h`. RainBIOS keeps a
 256-byte gap at `E6E0h-E7DFh`, a 2,080-byte filesystem work area at
@@ -131,7 +136,7 @@ The companion project provides the primary implementation gates:
 | `test-msx-msx2-modes-1983` | Screen 5-8 VDP mode selection on the Omega V9958 model |
 | `test-msx-msx2-plot-1983` | distinct low/high-VRAM `PLOT`/`POINT` results in all four bitmap modes |
 | `test-msx-media-1983` | visibly rendered hardware sprite and continued execution after an indefinite `SOUND` |
-| `test-1983-embedded-basic-floppy` | source-built embedded payload saves `TEST.BBC`, restarts, chains it from the same persistent image, and reports write-protect/no-media errors |
+| `test-1983-embedded-basic-floppy` | source-built embedded payload saves `TEST.BBC`, lists it with both `*CAT` and `*DIR`, restarts, chains it from the same persistent image, and reports write-protect/no-media errors |
 | `test-1983-disk-fswrite` | 2,500-byte multi-cluster replacement, bounded-load rejection before destination writes, identical FAT copies, one directory entry, exact replacement bytes, and old-chain reclamation |
 
 RainBIOS additionally rebuilds the pinned companion revision on every normal
