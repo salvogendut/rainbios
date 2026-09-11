@@ -6,7 +6,8 @@
       "msx1_rom": "build/rainbios_msx1.rom",
       "msx2_rom": "build/rainbios_msx2.rom",
       "msx2_sub_rom": "build/rainbios_msx2_sub.rom",
-      "omega_rom": "build/rainbios_omega.rom"
+      "omega_rom": "build/rainbios_omega.rom",
+      "basic_blank_disk": "build/disks/rainbios-basic-blank.dsk"
     }
   },
   "components": [
@@ -48,7 +49,7 @@
       "origin": "external",
       "source_identity": {
         "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
-        "commit": "c9ed73ddd228f1dae8528f39ce590511ece7d00d"
+        "commit": "f9034e91a78e741e1cff513515e1ebd70f4f6c9c"
       },
       "license": "Zlib-style",
       "license_file": "LICENSES/BBCBASIC-Z80.txt",
@@ -61,7 +62,7 @@
       "origin": "this repository",
       "source_identity": {
         "repository": "https://github.com/salvogendut/bbcbasic-z80-msx",
-        "commit": "c9ed73ddd228f1dae8528f39ce590511ece7d00d"
+        "commit": "f9034e91a78e741e1cff513515e1ebd70f4f6c9c"
       },
       "license": "BSD-3-Clause",
       "license_file": "LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt"

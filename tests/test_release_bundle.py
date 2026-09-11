@@ -19,6 +19,7 @@ PRODUCTION_ROMS = [
     "rainbios_omega.rom",
     "rainbios_nms8250_disk.rom",
 ]
+PRODUCTION_MEDIA = ["rainbios-basic-blank.dsk"]
 
 TRACKED_TEXTS = [
     "LICENSE",
@@ -80,6 +81,18 @@ class ReleaseBundleTests(unittest.TestCase):
                     f"bundle ROM {name} differs from the build output",
                 )
 
+    def test_bundle_has_basic_data_disk(self):
+        if self.bundle is None:
+            self.skipTest("no release bundle produced; run `make release`")
+        for name in PRODUCTION_MEDIA:
+            with self.subTest(media=name):
+                bundled = self.bundle / name
+                self.assertTrue(bundled.is_file())
+                self.assertEqual(
+                    sha256(BUILD / "disks" / name),
+                    sha256(bundled),
+                )
+
     def test_bundle_has_tracked_texts(self):
         if self.bundle is None:
             self.skipTest("no release bundle produced; run `make release`")
@@ -98,7 +111,7 @@ class ReleaseBundleTests(unittest.TestCase):
         for line in checksums.read_text().splitlines():
             digest, separator, name = line.partition("  ")
             self.assertTrue(separator, f"malformed line: {line!r}")
-            self.assertIn(name, PRODUCTION_ROMS)
+            self.assertIn(name, PRODUCTION_ROMS + PRODUCTION_MEDIA)
             self.assertEqual(sha256(self.bundle / name), digest)
 
     def test_bundle_has_release_notes(self):

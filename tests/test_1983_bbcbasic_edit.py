@@ -8,7 +8,7 @@ from tools.run_1983_bbcbasic_edit import parse_markers, validate_state
 
 
 GOOD = (
-    "state frame=6001 pc=5124 sp=F300 slot=F4 subslot=00 "
+    "state frame=6001 pc=5124 sp=E6E0 slot=F4 subslot=00 "
     "mapper=00,00,00,00 cycles=0 instructions=0 vram_nonzero=9170 "
     "vdp_r0=00 vdp_r1=F0\n"
     "F3C8: 5A 5A\n"

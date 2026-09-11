@@ -501,12 +501,12 @@ it into page-1 RAM at launch. The build asserts the boundary, validates the
 container and reconstructed markers, and retains the companion ROM as a
 separate artifact. The initial lower-bank reserve was only 440 bytes, so a simpler
 lower-entropy logo was added; it reduced the compressed logo tables from 3,922
-bytes to 917 bytes. The current layout leaves 1,879 bytes in MSX1 and 1,135
-bytes in MSX2; continuing size gates are still required before substantial
-new page-0 work.
+bytes to 917 bytes. After the private BASIC storage bridge, the current layout
+leaves 1,263 bytes in MSX1 and 519 bytes in MSX2; continuing size
+gates are still required before substantial new page-0 work.
 Human-readable component notices are complete; public release remains gated
-on branding permission or a rename, a machine-readable component manifest,
-broader emulator regression coverage, and real hardware.
+on branding permission or a rename, broader emulator regression coverage, and
+real hardware.
 
 A machine-readable component manifest (`components.json`) now declares the
 combined ROM's components with SPDX-style license identifiers, source
@@ -516,15 +516,15 @@ manifest against the built artifacts: every referenced license and source
 file exists, external components pin a repository and commit, the manifest and
 `THIRD_PARTY_NOTICES.md` agree on license citations, and the combined ROM's
 `RBC1` container carries the same compressed payload whose uncompressed digest
-matches `deps/bbcbasic-z80-msx.lock.json`. A full SPDX JSON export remains a
-follow-up; the manifest format is chosen to be translatable to SPDX later.
+matches `deps/bbcbasic-z80-msx.lock.json`. Release bundles now include the
+generated SPDX 2.3 JSON export.
 
 The lower-bank headroom is a host-suite gate:
 `test_lower_bank_preserves_headroom_ceiling` checks both main-ROM variants and
-fails if the last non-`FF` byte rises above `3C00h` (reserve below 1 KiB) or
+fails if the last non-`FF` byte reaches `3E00h` (reserve below 512 bytes) or
 falls below `3000h`, so substantial new page-0 work must be a deliberate,
-documented step rather than accidental boundary erosion. The current MSX1 and
-MSX2 reserves are 1,879 and 1,135 bytes respectively.
+documented step rather than accidental boundary erosion. The MSX1 reserve is
+currently 1,263 bytes and MSX2 currently has 519 bytes.
 
 The stub BIOS entries are characterized and gated: `test-1983-stubs` calls
 all 21 callable stub entries (SYNCHR, CHRGTR, OUTDO, GETYPR, INITIO, STRTMS,
@@ -754,22 +754,27 @@ the read-only rejection with the image untouched. A pre-existing CALSLT
 double-call crash (a second DSKIO call from a `C000h` fixture context corrupts
 the return stack) is noted but not exercised by these gates.
 
-FAT12 filesystem services are now implemented and gated. FS.LOAD (4025h)
-is gated by `test-1983-disk-fat12`: it parses the boot-sector BPB, walks the
-root directory, resolves a three-cluster FAT12 chain (2→3→4→0xFFF) through a
-resident 3-sector FAT window, and delivers a 3072-byte deterministic-pattern
-file (RAIN.BIN) into page-3 RAM. FS.DIR (4028h) is gated by
-`test-1983-disk-fsdir`: it reads raw 32-byte root-directory entries into a
-caller-supplied buffer. FS.WRITE (402Bh) is gated by
-`test-1983-disk-fswrite`: it creates a new file (MINI.TXT, 32 bytes), finds a
-free directory slot, allocates a free cluster from the FAT, writes data via
-PHYDIO, updates both FAT copies, and commits the directory entry. All three
-services use the single CALSLT inter-slot-call discipline; the closed-form
-byte pattern for FS.LOAD is verified across all cluster boundaries from the
-loaded destination buffer. The DOS1 enumeration gate additionally verifies
-FS.DIR's BPB-derived `reserved + FAT-count * FAT-size` root-sector calculation
-and its full 16-bit byte count; the older single-entry fixture now fails
-closed on name, cluster, or size mismatches.
+FAT12 filesystem services are implemented and gated. FS.LOAD (4025h) parses
+the boot-sector BPB, walks the root directory and cluster chain, and copies
+only the exact directory length. FS.DIR (4028h) reads raw 32-byte root entries.
+FS.WRITE (402Bh) now creates or replaces multi-cluster files. It writes the new
+data/FAT chain before redirecting an existing directory entry, then reclaims
+the old chain; errors distinguish disk-full and directory-full conditions.
+The versioned private `RBFS` block also publishes a bounded LOAD which rejects
+an oversize file before changing its destination.
+
+Issue #184 connects those services to the source-built embedded BASIC without
+modifying the language core. `SAVE "A:NAME"`, `LOAD "A:NAME"`, and `CHAIN
+"A:NAME"` use drive A and a fixed `.BBC` extension; unprefixed names retain
+cassette behavior. The payload's exclusive RAM limit is `E6E0h`, leaving a
+guard, the `E7E0h-EFFFh` FAT workspace, and the disk system's private
+`F000h-F2FFh` state disjoint. `test-1983-embedded-basic-floppy` proves a save,
+fresh emulator restart, persistent CHAIN, unchanged image after load, and
+explicit read-only/no-media errors. `test-1983-disk-fswrite` separately writes
+and replaces a 2,500-byte file, verifies both FAT copies and exact bytes from
+the host, confirms old-chain reclamation, and gates bounded-load no-write
+failure. `make basic-blank-disk` produces the non-bootable FAT12 data disk now
+included in release bundles.
 
 The Sunrise IDE 1983 gates are restored. `test-1983-ide-boot` reaches the
 fixture pass label with the cartridge mapped in page 1 (slot `F8`), and

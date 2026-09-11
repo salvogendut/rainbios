@@ -26,6 +26,7 @@ PRODUCTION_ROMS = [
     "rainbios_omega.rom",
     "rainbios_nms8250_disk.rom",
 ]
+PRODUCTION_MEDIA = ["rainbios-basic-blank.dsk"]
 
 LICENSE_FILES = [
     "LICENSE",
@@ -74,6 +75,13 @@ def main() -> int:
         if symbol.is_file():
             shutil.copy2(symbol, output / symbol.name)
 
+    for name in PRODUCTION_MEDIA:
+        source = arguments.build / "disks" / name
+        if not source.is_file():
+            print(f"error: missing media artifact: {source}", file=sys.stderr)
+            return 1
+        shutil.copy2(source, output / name)
+
     # Tracked texts: component manifest, notices, and license texts.
     for relative in LICENSE_FILES:
         source = arguments.root / relative
@@ -117,7 +125,7 @@ def main() -> int:
     # SHA256SUMS for the ROMs.
     checksums = output / "SHA256SUMS"
     with checksums.open("w", encoding="utf-8") as handle:
-        for name in PRODUCTION_ROMS:
+        for name in PRODUCTION_ROMS + PRODUCTION_MEDIA:
             digest = sha256(output / name)
             handle.write(f"{digest}  {name}\n")
 
@@ -139,7 +147,7 @@ def main() -> int:
     print(
         f"assembled release bundle {arguments.version} in {output}\n"
         f"  commit {commit}\n"
-        f"  {len(PRODUCTION_ROMS)} ROMs, "
+        f"  {len(PRODUCTION_ROMS)} ROMs, {len(PRODUCTION_MEDIA)} disk image, "
         f"{len(list(output.glob('*.sym')))} symbol files, "
         f"{len(LICENSE_FILES)} tracked texts"
     )

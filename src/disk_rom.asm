@@ -29,12 +29,16 @@ DISK_HAS_BDOS           equ 1
                 defs #4025-$,#ff
                 jp disk_fs_load                ; 4025 FS.LOAD
                 jp disk_fs_dir                 ; 4028 FS.DIR
-                jp disk_fs_write               ; 402B FS.WRITE
+                jp disk_fs_save                ; 402B FS.WRITE/REPLACE
                 defs #4030-$,#ff
 
                 jp disk_dos_init               ; 4030 $INIT
                 defs #4034-$,#ff
                 jp disk_dos_bios               ; 4034 $$BIOS
+                db "RBFS"                       ; 4037 PRIVATE FS ABI SIGNATURE
+                db 1                            ; 403B ABI VERSION
+                db %00000111                    ; 403C BOUNDED LOAD/MULTI/REPLACE
+                jp disk_fs_load_bounded         ; 403D FS.LOAD.BOUNDED
 disk_rom_init:
                 ld a,(DEVICE)
                 or a
@@ -111,6 +115,7 @@ disk_rom_init:
 
                 include "disk_driver.asm"
                 include "disk_fat12.asm"
+                include "disk_fat12_save.asm"
                 include "disk_bdos.asm"
 
 disk_no_choice:

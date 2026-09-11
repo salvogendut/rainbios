@@ -2,9 +2,10 @@
 
 # BBC BASIC media integration
 
-This document records the implemented sound, sprite, and MSX2 graphics slice
-of the embedded BBC BASIC payload. The work was tracked in issue #172 and
-spans two repositories:
+This document records the implemented sound, sprite, MSX2 graphics, and
+sequential program-storage slices
+of the embedded BBC BASIC payload. The media extensions were tracked in issues
+#172 and #184 and span two repositories:
 
 - `../bbcbasic-z80-msx` owns the independently written MSX adapter and its
   standalone emulator tests;
@@ -24,9 +25,30 @@ VRAM as well as BASIC-level `POINT` results.
 | Sprites | `*SPRITE`, `*SPRITEOFF`, `*SPRITEPAT`, `*SPRITECLR` in Screen 2 | MSX-specific OSCLI extension; 8x8 pattern definition only |
 | MSX1 graphics | Screens 0-3; Graphics II `CLG`, `GCOL`, `MOVE`, `DRAW`, supported `PLOT`, `POINT` | Existing cell-colour and raster-operation limits remain |
 | MSX2 graphics | Screens 5-8, full bitmap clear, high-VRAM pixel access | Screens 6/7 expose the left 256 pixels until the adapter accepts a 16-bit X coordinate; Screens 10-12 are outside scope |
+| Program storage | Cassette `SAVE`/`LOAD`; RainBIOS FAT12 `SAVE`/`LOAD`/`CHAIN` selected by `A:` | Tokenized programs only; drive A, fixed `.BBC` extension, 720 KiB F9 FAT12 media; random-access channels remain unsupported |
 
-Random-access file channels remain unsupported. Sequential cassette program
-`SAVE`/`LOAD` is a separate completed slice.
+Random-access file channels remain unsupported.
+
+## Program storage
+
+Ordinary names retain the standard MSX binary-cassette envelope. An explicit
+`A:` prefix asks RainBIOS to use the disk-system master published through
+`H.PHYD`, after verifying its private `RBFS` version/capabilities block. The
+accepted stem is one to eight ASCII letters, digits, `_`, or `-`; it is
+uppercased and stored with the fixed FAT extension `.BBC`.
+
+`SAVE "A:NAME"` creates or replaces a file. The writer supports multiple
+clusters and makes the new data and FAT chain durable before redirecting an
+existing directory entry; the old chain is reclaimed after the directory
+commit. `LOAD "A:NAME"` bounds the directory length against the interpreter's
+available program area before writing any destination byte. `CHAIN` uses the
+same LOAD path and immediately runs the recovered program.
+
+The payload advertises an exclusive RAM limit of `E6E0h`. RainBIOS keeps a
+256-byte gap at `E6E0h-E7DFh`, a 2,080-byte filesystem work area at
+`E7E0h-EFFFh`, and leaves `F000h-F2FFh` to the standalone disk system. The
+standalone payload on other firmware sees no RainBIOS signature and continues
+to route all names to cassette.
 
 ## Sound semantics
 
@@ -109,6 +131,8 @@ The companion project provides the primary implementation gates:
 | `test-msx-msx2-modes-1983` | Screen 5-8 VDP mode selection on the Omega V9958 model |
 | `test-msx-msx2-plot-1983` | distinct low/high-VRAM `PLOT`/`POINT` results in all four bitmap modes |
 | `test-msx-media-1983` | visibly rendered hardware sprite and continued execution after an indefinite `SOUND` |
+| `test-1983-embedded-basic-floppy` | source-built embedded payload saves `TEST.BBC`, restarts, chains it from the same persistent image, and reports write-protect/no-media errors |
+| `test-1983-disk-fswrite` | 2,500-byte multi-cluster replacement, bounded-load rejection before destination writes, identical FAT copies, one directory entry, exact replacement bytes, and old-chain reclamation |
 
 RainBIOS additionally rebuilds the pinned companion revision on every normal
 build, verifies its exact 16 KiB digest, and checks that the compressed `RBC1`

@@ -64,6 +64,7 @@ git diff --check
 | --- | --- |
 | `make test` | ROM layout, generated assets, ABI metadata, fixture construction, and report/state parsers |
 | `make omega` | Builds the deterministic 512 KiB Omega EEPROM image and its MSX2 component ROMs |
+| `make basic-blank-disk` | Builds the non-bootable 720 KiB FAT12 data disk distributed for embedded BASIC program storage |
 | `make check-bbcbasic` | Pinned BBC BASIC source revision and dependency identity |
 | `make check-bbcbasic-artifact` | Rebuilds and byte-verifies the pinned 16 KiB payload using the legacy assemblers |
 
@@ -181,13 +182,14 @@ make test-1983 \
 | `test-1983-embedded-basic-msx2-inkey` | Embedded BBC BASIC enters Screen 8, completes an `INKEY(100)` timeout with interrupts and keyboard scanning live, writes its completion marker, and returns to Screen 0 |
 | `test-1983-embedded-basic-graphics` | Internal payload graphics workload: the embedded BASIC runs the Graphics II program in the payload RAM slot (FC) with R0=02/R1=E0 and a rendered three-colour pattern |
 | `test-1983-embedded-basic-tape` | Internal payload cassette workload: the embedded BASIC LOAD/RUNs the tape fixture to PC=4400 in the same page-1 slot (F8) as the external path with non-blank VRAM |
+| `test-1983-embedded-basic-floppy` | Embedded BASIC saves `TEST.BBC` to a writable FAT12 disk, restarts, CHAINs the persisted program, proves LOAD is read-only, and checks explicit write-protect/no-media errors |
 | `test-1983-bbcbasic-scroll` | External scrolling text workload: the BBC BASIC PRINT loop completes (marker at F3C8), runs in the external slot (F4) on Screen 0 |
 | `test-1983-embedded-basic-scroll` | Internal payload scrolling text workload: same PRINT loop completes with the marker, payload RAM slot (FC), identical VRAM to external |
 | `test-1983-bbcbasic-edit` | External editing workload: Backspace/Delete corrections produce the 5Ah markers (external slot F4) |
 | `test-1983-embedded-basic-edit` | Internal payload editing workload: same Backspace/Delete corrections produce the 5Ah markers (payload RAM slot FC) |
 | `test-1983-fnkey` | POSIT cursor positioning, ERAFNK erase (CNSDFG=0, spaces), DSPFNK render (CNSDFG=FF, cursor to last row), FNKSB toggle, and TOTEXT text-mode refresh |
 | `test-1983-kbd` | CHSNS empty/data reporting, CHGET char read with BC/DE/HL preserved and GETPNT advance, KILBUF buffer reset, CHGCAP Caps-Lock lamp on with BC/DE/HL preserved (PPI port-C bit 6 read back), and CHGSND click on/off switch with BC/DE/HL preserved |
-| `check-release` | Reproducible release bundle: production ROMs, symbol files, component manifest, notices, and license texts under `build/release/`, with consistent `SHA256SUMS` and `RELEASE-NOTES.md` naming the source commit |
+| `check-release` | Reproducible release bundle: production ROMs, symbols, blank BASIC data disk, component manifest, notices, and license texts under `build/release/`, with consistent `SHA256SUMS` and `RELEASE-NOTES.md` naming the source commit |
 | `test_spdx_export` | SPDX 2.3 JSON document in the bundle: packages match the manifest, external components pin download locations, ROM files carry build-matching SHA-256 digests, and every element is described |
 | `test-1983-bbcbasic` | BBC BASIC menu launch, banner, prompt, and runtime state |
 | `test-1983-embedded-basic` | No-cartridge automatic launch of the embedded payload and clean top-of-screen banner/prompt |
@@ -218,6 +220,9 @@ make test-1983 \
 | `test-1983-disk-dskchg-no-media` | Media-change/DPB behavior without media |
 | `test-1983-disk-write-guard` | Write rejection without changing a writable host image |
 | `test-1983-disk-partial-error` | Exact completed-sector count on a later failure |
+| `test-1983-disk-fat12` | Three-cluster FAT12 FS.LOAD with exact source-pattern validation |
+| `test-1983-disk-fsdir` | BPB-derived root-directory enumeration and raw entry delivery |
+| `test-1983-disk-fswrite` | 2,500-byte multi-cluster create/replace, bounded-load rejection before writes, identical FAT copies, one directory entry, exact persisted bytes, and reclaimed old chain |
 | `test-1983-nms8250-disk-rom` | Production INIT, hook, and drive registration |
 | `test-1983-nms8250-disk-rom-slave` | Redistributable synthetic-master gate: preserved master hooks, appended legacy drive, initialized drive-C DPB, and safe 21-byte HIMEM/stack allocation |
 
@@ -340,6 +345,7 @@ Generated files remain under `build/` and are not committed:
 - `build/rainbios_omega.rom`, the two-bank 512 KiB Omega EEPROM image;
 - `build/rainbios_disk.rom` and its symbols;
 - `build/rainbios_nms8250_disk.rom` and its symbols;
+- `build/disks/rainbios-basic-blank.dsk`, the distributable FAT12 BASIC data disk;
 - `build/logo/` for converted artwork and palette previews;
 - `build/openmsx/` for machine definitions, reports, audio, and screenshots;
 - `build/1983/` for headless emulator screenshots;

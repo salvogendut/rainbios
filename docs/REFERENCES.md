@@ -305,7 +305,11 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 ## 2026-07-30 — BBC BASIC (Z80) from CP/Mish
 
 - Original interpreter author: R. T. Russell
-- Open-source source tree:
+- Original BBC BASIC for Z80 project page:
+  `http://www.rtrussell.co.uk/bbcbasic/z80basic.html`
+- Open-source source tree in David Given's CP/Mish project:
+  `https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic`
+- Exact source snapshot used by the port:
   `https://github.com/davidgiven/cpmish/tree/d70c643a5db24007ad6533f92b701fd714a99b7f/third_party/bbcbasic`
 - CP/Mish snapshot:
   `d70c643a5db24007ad6533f92b701fd714a99b7f`
@@ -332,7 +336,7 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 - MSX `POINT()` parsing revision:
   `6ddaa57afe51e45c0ebec88666c846b01841e05b`
 - Reviewed media/MSX2 revision:
-  `c9ed73ddd228f1dae8528f39ce590511ece7d00d`
+  `f9034e91a78e741e1cff513515e1ebd70f4f6c9c`
 - Official BBC BASIC keyword reference:
   `https://www.bbcbasic.co.uk/bbcbasic/mancpm/bbckey1.html`
 - Official BBC BASIC `SOUND` reference:
@@ -368,9 +372,9 @@ for console, keyboard, cursor, timing, graphics, PSG/controller, sprites,
 MSX2 bitmap access, and sequential cassette services. It places the unchanged
 core at `4400h-74C1h`, the independently written sprite/MSX2 adapters at
 `4248h-43F7h`, graphics/sound at `74C2h-7E45h`, cassette storage at
-`7E46h-7FE9h`, fixed and adapter state at `8000h-833Dh`, and user memory from
-`833Eh`. Its 16 KiB ROM has SHA-256
-`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`
+`7E46h-7FEFh`, fixed and adapter state at `8000h-833Dh`, and user memory from
+`833Eh-E6DFh`. Its 16 KiB ROM has SHA-256
+`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`
 and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`, requiring the
 console, keyboard, timing, graphics, cassette, and PSG capability bits.
 An openMSX smoke test exercises language, editing, error, clock, and timeout

@@ -164,7 +164,21 @@ may not persist format track data to the disk image.
 Three optional inter-slot-call entry points provide FAT12 filesystem operations
 on the same 720 KiB F9 media. The caller provides a 2080-byte work area in
 page-2/3 RAM; the service uses it for a 512-byte sector scratch buffer (offset
-22) and a 1536-byte resident FAT window (offset 534).
+32) and a 1536-byte resident FAT window (offset 544).
+
+The disk ROM publishes a private capability block for RainBIOS BASIC program
+storage:
+
+| Address | Contents |
+| --- | --- |
+| `4037h-403Ah` | ASCII `RBFS` signature |
+| `403Bh` | ABI version 1 |
+| `403Ch` | capabilities `07h`: bounded load, multi-cluster write, replacement |
+| `403Dh` | `JP` to bounded FS.LOAD |
+
+RainBIOS discovers the active disk-system slot from `H.PHYD`; it does not
+assume an Omega or NMS slot number. The private entry is called only after the
+full signature, version, and capability byte have been read through `RDSLT`.
 
 ### FS.LOAD (4025h)
 
@@ -179,6 +193,12 @@ Returns carry clear with A = 0 and BC = file size. Error codes: 12 (invalid
 parameter), 17 (file not found), 18 (not a regular file), 19 (malformed
 FAT/cluster), 20 (cluster chain too long). PHYDIO errors propagate with carry
 set.
+
+The private bounded entry at `403Dh` has the same register contract, with the
+destination capacity supplied in `(BC+0)` before the call. If the directory
+size exceeds that capacity, it returns carry set/A = 23 before writing any
+destination byte. Both load entries copy only the exact file length; the last
+partial sector cannot overwrite the byte following the program.
 
 ### FS.DIR (4028h)
 
@@ -203,9 +223,20 @@ propagates a PHYDIO error.
 | (BC+0) | File size (word) pre-loaded by caller into first two bytes of work area |
 
 Returns carry clear with A = 0 on success, or carry set with error code (12 =
-invalid parameter, 17 = no free slot or file already exists). PHYDIO errors
-propagate with carry set. Both FAT copies are updated, and the directory entry
-is committed with archive attribute (`0x20`).
+invalid parameter, 21 = insufficient free clusters, 22 = no free directory
+slot). PHYDIO errors propagate with carry set. Files may span the full FAT12
+cluster chain. A matching regular file is replaced rather than duplicated;
+empty files are supported. Before writing, the service validates the BPB as
+the exact 720 KiB F9 layout (512-byte sectors, two sectors per cluster, two
+three-sector FATs, 112 root entries, and 1,440 total sectors); incompatible or
+malformed media returns error 12 without being modified.
+
+Replacement is ordered to preserve the old reachable file until the new data
+and new FAT chain have been written. The directory entry is then redirected in
+one sector write, after which the old chain is reclaimed and both FAT copies
+are flushed again. A pre-directory failure leaves the old file reachable; a
+failure while reclaiming can leak clusters but does not orphan the new file.
+This is sector-transaction-oriented, not a power-loss journal.
 
 ## Error codes
 
@@ -213,11 +244,19 @@ is committed with archive attribute (`0x20`).
 | --- | --- |
 | 0 | A valid write was rejected as write-protected |
 | 2 | Drive A has no ready media |
+| 3 | The mounted medium is write-protected |
 | 4 | CRC, lost-data, or incomplete-sector data error |
 | 6 | Seek failed or timed out |
 | 8 | Physical sector was not found |
 | 12 | Drive, media, count, logical range, or buffer was invalid |
 | 16 | Read or controller completion timed out, or status was inconsistent |
+| 17 | FAT12 file was not found |
+| 18 | Matching entry is not a regular file |
+| 19 | FAT or cluster chain is malformed |
+| 20 | Cluster chain exceeds the media bound |
+| 21 | No free FAT12 clusters remain |
+| 22 | No root-directory slot remains |
+| 23 | File exceeds the bounded-load destination capacity |
 
 Writes are accepted and persisted to the medium. Error codes 10 and 14 are
 not produced because the component does not allocate memory.
@@ -247,7 +286,8 @@ The current component provides:
 - PHYDIO read and write through DSKIO (`4010h`);
 - DSKCHG (`4013h`) and GETDPB (`4016h`);
 - FAT12 filesystem services: FS.LOAD (`4025h`), FS.DIR (`4028h`), and
-  FS.WRITE (`402Bh`).
+  multi-cluster FS.WRITE/replace (`402Bh`), plus the private bounded-load
+  vector and versioned `RBFS` capability block.
   
 It does not provide drive B, controllers other than the NMS 8250
 memory-mapped WD2793, or a full DOS. The change state is

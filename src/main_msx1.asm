@@ -160,6 +160,14 @@ RTC_MODE_SAVE   equ ASSET_BUFFER+13
 RTC_24H_SAVE    equ ASSET_BUFFER+14
 RTC_TEXT_BUFFER equ ASSET_BUFFER+16
 RTC_TIME_TEXT   equ ASSET_BUFFER+32
+BASIC_FS_WORK   equ #e7e0                 ; 2080 BYTES, ENDS AT F000H
+BASIC_CASS_SAVE equ #400a                 ; PAYLOAD HEADER PRIVATE POINTERS
+BASIC_CASS_LOAD equ #400c
+BASIC_EXTERR    equ #400e
+BASIC_FS_LOAD   equ #403d                 ; RBFS BOUNDED LOAD VECTOR
+BASIC_FS_WRITE  equ #402b
+BASIC_FS_SIG    equ #4037
+FS_SLOT_OFFSET  equ 31
 
                 org #0000
 
@@ -303,6 +311,9 @@ RTC_TIME_TEXT   equ ASSET_BUFFER+32
                 jp subrom                       ; 015C SUBROM
                 jp extrom                       ; 015F EXTROM
                 jp chkslz                       ; 0162 CHKSLZ
+
+                db "RBFS"                       ; 0165 BASIC STORAGE SIGNATURE
+                jp basic_storage_dispatch       ; 0169 BASIC SAVE/LOAD BRIDGE
 
 ; Keep implementation code away from the fixed ABI area.
                 defs #0200-$,#ff
@@ -2204,6 +2215,8 @@ nextor_keyboard_layout_probe:
                 pop af
                 ret
 
+                include "basic_storage.asm"
+
                 IFDEF MSX2
 ; V9938 drawing commands continue asynchronously after their caller returns.
 ; Wait before INITXT reuses low VRAM for the name and pattern tables, otherwise
@@ -2835,7 +2848,7 @@ cold_boot_select_internal_payload_impl:
                 ld (PAYLOAD_SLOT),a
                 ld hl,#4010
                 ld (PAYLOAD_ENTRY),hl
-                ld hl,#f300
+                ld hl,#e6e0
                 ld (PAYLOAD_RAM_END),hl
                 scf
                 ret

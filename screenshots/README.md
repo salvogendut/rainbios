@@ -14,6 +14,11 @@ Early boot-menu milestone:
 
 ![RainBIOS boot menu in the 1983 emulator](Screenshot%20From%202026-07-30%2011-46-22.png)
 
+The embedded BASIC colourful sinc-surface example in the JavaScript build of
+1983:
+
+![RainBIOS embedded BASIC colourful sinc-surface demo in JavaScript 1983](<Javascript 1983 running RainBios' BBC BASIC demo.png>)
+
 ## Adding screenshots
 
 When adding an image, use a descriptive filename which identifies the

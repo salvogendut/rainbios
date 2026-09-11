@@ -66,6 +66,7 @@ captured and added by the repository owner and are licensed CC0-1.0.
 | --- | --- | --- |
 | `Screenshot From 2026-07-30 11-38-10.png` | 1280×1000 | `3cf8e6f5bfbd9bdfc3171cd35a7460f63cdff146768ffd5f28fffbf6622d7786` |
 | `Screenshot From 2026-07-30 11-46-22.png` | 1280×1000 | `11030bfc57eb5cca1857e10b4a07e87bf98b1651d3087f73bd79f45aa4d2db73` |
+| `Javascript 1983 running RainBios' BBC BASIC demo.png` | 1252×975 | `2c796281b768a75a325c5d771f1e52d9ca44b4c7769330f07aa3de8d2ad38dbb` |
 
 Each binary image has an adjacent SPDX `.license` file. The full CC0-1.0
 legal text is in `LICENSES/CC0-1.0.txt`.

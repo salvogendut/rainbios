@@ -13,7 +13,7 @@ VALID_PAYLOAD_ROM = ROOT / "build" / "cartridges" / "payload_valid.rom"
 
 
 BBC_BASIC_DESCRIPTOR = bytes.fromhex(
-    "52 42 50 31 01 10 01 3F 10 40 00 80 00 F3 02 D5"
+    "52 42 50 31 01 10 01 3F 10 40 00 80 E0 E6 02 02"
 )
 
 
@@ -21,7 +21,7 @@ class PayloadDescriptorTests(unittest.TestCase):
     def test_bbc_basic_p1_descriptor(self) -> None:
         descriptor = parse_descriptor(BBC_BASIC_DESCRIPTOR)
         self.assertEqual(descriptor.entry, 0x4010)
-        self.assertEqual((descriptor.ram_start, descriptor.ram_end), (0x8000, 0xF300))
+        self.assertEqual((descriptor.ram_start, descriptor.ram_end), (0x8000, 0xE6E0))
         self.assertEqual(descriptor.required_services, 0x3F)
 
     def test_descriptor_is_read_from_rom_tail(self) -> None:
