@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Create the deterministic FAT12 720 KiB F9 DSK used by the FS.LOAD probe.
+"""Create deterministic FAT12 720 KiB F9 DSK images.
 
-The image carries a single root-directory file (RAIN.BIN) over a three-cluster
-FAT chain whose byte pattern is a closed-form function of the file offset, so
-the 1983 cartridge can verify the loaded destination without a checksum block.
+The default test image carries RAIN.BIN over a three-cluster FAT chain. The
+``--blank`` variant is a formatted, non-bootable data disk suitable for saving
+programs from RainBIOS's embedded BASIC.
 """
 
 from __future__ import annotations
@@ -95,6 +95,21 @@ def make_fats() -> bytes:
     return fat
 
 
+def make_blank_image() -> bytes:
+    """Return an empty FAT12 data disk which RainBIOS will not try to boot."""
+    boot = bytearray(make_boot_sector())
+    boot[0:3] = b"\x00\x00\x00"
+    values = [0xFF0 | MEDIA, 0xFFF]
+    fat = fat12_pack(values)
+    fat += bytes(FAT_SIZE * SECTOR_SIZE - len(fat))
+    directory = bytes(DIR_SECTORS * SECTOR_SIZE)
+    data = bytes((0xE5,)) * (SECTORS - FIRST_DATA) * SECTOR_SIZE
+    image = bytes(boot) + fat + fat + directory + data
+    if len(image) != DISK_SIZE:
+        raise AssertionError(f"blank image is {len(image)} bytes")
+    return image
+
+
 def make_root_directory() -> bytes:
     image = bytearray(DIR_SECTORS * SECTOR_SIZE)
     entry = bytearray(32)
@@ -139,13 +154,23 @@ def make_image(boot_sector: bytes | None = None) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--boot-sector", type=pathlib.Path, default=None)
+    parser.add_argument(
+        "--blank",
+        action="store_true",
+        help="create an empty non-bootable FAT12 data disk",
+    )
     parser.add_argument("output", type=pathlib.Path)
     arguments = parser.parse_args()
+    if arguments.blank and arguments.boot_sector is not None:
+        parser.error("--blank and --boot-sector are mutually exclusive")
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    boot_arg = None
-    if arguments.boot_sector is not None:
-        boot_arg = arguments.boot_sector.read_bytes()
-    image = make_image(boot_arg)
+    if arguments.blank:
+        image = make_blank_image()
+    else:
+        boot_arg = None
+        if arguments.boot_sector is not None:
+            boot_arg = arguments.boot_sector.read_bytes()
+        image = make_image(boot_arg)
     assert len(image) == DISK_SIZE, len(image)
     arguments.output.write_bytes(image)
     print(f"wrote FAT12 disk image: {arguments.output} ({len(image)} bytes)")

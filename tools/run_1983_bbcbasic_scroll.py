@@ -39,7 +39,7 @@ def validate_state(text: str) -> dict[str, str]:
         raise ValueError("1983 emitted an invalid scroll state") from error
     if not (0x0200 <= pc < 0x1000 or 0x4000 <= pc < 0x8000):
         raise ValueError(f"PC {pc:04X} is outside RainBIOS/BBC BASIC code")
-    if not 0xF100 <= sp <= 0xF300:
+    if not 0xE4E0 <= sp <= 0xE6E0:
         raise ValueError(f"SP {sp:04X} is outside the BBC BASIC stack window")
     expected = {"slot": "F4", "vdp_r0": "00", "vdp_r1": "F0"}
     for key, value in expected.items():

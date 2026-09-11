@@ -16,6 +16,7 @@ PRODUCTION_ROMS = [
     "rainbios_omega.rom",
     "rainbios_nms8250_disk.rom",
 ]
+PRODUCTION_MEDIA = ["rainbios-basic-blank.dsk"]
 
 TRACKED_TEXTS = [
     "LICENSE",
@@ -51,6 +52,10 @@ def main() -> int:
         if not (bundle / name).is_file():
             errors.append(f"bundle missing ROM: {name}")
 
+    for name in PRODUCTION_MEDIA:
+        if not (bundle / name).is_file():
+            errors.append(f"bundle missing media: {name}")
+
     for relative in TRACKED_TEXTS:
         if not (bundle / relative).is_file():
             errors.append(f"bundle missing tracked text: {relative}")
@@ -60,7 +65,7 @@ def main() -> int:
     else:
         for line in (bundle / "SHA256SUMS").read_text().splitlines():
             digest, separator, name = line.partition("  ")
-            if not separator or name not in PRODUCTION_ROMS:
+            if not separator or name not in PRODUCTION_ROMS + PRODUCTION_MEDIA:
                 errors.append(f"unexpected SHA256SUMS line: {line!r}")
                 continue
             actual = sha256(bundle / name)
@@ -81,7 +86,8 @@ def main() -> int:
 
     print(
         f"validated RainBIOS release bundle {arguments.version}: "
-        f"{len(PRODUCTION_ROMS)} ROMs, {len(TRACKED_TEXTS)} tracked texts, "
+        f"{len(PRODUCTION_ROMS)} ROMs, {len(PRODUCTION_MEDIA)} disk image, "
+        f"{len(TRACKED_TEXTS)} tracked texts, "
         f"SHA256SUMS consistent"
     )
     return 0

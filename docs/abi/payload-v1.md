@@ -18,7 +18,7 @@ All 16-bit fields are little-endian:
 | `07h` | 1 | required firmware services | `3Fh` |
 | `08h` | 2 | entry address | `4010h` |
 | `0Ah` | 2 | first payload RAM address | `8000h` |
-| `0Ch` | 2 | exclusive payload RAM limit | `F300h` |
+| `0Ch` | 2 | exclusive payload RAM limit | `E6E0h` |
 | `0Eh` | 1 | contiguous 16 KiB RAM pages required | `02h` |
 | `0Fh` | 1 | checksum | additive sum of all 16 bytes is zero |
 
@@ -37,6 +37,13 @@ driven through the existing VRAM calls (bit 3). The MSX2 bitmap screens
 (`MODE 5`-`8`) call the published main-BIOS `CHGMOD` entry and SUB-ROM 16-bit
 VRAM entries after checking `MSXVER`; the payload therefore still runs on an
 MSX1, where those mode requests fail explicitly without changing the screen.
+
+For the pinned BASIC payload, the six otherwise reserved cartridge-header
+bytes at `400Ah-400Fh` contain little-endian pointers to its cassette SAVE,
+cassette LOAD, and extended-error routines. This is a private companion
+contract, not part of payload descriptor v1. The payload consults RainBIOS's
+`RBFS` signature at `0165h` before entering the private dispatcher at `0169h`;
+standalone use on other firmware ignores these pointers and stays on cassette.
 
 The descriptor describes requirements; successful validation authorizes the
 menu entry, not immediate cartridge startup. RainBIOS also verifies that pages
@@ -60,6 +67,11 @@ Selecting option 1 produces this non-returning transfer:
 RainBIOS pushes the descriptor entry temporarily and uses `RET` only as an
 indirect jump, leaving `SP=F380h` at the target. There is no payload return
 address: a version-1 entry must not return. Flags are unspecified.
+
+The interpreter's subsequent `OSINIT` changes its own `HIMEM`/stack ceiling to
+the descriptor's `E6E0h` RAM limit. RainBIOS reserves the bytes above that
+limit for the FAT12 bridge and disk-system state; they are not BASIC program
+memory.
 
 The entry contract is gated end to end by `test-openmsx-payload-state`, which
 breaks at the descriptor entry and verifies `SP=F380h`, A/BC/DE/HL/IX/IY zero,

@@ -14,7 +14,7 @@ from tools.run_1983_bbcbasic_tape import (
 
 
 VALID_STATE = (
-    "state frame=241 pc=13F5 sp=F2F6 slot=F4 subslot=00 "
+    "state frame=241 pc=13F5 sp=E6D6 slot=F4 subslot=00 "
     "mapper=00,00,00,00 vram_nonzero=9885 vdp_r0=00 vdp_r1=F0\n"
 )
 
@@ -38,7 +38,7 @@ class Emulator1983BbcBasicTests(unittest.TestCase):
 
     def test_graphics_program_state_is_accepted(self) -> None:
         state = (
-            "state frame=7201 pc=5114 sp=F2E0 slot=F4 subslot=00 "
+            "state frame=7201 pc=5114 sp=E6C0 slot=F4 subslot=00 "
             "mapper=00,00,00,00 vram_nonzero=7000 vdp_r0=02 vdp_r1=E0\n"
         )
         fields = validate_graphics_state(state)
@@ -46,7 +46,7 @@ class Emulator1983BbcBasicTests(unittest.TestCase):
 
     def test_graphics_program_must_remain_in_graphics_mode(self) -> None:
         state = (
-            "state frame=7201 pc=5114 sp=F2E0 slot=F4 subslot=00 "
+            "state frame=7201 pc=5114 sp=E6C0 slot=F4 subslot=00 "
             "mapper=00,00,00,00 vram_nonzero=7000 vdp_r0=00 vdp_r1=F0\n"
         )
         with self.assertRaisesRegex(ValueError, "vdp_r0"):
@@ -54,7 +54,7 @@ class Emulator1983BbcBasicTests(unittest.TestCase):
 
     def test_tape_program_success_state_is_accepted(self) -> None:
         state = (
-            "state frame=1801 pc=4400 sp=F200 slot=F8 subslot=00 "
+            "state frame=1801 pc=4400 sp=E600 slot=F8 subslot=00 "
             "mapper=00,00,00,00 vram_nonzero=9553 vdp_r0=00 vdp_r1=F0\n"
         )
         self.assertEqual(validate_tape_state(state)["slot"], "F8")

@@ -21,6 +21,22 @@ Re-entering a numbered line replaces it. Entering only its line number deletes
 it. In native 1983, Ctrl+V pastes host clipboard text into the emulated
 keyboard queue.
 
+## Saving a program to floppy
+
+Mount `build/disks/rainbios-basic-blank.dsk` as drive A in read/write mode
+(create it with `make basic-blank-disk`). After entering any example, use:
+
+```text
+SAVE "A:DEMO"
+NEW
+LOAD "A:DEMO"
+LIST
+```
+
+`CHAIN "A:DEMO"` combines LOAD and RUN. The explicit `A:` prefix selects the
+floppy; without it, SAVE and LOAD continue to use cassette. Disk stems contain
+one to eight letters, digits, `_`, or `-`; the on-disk file is `DEMO.BBC`.
+
 ## Text and scrolling
 
 This prints enough lines to force the Screen 0 console to scroll:

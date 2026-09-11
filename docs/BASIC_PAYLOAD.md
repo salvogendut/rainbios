@@ -82,11 +82,11 @@ payload with interpreter state at `8000h` plausible.
 The current build places its cartridge veneer at `4000h`, independently written
 console adapter at `4013h-4247h`, sprite and MSX2 bitmap adapters in the
 `4248h-43F7h` ROM gap, unchanged core at `4400h-74C1h`, graphics adapter at
-`74C2h-7E45h`, cassette adapter at `7E46h-7FE9h`, fixed state at
-`8000h-833Dh`, and user memory from `833Eh`. Its deterministic 16 KiB ROM ends
+`74C2h-7E45h`, storage adapter at `7E46h-7FEFh`, fixed state at
+`8000h-833Dh`, and user memory from `833Eh-E6DFh`. Its deterministic 16 KiB ROM ends
 with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
-`c9ed73ddd228f1dae8528f39ce590511ece7d00d`, and has SHA-256
-`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`.
+`dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33`, and has SHA-256
+`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
 and timed input with zero writes to the selected cartridge window. The 1983
@@ -108,6 +108,15 @@ against a standard CAS fixture in 1983; `SAVE` returns successfully in
 openMSX, whose recorded WAV is decoded back to the expected type/name header.
 Random-access channels remain unsupported.
 
+The sequential disk extension keeps the language core unchanged. The MSX
+adapter detects RainBIOS's private page-0 signature and forwards `A:` names to
+its dispatcher; other names still enter the adapter's cassette routines.
+RainBIOS validates the active disk ROM's versioned capability block, converts
+one-to-eight-character names to uppercase FAT `NAME____BBC`, and provides a
+bounded load plus multi-cluster create/replace. The payload header publishes
+private cassette-SAVE, cassette-LOAD, and extended-error pointers so RainBIOS
+does not depend on hard-coded linked addresses.
+
 SE BASIC IV remains useful open-source prior art and a possible future
 alternative payload. Its adjacent upstream checkout remains unmodified; no
 SE BASIC fork or source change is part of this integration.
@@ -119,7 +128,8 @@ The BBC BASIC project owns:
 - the interpreter and its retained upstream license;
 - the standalone cartridge startup adapter;
 - console, keyboard, cursor, centisecond-clock, Graphics II, and sequential
-  cassette program services, plus sound, sprite, and MSX2 bitmap adapters;
+  cassette program services, plus sound, sprite, MSX2 bitmap, and RainBIOS
+  floppy-dispatch adapters;
 - a replacement for the CP/M-specific file/operating-system layer;
 - its writable memory map and minimum-RAM requirements;
 - standalone payload builds and interpreter smoke tests.
@@ -130,6 +140,8 @@ RainBIOS owns:
 - RAM and slot state supplied to the launcher;
 - version and capability checks;
 - the page-1 transfer and defined non-returning entry contract;
+- the private FAT12 dispatcher, active-disk discovery, bounded load, and
+  create/replace services;
 - the menu state shown when no compatible payload is present.
 
 ## Launch sequence

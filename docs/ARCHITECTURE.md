@@ -131,9 +131,11 @@ changed, unchanged, and unknown states; `GETDPB` publishes the fixed F9 DPB
 without touching the controller. `CHOICE` (4019h) returns one format choice;
 `DSKFMT` (401Ch) formats all 80 tracks via WD2793 Format Track (F0h).
 Filesystem services provide FAT12 `FS.LOAD` (4025h), `FS.DIR` (4028h), and
-`FS.WRITE` (402Bh). Integration probes cover reads, writes, no media, partial
-record-not-found, write-protect rejection, DSKCHG/GETDPB, DSKFMT, and the
-three FAT12 filesystem services.
+multi-cluster create/replace through `FS.WRITE` (402Bh). A private versioned
+capability block adds bounded LOAD for the embedded BASIC bridge. Integration
+probes cover reads, persistent replacement, exact-length and bounded loads,
+no media, partial record-not-found, write-protect rejection, DSKCHG/GETDPB,
+DSKFMT, and the three public FAT12 filesystem services.
 See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
  M2A publishes the eight TMS9918 register shadows and current screen/table work
@@ -271,9 +273,9 @@ The generated logo and menu tables are stored as ZX0 streams and expanded one
 at a time into transient `C000h-D7FFh` RAM before VRAM upload. The public 2 KiB
 font remains uncompressed because `CGTABL` points directly at it. The simpler
 CC0 boot logo reduces its three compressed tables from 3,922 bytes to 917
-bytes. The MSX1 lower bank currently ends at `38A9h`, leaving 1,879 bytes
-before the hard `4000h` boundary; the larger MSX2 build ends at `3B91h`,
-leaving 1,135 bytes.
+bytes. The MSX1 lower bank currently retains more than 1 KiB before the hard
+`4000h` boundary. The larger MSX2 build is gated at `3E00h`, retaining at
+least 512 bytes after adding the BASIC storage bridge.
 
 ## Embedded BASIC payload
 
@@ -287,13 +289,15 @@ usable as a standalone cartridge ROM. The imported interpreter source retains
 its Zlib notice, while the independently written MSX platform code is
 BSD-3-Clause.
 
-The current port profile keeps the language core at `4400h-74C1h`, Graphics II
-and platform services at `74C2h-7B75h`, and sequential cassette services at
-`7B76h-7D19h`. Aligned state occupies `8000h-8339h`, and user memory begins at
-`833Ah`. In the expanded RAM image its descriptor remains at `7FF0h-7FFFh`.
+The current port profile keeps the language core at `4400h-74C1h`, graphics
+and media services at `74C2h-7E45h`, and cassette/RainBIOS storage dispatch at
+`7E46h-7FEFh`. Aligned state occupies `8000h-833Dh`; user memory spans
+`833Eh-E6DFh`. In the expanded RAM image its descriptor remains at
+`7FF0h-7FFFh`.
 Guarded openMSX tests record zero writes to the ROM bank and verify the exact
 header/descriptor after expansion; 1983 independently renders the prompt,
-multicolour graphics frame, and cassette-loaded program. Combined-image release packaging must
+multicolour graphics frame, cassette-loaded program, and restart-persistent
+FAT12 program SAVE/CHAIN. Combined-image release packaging must
 preserve all component notices, and the non-transferable `BBC BASIC` branding
 permission must be resolved by permission or rename. See
 `docs/BASIC_PAYLOAD.md` and `docs/EMBEDDED_BASIC.md`.
@@ -339,7 +343,7 @@ The runnable target matrix and emulator setup are maintained in
 - Disk probes cover safe no-device returns, extension bootstrap context,
   production hook/drive registration, WD2793 read/write transfers, controller
   errors, write-protect rejection, DSKFMT formatting, and FAT12 FS.LOAD,
-  FS.DIR, and FS.WRITE filesystem services in 1983.
+  FS.DIR, multi-cluster FS.WRITE/replace, and bounded FS.LOAD services in 1983.
 - Positive and corrupt descriptor probes check menu state, fail-closed
   handling, payload mapping, and the exact non-returning entry contract.
 - Hardware smoke tests will cover at least one MSX1 and one MSX2 machine before

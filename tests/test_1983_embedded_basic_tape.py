@@ -10,7 +10,7 @@ from tools.run_1983_embedded_basic_tape import validate_state
 class EmbeddedBasicTapeTests(unittest.TestCase):
     def test_tape_success_state_is_accepted(self) -> None:
         state = (
-            "state frame=3001 pc=4400 sp=F2D6 slot=F8 subslot=00 "
+            "state frame=3001 pc=4400 sp=E6B6 slot=F8 subslot=00 "
             "mapper=00,00,00,00 cycles=0 instructions=0 vram_nonzero=9170 "
             "vdp_r0=00 vdp_r1=F0\n"
         )
@@ -18,7 +18,7 @@ class EmbeddedBasicTapeTests(unittest.TestCase):
 
     def test_success_pc_must_be_4400(self) -> None:
         state = (
-            "state frame=3001 pc=43FE sp=F2D6 slot=F8 subslot=00 "
+            "state frame=3001 pc=43FE sp=E6B6 slot=F8 subslot=00 "
             "mapper=00,00,00,00 cycles=0 instructions=0 vram_nonzero=9170 "
             "vdp_r0=00 vdp_r1=F0\n"
         )
@@ -27,7 +27,7 @@ class EmbeddedBasicTapeTests(unittest.TestCase):
 
     def test_blank_vram_is_rejected(self) -> None:
         state = (
-            "state frame=3001 pc=4400 sp=F2D6 slot=F8 subslot=00 "
+            "state frame=3001 pc=4400 sp=E6B6 slot=F8 subslot=00 "
             "mapper=00,00,00,00 cycles=0 instructions=0 vram_nonzero=0 "
             "vdp_r0=00 vdp_r1=F0\n"
         )
@@ -36,7 +36,7 @@ class EmbeddedBasicTapeTests(unittest.TestCase):
 
     def test_slot_must_match_the_external_path(self) -> None:
         state = (
-            "state frame=3001 pc=4400 sp=F2D6 slot=FC subslot=00 "
+            "state frame=3001 pc=4400 sp=E6B6 slot=FC subslot=00 "
             "mapper=00,00,00,00 cycles=0 instructions=0 vram_nonzero=9170 "
             "vdp_r0=00 vdp_r1=F0\n"
         )

@@ -31,7 +31,8 @@ development and controlled tests. See the [roadmap](docs/ROADMAP.md) and
   `BOOT FLOPPY`, and `BOOT IDE OR SD` choices cover the built-in interpreter,
   an MSX-DOS-style drive-A boot sector, Sunrise IDE, and SD Mapper V2 media;
 - an optional NMS 8250 WD2793 disk extension with PHYDIO read/write, DSKCHG,
-  GETDPB, CHOICE/DSKFMT formatting, and FAT12 FS.LOAD/FS.DIR/FS.WRITE services;
+  GETDPB, CHOICE/DSKFMT formatting, and bounded FAT12
+  FS.LOAD/FS.DIR/FS.WRITE/replace services;
 - a deterministic 512 KiB Omega image with duplicated JP1 banks laid out in
   physical-slot order;
 - reproducible release bundles with ROMs, symbols, SHA-256 sums, a provenance
@@ -123,7 +124,8 @@ make check-release
 ```
 
 The versioned bundle is written below `build/release/` and contains all public
-ROMs, symbol files, checksums, provenance metadata, and the SPDX SBOM.
+ROMs, symbol files, a blank BASIC data disk, checksums, provenance metadata,
+and the SPDX SBOM.
 
 ## Quick validation
 
@@ -137,6 +139,10 @@ make test-1983
 The complete emulator matrix, optional local inputs, variable overrides, and
 generated report locations are documented in [docs/TESTING.md](docs/TESTING.md).
 Selected emulator images are collected under [screenshots/](screenshots/).
+
+The colourful sinc-surface example running in the JavaScript build of 1983:
+
+![RainBIOS embedded BASIC colourful sinc-surface demo in JavaScript 1983](<screenshots/Javascript 1983 running RainBios' BBC BASIC demo.png>)
 
 ## Components
 
@@ -206,6 +212,46 @@ implementation status and remaining work are tracked under M7 in
 
 In the menu, option 2 is labelled `BOOT FLOPPY` because it specifically
 re-enters the drive-A disk-ROM hook. It does not imply that MSX-DOS is bundled.
+
+When the active RainBIOS disk ROM owns drive A, embedded BASIC can store
+tokenized programs directly on a writable 720 KiB FAT12 disk:
+
+```basic
+SAVE "A:DEMO"
+LOAD "A:DEMO"
+CHAIN "A:DEMO"
+```
+
+The explicit `A:` prefix selects floppy storage; unprefixed names continue to
+use cassette storage. Names contain one to eight letters, digits, `_`, or `-`,
+and are stored case-insensitively with a fixed `.BBC` extension. `SAVE`
+creates or safely replaces a multi-cluster file, while `LOAD` refuses an
+oversize file before changing BASIC program memory.
+
+Create the ready-to-use, non-bootable data disk with:
+
+```sh
+make basic-blank-disk
+```
+
+The output is `build/disks/rainbios-basic-blank.dsk`; it is also included in
+release bundles. Mount it as drive A in read/write mode. Its deliberately
+non-bootable sector zero lets RainBIOS fall through to embedded BASIC while
+retaining a valid FAT12 BPB and empty root directory.
+
+For example, launch native 1983 with a writable copy mounted as drive A:
+
+```sh
+../1983/1983 --models ../1983/1983-models.conf \
+  --model nms8250 --region pal \
+  --bios build/rainbios_msx1.rom \
+  --disk-rom build/rainbios_nms8250_disk.rom \
+  --disk-a build/disks/rainbios-basic-blank.dsk \
+  --floppy-mode read-write
+```
+
+1983 writes changes back to that image, so copy the distributed blank first
+when you want an untouched reusable template.
 
 RainBIOS does not bundle an operating system. Users can supply the DOS of their
 choice on their own media; [Nextor](https://github.com/Konamiman/Nextor) is a

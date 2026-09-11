@@ -16,13 +16,13 @@
 ;   19 malformed FAT/cluster, 20 cluster chain too long).
 ;   IX and IY are clobbered; the other input registers are not preserved.
 ;   disk_phydio preserves IX, so the work-area base survives every call.
-
 FS_BYTES_PER_SECTOR equ 11
 FS_SECTORS_PER_CLUST equ 13
 FS_RESERVED         equ 14
 FS_FAT_COUNT        equ 16
 FS_ROOT_ENTRIES     equ 17
 FS_TOTAL_SECTORS    equ 19
+FS_MEDIA            equ 21
 FS_FAT_SIZE         equ 22
 
 FS_ATTR             equ 11
@@ -36,8 +36,8 @@ FS_FILE_SIZE        equ 28
 FS_DIR_ENTRY        equ 32
 
 ; Work-area layout (relative to the caller-provided base IX). All locals are
-; 8-bit indexed, so FS_DIR sits at byte 22 and the resident FAT slice of three
-; sectors fills the remaining 1536 bytes (22 + 512 + 1536 = 2070 <= 2080).
+; 8-bit indexed. The 32-byte local block, 512-byte sector scratch, and
+; three-sector resident FAT exactly fill the caller's 2080-byte work area.
 FS_LOCAL            equ 0
 FS_L_FIRSTDIR       equ FS_LOCAL+0    ; word
 FS_L_FIRSTDATA      equ FS_LOCAL+2    ; word
@@ -52,10 +52,25 @@ FS_L_COUNT          equ FS_LOCAL+16   ; word
 FS_L_CURDIR         equ FS_LOCAL+18   ; word
 FS_L_REMAIN         equ FS_LOCAL+20   ; byte
 FS_L_FATSIZ         equ FS_LOCAL+21   ; byte
-FS_DIR              equ FS_LOCAL+22   ; 512-byte sector scratch
-FS_FAT              equ FS_LOCAL+534  ; 1536-byte resident FAT (3 sectors)
+FS_L_LIMIT          equ FS_LOCAL+22   ; word: bounded-load capacity
+FS_L_LEFT           equ FS_LOCAL+24   ; word: bytes still to transfer
+FS_L_FATCNT         equ FS_LOCAL+26   ; byte
+FS_L_FIRSTNEW       equ FS_LOCAL+27   ; word: first new write cluster
+FS_L_OLD            equ FS_LOCAL+29   ; word: replaced file's first cluster
+FS_L_FLAGS          equ FS_LOCAL+31   ; byte
+FS_DIR              equ FS_LOCAL+32   ; 512-byte sector scratch
+FS_FAT              equ FS_LOCAL+544  ; 1536-byte resident FAT (3 sectors)
 
 disk_fs_load:
+                ld iy,0
+                jr disk_fs_load_setup
+
+; Private bounded variant advertised by the RBFS descriptor at 4037h.
+; Inputs match FS.LOAD, with the maximum destination byte count pre-loaded at
+; work-area offsets 0-1. Error 23 means that the file does not fit.
+disk_fs_load_bounded:
+                ld iy,1
+disk_fs_load_setup:
                 or a
                 jp nz,disk_fs_error_12
                 ld a,b
@@ -70,6 +85,21 @@ disk_fs_load:
                 ld (ix+FS_L_NAME+1),h
                 ld (ix+FS_L_DEST),e
                 ld (ix+FS_L_DEST+1),d
+                push iy
+                pop bc
+                ld a,c
+                or a
+                jr z,disk_fs_load_unbounded
+                ld e,(ix+0)
+                ld d,(ix+1)
+                ld (ix+FS_L_LIMIT),e
+                ld (ix+FS_L_LIMIT+1),d
+                jr disk_fs_load_limit_ready
+disk_fs_load_unbounded:
+                ld a,#ff
+                ld (ix+FS_L_LIMIT),a
+                ld (ix+FS_L_LIMIT+1),a
+disk_fs_load_limit_ready:
 
                 ; Load the boot sector (logical sector 0) to parse the BPB.
                 push ix
@@ -245,6 +275,25 @@ disk_fs_found:
                 inc hl
                 ld a,(hl)
                 ld (ix+FS_L_SIZE+1),a
+                inc hl
+                ld a,(hl)
+                inc hl
+                or (hl)
+                jp nz,disk_fs_error_23
+
+                ; Reject the file before any destination write if its exact
+                ; directory size exceeds the caller's bounded capacity.
+                ld l,(ix+FS_L_SIZE)
+                ld h,(ix+FS_L_SIZE+1)
+                ld e,(ix+FS_L_LIMIT)
+                ld d,(ix+FS_L_LIMIT+1)
+                or a
+                sbc hl,de
+                jp nc,disk_fs_load_limit_equal
+                jr disk_fs_load_limit_ok
+disk_fs_load_limit_equal:
+                jp nz,disk_fs_error_23
+disk_fs_load_limit_ok:
 
                 ; An empty file needs no cluster validation.
                 ld l,(ix+FS_L_SIZE)
@@ -275,6 +324,10 @@ disk_fs_cluster_low:
                 cp 2
                 jp c,disk_fs_error_19
 disk_fs_cluster_ok:
+                ld l,(ix+FS_L_SIZE)
+                ld h,(ix+FS_L_SIZE+1)
+                ld (ix+FS_L_LEFT),l
+                ld (ix+FS_L_LEFT+1),h
                 xor a
                 ld (ix+FS_L_COUNT),a
                 ld (ix+FS_L_COUNT+1),a
@@ -289,7 +342,7 @@ disk_fs_read_loop:
                 jp nz,disk_fs_error_20
                 ld a,l
                 cp #f8
-                jr nc,disk_fs_done
+                jp nc,disk_fs_error_19
 
 disk_fs_read_cluster:
                 ; LBA = first data + (cluster - 2) * sectors-per-cluster.
@@ -316,33 +369,103 @@ disk_fs_spc_loop:
                 ld h,(ix+FS_L_FIRSTDATA+1)
                 ld l,a
                 add hl,de                        ; HL = LBA
-                push hl
-                pop de
+                ld (ix+FS_L_CURDIR),l
+                ld (ix+FS_L_CURDIR+1),h          ; current cluster LBA
                 ld a,(ix+FS_L_SPC)
-                ld b,a
-                xor a
-                ld c,DISK_MEDIA
+                ld (ix+FS_L_REMAIN),a
+
+disk_fs_read_sector:
+                ld a,(ix+FS_L_LEFT)
+                ld l,a
+                ld a,(ix+FS_L_LEFT+1)
+                or l
+                jp z,disk_fs_read_file_done
+
+                ; Full sectors go directly to the destination. The final
+                ; partial sector is staged in FS_DIR and copied exactly, so a
+                ; bounded load never writes beyond the advertised file size.
+                ld a,(ix+FS_L_LEFT+1)
+                cp 2
+                jr c,disk_fs_read_partial
                 ld l,(ix+FS_L_DEST)
                 ld h,(ix+FS_L_DEST+1)
+                ld e,(ix+FS_L_CURDIR)
+                ld d,(ix+FS_L_CURDIR+1)
+                ld b,1
+                ld c,DISK_MEDIA
+                xor a
                 call disk_phydio
                 ret c
-
-                ; Advance the destination by SPC * 512 bytes.
-                ld a,(ix+FS_L_SPC)
-                ld l,0
-                ld h,a
-                add hl,hl                        ; HL = SPC * 512
-                push hl
-                pop de
-                ld a,(ix+FS_L_DEST)
+                ld l,(ix+FS_L_DEST)
                 ld h,(ix+FS_L_DEST+1)
-                ld l,a
-                add hl,de
+                inc h
+                inc h
                 ld (ix+FS_L_DEST),l
                 ld (ix+FS_L_DEST+1),h
+                ld a,(ix+FS_L_LEFT+1)
+                sub 2
+                ld (ix+FS_L_LEFT+1),a
+                jr disk_fs_read_sector_advance
 
-                ; Follow the FAT12 chain with a bounded hop count.
+disk_fs_read_partial:
+                push ix
+                pop hl
+                ld de,FS_DIR
+                add hl,de
+                ld e,(ix+FS_L_CURDIR)
+                ld d,(ix+FS_L_CURDIR+1)
+                ld b,1
+                ld c,DISK_MEDIA
+                xor a
+                call disk_phydio
+                ret c
+                push ix
+                pop hl
+                ld de,FS_DIR
+                add hl,de
+                ld e,(ix+FS_L_DEST)
+                ld d,(ix+FS_L_DEST+1)
+                ld c,(ix+FS_L_LEFT)
+                ld b,(ix+FS_L_LEFT+1)
+                ldir
+                xor a
+                ld (ix+FS_L_LEFT),a
+                ld (ix+FS_L_LEFT+1),a
+
+disk_fs_read_sector_advance:
+                ld l,(ix+FS_L_CURDIR)
+                ld h,(ix+FS_L_CURDIR+1)
+                inc hl
+                ld (ix+FS_L_CURDIR),l
+                ld (ix+FS_L_CURDIR+1),h
+                dec (ix+FS_L_REMAIN)
+                jp nz,disk_fs_read_sector
+                ld a,(ix+FS_L_LEFT)
+                ld l,a
+                ld a,(ix+FS_L_LEFT+1)
+                or l
+                jp z,disk_fs_read_file_done
+
+                ; The directory size requires another cluster. Follow and
+                ; validate the FAT12 chain with a bounded hop count.
                 call disk_fat12_next
+                ld l,(ix+FS_L_CLUSTER)
+                ld h,(ix+FS_L_CLUSTER+1)
+                ld a,h
+                cp #0f
+                jr c,disk_fs_read_next_low
+                jp nz,disk_fs_error_19
+                ld a,l
+                cp #f8
+                jp nc,disk_fs_error_19
+disk_fs_read_next_low:
+                ld a,h
+                or a
+                jr nz,disk_fs_read_next_ok
+                ld a,l
+                cp 2
+                jp c,disk_fs_error_19
+disk_fs_read_next_ok:
                 ld l,(ix+FS_L_COUNT)
                 ld h,(ix+FS_L_COUNT+1)
                 inc hl
@@ -350,12 +473,25 @@ disk_fs_spc_loop:
                 ld (ix+FS_L_COUNT+1),h
                 ld a,h
                 cp 2
-                jr c,disk_fs_read_loop
-                jr nz,disk_fs_error_20
+                jp c,disk_fs_read_loop
+                jp nz,disk_fs_error_20
                 ld a,l
                 cp #ca                         ; DISK_CLUSTERS + 1
-                jr c,disk_fs_read_loop
+                jp c,disk_fs_read_loop
                 jp disk_fs_error_20
+
+disk_fs_read_file_done:
+                ; The FAT must end where the exact directory size ends.
+                call disk_fat12_next
+                ld l,(ix+FS_L_CLUSTER)
+                ld h,(ix+FS_L_CLUSTER+1)
+                ld a,h
+                cp #0f
+                jp c,disk_fs_error_19
+                jp nz,disk_fs_error_19
+                ld a,l
+                cp #f8
+                jp c,disk_fs_error_19
 
 disk_fs_done:
                 ld l,(ix+FS_L_SIZE)
@@ -434,6 +570,10 @@ disk_fs_error_19:
                 ret
 disk_fs_error_20:
                 ld a,20
+                scf
+                ret
+disk_fs_error_23:
+                ld a,23
                 scf
                 ret
 ; FS.DIR (4028h) -- copy raw 32-byte FAT12 root-directory entries into a
@@ -762,383 +902,4 @@ fat12_read_done:
                 ld b, h
                 ld c, l
                 or a
-                ret
-
-
-; FS.WRITE (402Bh) -- create a new file on a FAT12 disk.
-;
-;  A   drive (0)
-;  HL  filename (11 bytes, space-padded)
-;  DE  source buffer (page-2/3 RAM)
-;  BC  work area, 2080 bytes (page-2/3 RAM)
-;  (IX+0/1) = file size (caller pre-loads into first two bytes of work area)
-;
-; Returns carry clear, A=0 on success; carry set with error code on failure.
-; Clobbers IX, IY.
-
-disk_fs_write:
-                or a
-                jp nz, disk_fs_error_12
-                ld a, h
-                cp #80
-                jp c, disk_fs_error_12
-                ld a, d
-                cp #80
-                jp c, disk_fs_error_12
-                ld a, b
-                cp #80
-                jp c, disk_fs_error_12
-                push bc
-                pop ix
-
-                ; Save call parameters.
-                ld (ix+FS_L_NAME), l
-                ld (ix+FS_L_NAME+1), h
-                ld (ix+FS_L_DEST), e
-                ld (ix+FS_L_DEST+1), d
-
-                ; File size: read from work-area offset 0 (pre-loaded by caller).
-                ld e, (ix+0)
-                ld d, (ix+1)
-                ld (ix+FS_L_SIZE), e
-                ld (ix+FS_L_SIZE+1), d
-
-                ; --- Parse BPB: read boot sector LBA 0 ---
-                push ix
-                pop hl
-                ld de, FS_DIR
-                add hl, de
-                xor a
-                ld b, 1
-                ld c, DISK_MEDIA
-                ld de, 0
-                call disk_phydio
-                ret c
-
-                ; Sectors per cluster.
-                ld a, (ix+FS_DIR+FS_SECTORS_PER_CLUST)
-                ld (ix+FS_L_SPC), a
-
-                ; Save FAT count before FS_DIR is clobbered by dir scans.
-                ld a, (ix+FS_DIR+FS_FAT_COUNT)
-                ld (ix+FS_L_COUNT), a
-
-                ; First FAT LBA.
-                ld e, (ix+FS_DIR+FS_RESERVED)
-                ld d, (ix+FS_DIR+FS_RESERVED+1)
-                ld (ix+FS_L_FIRSTFAT), e
-                ld (ix+FS_L_FIRSTFAT+1), d
-
-                ; FAT size clamped to 3 sectors.
-                ld l, (ix+FS_DIR+FS_FAT_SIZE)
-                ld h, (ix+FS_DIR+FS_FAT_SIZE+1)
-                ld a, l
-                cp 3
-                jr c, fsw_fs_ok
-                ld a, 3
-fsw_fs_ok:
-                ld (ix+FS_L_FATSIZ), a
-                ld e, a
-                ld d, 0
-
-                ; First dir LBA = first FAT + FATCNT * FATSZ.
-                ld b, (ix+FS_DIR+FS_FAT_COUNT)
-                ld l, (ix+FS_L_FIRSTFAT)
-                ld h, (ix+FS_L_FIRSTFAT+1)
-fsw_fd_lp:
-                add hl, de
-                djnz fsw_fd_lp
-                ld (ix+FS_L_CURDIR), l
-                ld (ix+FS_L_CURDIR+1), h
-
-                ; Root directory size in sectors.
-                ld l, (ix+FS_DIR+FS_ROOT_ENTRIES)
-                ld h, (ix+FS_DIR+FS_ROOT_ENTRIES+1)
-                add hl, hl
-                add hl, hl
-                add hl, hl
-                add hl, hl
-                add hl, hl
-                ld de, 511
-                add hl, de
-                ld b, 9
-fsw_dsz_lp:
-                srl h
-                rr l
-                djnz fsw_dsz_lp
-                ld a, l
-                ld (ix+FS_L_REMAIN), a
-
-                ; First data LBA = first dir + dir sectors.
-                ld e, a
-                ld d, 0
-                ld l, (ix+FS_L_CURDIR)
-                ld h, (ix+FS_L_CURDIR+1)
-                add hl, de
-                ld (ix+FS_L_FIRSTDATA), l
-                ld (ix+FS_L_FIRSTDATA+1), h
-
-                ; --- Load resident FAT ---
-                push ix
-                pop hl
-                ld de, FS_FAT
-                add hl, de
-                ld b, (ix+FS_L_FATSIZ)
-                xor a
-                ld c, DISK_MEDIA
-                ld e, (ix+FS_L_FIRSTFAT)
-                ld d, (ix+FS_L_FIRSTFAT+1)
-                call disk_phydio
-                ret c
-
-                ; --- Find free directory slot ---
-                ; FS_L_CURDIR tracks current dir sector LBA.
-                ; FS_L_REMAIN tracks dir sectors remaining.
-                ; We'll store the slot's sector LBA in FS_L_FIRSTDIR (0-1)
-                ; and the slot offset in FS_L_DIRSIZ (4).
-fsw_dir_lp:
-                ld a, (ix+FS_L_REMAIN)
-                or a
-                jp z, disk_fs_error_17
-                dec a
-                ld (ix+FS_L_REMAIN), a
-
-                ; Save the sector LBA we're about to scan.
-                ld l, (ix+FS_L_CURDIR)
-                ld h, (ix+FS_L_CURDIR+1)
-                ld (ix+FS_L_FIRSTDIR), l
-                ld (ix+FS_L_FIRSTDIR+1), h
-
-                ; Read a directory sector.
-                push ix
-                pop hl
-                ld de, FS_DIR
-                add hl, de
-                xor a
-                ld b, 1
-                ld c, DISK_MEDIA
-                ld e, (ix+FS_L_CURDIR)
-                ld d, (ix+FS_L_CURDIR+1)
-                call disk_phydio
-                ret c
-
-                ; Advance to next dir LBA.
-                ld l, (ix+FS_L_CURDIR)
-                ld h, (ix+FS_L_CURDIR+1)
-                inc hl
-                ld (ix+FS_L_CURDIR), l
-                ld (ix+FS_L_CURDIR+1), h
-
-                ; Scan 16 entries in this sector.
-                push ix
-                pop hl
-                ld de, FS_DIR
-                add hl, de
-                ld c, 16
-fsw_ent_lp:
-                ld a, (hl)
-                or a
-                jr z, fsw_free_found
-                cp #e5
-                jr z, fsw_free_found
-
-                ; Check if name matches (duplicate check).
-                push hl
-                push bc
-                ld e, (ix+FS_L_NAME)
-                ld d, (ix+FS_L_NAME+1)
-                ld b, 11
-fsw_chk_lp:
-                ld a, (de)
-                cp (hl)
-                jr nz, fsw_chk_no
-                inc de
-                inc hl
-                djnz fsw_chk_lp
-                pop bc
-                pop hl
-                jp disk_fs_error_17
-fsw_chk_no:
-                pop bc
-                pop hl
-
-                ld de, 32
-                add hl, de
-                dec c
-                jr nz, fsw_ent_lp
-                jr fsw_dir_lp
-
-fsw_free_found:
-                ; Compute entry offset = (16 - C) * 32.
-                ld a, 16
-                sub c
-                add a, a
-                add a, a
-                add a, a
-                add a, a
-                add a, a
-                ld (ix+FS_L_DIRSIZ), a
-
-                ; --- Allocate one cluster (MVP: single cluster) ---
-                ld de, 2
-fsw_acl_lp:
-                call disk_fat12_read
-                ld a, b
-                or c
-                jr z, fsw_got_cl
-                inc de
-                ld a, d
-                cp #0f
-                jr c, fsw_acl_lp
-                jp nz, disk_fs_error_17
-                ld a, e
-                cp #f8
-                jp nc, disk_fs_error_17
-                jr fsw_acl_lp
-
-fsw_got_cl:
-                ; DE = free cluster. Mark as EOF (0xFFF) in FAT.
-                ; Save cluster in FS_L_CLUSTER (12-13).
-                ld (ix+FS_L_CLUSTER), e
-                ld (ix+FS_L_CLUSTER+1), d
-
-                ld bc, #0fff
-                call disk_fat12_store
-
-                ; --- Write FAT to disk (both copies) ---
-                push ix
-                pop hl
-                ld de, FS_FAT
-                add hl, de
-                ld b, (ix+FS_L_FATSIZ)
-                xor a
-                ld c, DISK_MEDIA
-                ld e, (ix+FS_L_FIRSTFAT)
-                ld d, (ix+FS_L_FIRSTFAT+1)
-                scf
-                call disk_phydio
-                ret c
-
-                ; Second FAT copy if FAT_COUNT >= 2.
-                ld a, (ix+FS_L_COUNT)
-                cp 2
-                jr c, fsw_data
-
-                push ix
-                pop hl
-                ld de, FS_FAT
-                add hl, de
-                xor a
-                ld c, DISK_MEDIA
-                ld b, (ix+FS_L_FATSIZ)
-                ld e, (ix+FS_L_FIRSTFAT)
-                ld d, (ix+FS_L_FIRSTFAT+1)
-                push hl
-                ld l, (ix+FS_L_FATSIZ)
-                ld h, 0
-                add hl, de
-                ex de, hl
-                pop hl
-                scf
-                call disk_phydio
-                ret c
-
-                ; --- Write data sectors ---
-fsw_data:
-                ; LBA = first_data + (cluster - 2) * SPC
-                ld l, (ix+FS_L_CLUSTER)
-                ld h, (ix+FS_L_CLUSTER+1)
-                ld de, #fffe
-                add hl, de
-                add hl, hl
-                ld e, (ix+FS_L_FIRSTDATA)
-                ld d, (ix+FS_L_FIRSTDATA+1)
-                add hl, de
-                ex de, hl
-
-                ld l, (ix+FS_L_DEST)
-                ld h, (ix+FS_L_DEST+1)
-
-                ld b, (ix+FS_L_SPC)
-                xor a
-                ld c, DISK_MEDIA
-                scf
-                call disk_phydio
-                ret c
-
-                ; --- Write directory entry ---
-                ; Re-read the directory sector containing our slot.
-                push ix
-                pop hl
-                ld de, FS_DIR
-                add hl, de
-                xor a
-                ld b, 1
-                ld c, DISK_MEDIA
-                ld e, (ix+FS_L_FIRSTDIR)
-                ld d, (ix+FS_L_FIRSTDIR+1)
-                call disk_phydio
-                ret c
-
-                ; Compute entry address = IX + FS_DIR + slot_offset.
-                push ix
-                pop hl
-                ld de, FS_DIR
-                add hl, de
-                ld e, (ix+FS_L_DIRSIZ)
-                ld d, 0
-                add hl, de
-
-                ; Copy 11-byte filename.
-                push hl
-                ld e, (ix+FS_L_NAME)
-                ld d, (ix+FS_L_NAME+1)
-                ld b, 11
-fsw_cp_fn:
-                ld a, (de)
-                ld (hl), a
-                inc de
-                inc hl
-                djnz fsw_cp_fn
-                pop hl
-
-                ; Attribute = 0x20 (archive) at offset 11.
-                ld de, 11
-                add hl, de
-                ld (hl), #20
-
-                ; Reserved area 12-25: leave zeroed (already zero from fresh slot).
-
-                ; First cluster at offset 26.
-                ld de, 15
-                add hl, de
-                ld a, (ix+FS_L_CLUSTER)
-                ld (hl), a
-                inc hl
-                ld a, (ix+FS_L_CLUSTER+1)
-                ld (hl), a
-
-                ; File size at offset 28.
-                inc hl
-                ld a, (ix+FS_L_SIZE)
-                ld (hl), a
-                inc hl
-                ld a, (ix+FS_L_SIZE+1)
-                ld (hl), a
-
-                ; Write directory sector back.
-                push ix
-                pop hl
-                ld de, FS_DIR
-                add hl, de
-                xor a
-                ld b, 1
-                ld c, DISK_MEDIA
-                ld e, (ix+FS_L_FIRSTDIR)
-                ld d, (ix+FS_L_FIRSTDIR+1)
-                scf
-                call disk_phydio
-                ret c
-
-                xor a
                 ret

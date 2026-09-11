@@ -8,7 +8,7 @@ from tools.run_1983_embedded_basic_scroll import parse_marker, validate_state
 
 
 GOOD = (
-    "state frame=6001 pc=633F sp=F2FC slot=FC subslot=00 "
+    "state frame=6001 pc=633F sp=E6DC slot=FC subslot=00 "
     "mapper=00,00,00,00 cycles=0 instructions=0 vram_nonzero=9170 "
     "vdp_r0=00 vdp_r1=F0\n"
     "F3C8: A5\n"

@@ -25,7 +25,7 @@ def validate_state(text: str) -> dict[str, str]:
         raise ValueError("1983 emitted an invalid embedded BASIC state") from error
     if not 0x0000 <= pc < 0x4000:
         raise ValueError(f"PC {pc:04X} is outside RainBIOS page-0 services")
-    if not 0xF200 <= sp <= 0xF300:
+    if not 0xE5E0 <= sp <= 0xE6E0:
         raise ValueError(f"SP {sp:04X} is outside the BASIC stack window")
     expected = {"slot": "FC", "vdp_r0": "00", "vdp_r1": "F0"}
     for key, value in expected.items():

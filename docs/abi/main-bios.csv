@@ -116,3 +116,5 @@ address,name,kind,status,milestone,notes
 015C,SUBROM,jump,implemented,M5,Documented push IX / jp SUBROM wrapper that calls the SUB-ROM routine in IX through EXTROM and then pops IX. Works in both MSX1 and MSX2 builds when a SUB-ROM is present
 015F,EXTROM,jump,implemented,M5,Calls the SUB-ROM routine at IX through CALSLT using the slot published in EXBRSA, preserving the caller's alternate registers and interrupt state. Available in both builds, preserving the caller's alternate registers and interrupt state
 0162,CHKSLZ,jump,implemented,M5,Scans primary and expanded slots for the CD SUB-ROM signature and republishes the slot in EXBRSA with carry set when found. Available in both MSX1 and MSX2 builds; MSX1 returns carry clear when no SUB-ROM is present
+0165,RBFSIG,data,implemented,M7,Private four-byte RainBIOS storage signature RBFS used only by the pinned BASIC adapter
+0169,RBFSIO,jump,implemented,M7,Private BASIC program-storage dispatcher: A=0 SAVE or A=1 LOAD; HL points to a CR-terminated name; DE is the program buffer; BC is its size/capacity. A: names use the active versioned disk ROM; other names retain cassette behavior

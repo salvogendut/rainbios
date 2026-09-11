@@ -332,7 +332,7 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 - MSX `POINT()` parsing revision:
   `6ddaa57afe51e45c0ebec88666c846b01841e05b`
 - Reviewed media/MSX2 revision:
-  `c9ed73ddd228f1dae8528f39ce590511ece7d00d`
+  `dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33`
 - Official BBC BASIC keyword reference:
   `https://www.bbcbasic.co.uk/bbcbasic/mancpm/bbckey1.html`
 - Official BBC BASIC `SOUND` reference:
@@ -368,9 +368,9 @@ for console, keyboard, cursor, timing, graphics, PSG/controller, sprites,
 MSX2 bitmap access, and sequential cassette services. It places the unchanged
 core at `4400h-74C1h`, the independently written sprite/MSX2 adapters at
 `4248h-43F7h`, graphics/sound at `74C2h-7E45h`, cassette storage at
-`7E46h-7FE9h`, fixed and adapter state at `8000h-833Dh`, and user memory from
-`833Eh`. Its 16 KiB ROM has SHA-256
-`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`
+`7E46h-7FEFh`, fixed and adapter state at `8000h-833Dh`, and user memory from
+`833Eh-E6DFh`. Its 16 KiB ROM has SHA-256
+`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`
 and publishes RainBIOS payload descriptor v1 at `7FF0h-7FFFh`, requiring the
 console, keyboard, timing, graphics, cassette, and PSG capability bits.
 An openMSX smoke test exercises language, editing, error, clock, and timeout

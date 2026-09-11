@@ -56,11 +56,11 @@ class MainRomLayoutTest(unittest.TestCase):
                 last = len(lower)
                 while last > 0 and lower[last - 1] == 0xFF:
                     last -= 1
-                self.assertLessEqual(
+                self.assertLess(
                     last,
-                    0x3C00,
+                    0x3E00,
                     f"{name} lower-bank firmware occupies {last:#x} bytes; "
-                    "the 0x3c00 ceiling (>=0x400-byte reserve) was raised",
+                    "the 0x3e00 ceiling (>=0x200-byte reserve) was reached",
                 )
                 self.assertGreaterEqual(
                     last,
@@ -82,6 +82,20 @@ class MainRomLayoutTest(unittest.TestCase):
         self.assertLessEqual(font + 2048, 0x4000)
         self.assertEqual(self.rom[0x0006:0x0008], bytes((0x98, 0x98)))
         self.assertEqual(self.rom[0x002B:0x0030], bytes((0x21, 0x11, 0, 0, 0)))
+
+    def test_private_basic_storage_bridge_is_published(self):
+        for name, rom in (("MSX1", self.rom), ("MSX2", self.msx2_rom)):
+            with self.subTest(rom=name):
+                self.assertEqual(rom[0x0165:0x0169], b"RBFS")
+                self.assertEqual(rom[0x0169], 0xC3)
+
+        pointers = [
+            int.from_bytes(self.basic[offset : offset + 2], "little")
+            for offset in (0x0A, 0x0C, 0x0E)
+        ]
+        for pointer in pointers:
+            self.assertGreaterEqual(pointer, 0x4000)
+            self.assertLess(pointer, 0x8000)
 
     def test_every_documented_jump_is_a_jump_into_the_rom(self):
         for row in self.abi:

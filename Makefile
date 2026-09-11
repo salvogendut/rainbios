@@ -92,12 +92,14 @@ NMS8250_DISK_SOURCES := src/disk_nms8250_rom.asm \
 	src/disk_nms8250_driver.asm \
 	src/disk_driver.asm \
 	src/disk_fat12.asm \
+	src/disk_fat12_save.asm \
 	src/disk_bdos.asm
 GENERIC_DISK_ROM := $(BUILD_DIR)/rainbios_disk.rom
 GENERIC_DISK_ROM_SYM := $(BUILD_DIR)/rainbios_disk.sym
 GENERIC_DISK_SOURCES := src/disk_rom.asm \
 	src/disk_driver.asm \
 	src/disk_fat12.asm \
+	src/disk_fat12_save.asm \
 	src/disk_bdos.asm
 DISK_PHYDIO_TEST_ROM := $(BUILD_DIR)/cartridges/disk_phydio_rom.rom
 DISK_PHYDIO_TEST_ROM_SYM := $(BUILD_DIR)/cartridges/disk_phydio_rom.sym
@@ -142,6 +144,7 @@ DISK_FSDIR_IMAGE := $(BUILD_DIR)/disks/disk-fsdir.dsk
 DISK_FSWRITE_SECTOR := tests/cartridges/disk_fswrite_boot.asm
 DISK_FSWRITE_SECTOR_BIN := $(FIXTURES_DIR)/disk_fswrite_boot.bin
 DISK_FSWRITE_IMAGE := $(BUILD_DIR)/disks/disk-fswrite.dsk
+BASIC_BLANK_IMAGE := $(BUILD_DIR)/disks/rainbios-basic-blank.dsk
 DISK_DSKFMT_SECTOR := tests/cartridges/disk_dskfmt_boot.asm
 DISK_DSKFMT_SECTOR_BIN := $(FIXTURES_DIR)/disk_dskfmt_boot.bin
 DISK_DSKFMT_IMAGE := $(BUILD_DIR)/disks/disk-dskfmt.dsk
@@ -356,8 +359,10 @@ EMULATOR_1983_NMS8250_DISK_SLAVE_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-fat12.ppm
  EMULATOR_1983_DISK_FSDIR_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-fsdir.ppm
- EMULATOR_1983_DISK_FSWRITE_SCREEN := \
- 	$(EMULATOR_1983_DIR)/disk-fswrite.ppm
+EMULATOR_1983_DISK_FSWRITE_SCREEN := \
+	$(EMULATOR_1983_DIR)/disk-fswrite.ppm
+EMULATOR_1983_BASIC_FLOPPY_SCREEN := \
+	$(EMULATOR_1983_DIR)/embedded-basic-floppy.ppm
  EMULATOR_1983_DISK_DSKFMT_SCREEN := \
  	$(EMULATOR_1983_DIR)/disk-dskfmt.ppm
 EMULATOR_1983_DISK_BOOT_FALLBACK_SCREEN := \
@@ -409,7 +414,7 @@ ZX0_TOOL_SOURCES := tools/zx0/zx0.c tools/zx0/zx0.h \
 BBC_EMBED_DIR := $(BUILD_DIR)/payload
 BBC_PAYLOAD_ROM := $(BBC_EMBED_DIR)/bbcbasic_msx_console.rom
 BBC_EMBEDDED_ROM := $(BBC_EMBED_DIR)/bbcbasic_msx_console.zx0
-SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
+SOURCES := src/main_msx1.asm src/basic_storage.asm src/ide_nms8250_driver.asm \
 	src/zx0_decompress.asm
 
 .PHONY: all test test-openmsx test-openmsx-boot test-openmsx-options \
@@ -450,6 +455,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-bbcbasic-edit test-1983-embedded-basic-edit \
 	test-openmsx-bbcbasic-tape-save \
 	test-1983-bbcbasic-tape \
+	test-1983-embedded-basic-floppy \
 	test-1983-disk-baseline test-1983-disk-boot \
 	test-1983-disk-bdos \
 	test-1983-disk-write test-1983-disk-write-protect \
@@ -482,7 +488,7 @@ SOURCES := src/main_msx1.asm src/ide_nms8250_driver.asm \
 	test-1983-external-arkano test-1983-external-diagnostics \
 	test-1983-external-diagnostics-screen3 check-bbcbasic \
 	check-bbcbasic-artifact bbcbasic-payload nms8250-disk-rom rainbios-disk-rom \
-	omega \
+	basic-blank-disk omega \
  	check-manifest check-release clean clean-ancillary
 
 all: $(MSX1_ROM) $(OMEGA_ROM)
@@ -490,6 +496,8 @@ all: $(MSX1_ROM) $(OMEGA_ROM)
 nms8250-disk-rom: $(NMS8250_DISK_ROM)
 
 rainbios-disk-rom: $(GENERIC_DISK_ROM)
+
+basic-blank-disk: $(BASIC_BLANK_IMAGE)
 
 omega: $(OMEGA_ROM)
 
@@ -550,6 +558,7 @@ RELEASE_DIR := $(BUILD_DIR)/release/$(RELEASE_VERSION)
 
 release: $(MSX1_ROM) $(MSX2_ROM) $(MSX2_SUB_ROM) $(OMEGA_ROM) \
 		$(NMS8250_DISK_ROM) $(GENERIC_DISK_ROM) \
+		$(BASIC_BLANK_IMAGE) \
 		$(MSX1_SYM) $(MSX2_SYM) $(MSX2_SUB_SYM) $(NMS8250_DISK_ROM_SYM) \
 		$(GENERIC_DISK_ROM_SYM)
 	$(PYTHON) tools/make_release_bundle.py \
@@ -773,6 +782,10 @@ $(DISK_FSWRITE_SECTOR_BIN): $(DISK_FSWRITE_SECTOR) | $(BUILD_DIR)
 
 $(DISK_FSWRITE_IMAGE): tools/make_fat12_disk.py $(DISK_FSWRITE_SECTOR_BIN)
 	$(PYTHON) $< --boot-sector $(DISK_FSWRITE_SECTOR_BIN) $@
+
+$(BASIC_BLANK_IMAGE): tools/make_fat12_disk.py | $(BUILD_DIR)
+	mkdir -p $(@D)
+	$(PYTHON) $< --blank $@
 
 $(DISK_DSKFMT_SECTOR_BIN): $(DISK_DSKFMT_SECTOR) | $(BUILD_DIR)
 	mkdir -p $(@D)
@@ -1969,6 +1982,15 @@ test-1983-bbcbasic-tape: \
 		--screenshot "$(EMULATOR_1983_BBC_TAPE_SCREEN)"
 	$(PYTHON) tools/check_bbcbasic_screenshot.py \
 		$(EMULATOR_1983_BBC_TAPE_SCREEN)
+
+test-1983-embedded-basic-floppy: $(MSX1_ROM) $(NMS8250_DISK_ROM) \
+		$(BASIC_BLANK_IMAGE)
+	mkdir -p $(EMULATOR_1983_DIR)
+	$(PYTHON) tools/run_1983_embedded_basic_floppy.py \
+		--emulator "$(EMULATOR_1983)" --models "$(MODELS_1983)" \
+		--bios "$(MSX1_ROM)" --disk-rom "$(NMS8250_DISK_ROM)" \
+		--blank-disk "$(BASIC_BLANK_IMAGE)" \
+		--screenshot "$(EMULATOR_1983_BASIC_FLOPPY_SCREEN)"
 
 test-1983-disk-baseline: \
 		$(MSX1_ROM) $(DISK_BASELINE_CART) $(DISK_BASELINE_CART_SYM)

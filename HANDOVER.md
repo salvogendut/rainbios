@@ -24,14 +24,17 @@ discard unrelated changes in a dirty worktree.
 | Artifact | Build command | Output | Status |
 | --- | --- | --- | --- |
 | MSX1 main BIOS + BASIC | `make` | `build/rainbios_msx1.rom` | Active, partial BIOS with a compressed source-built payload container in the upper half |
-| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | PHYDIO read/write + DSKCHG/GETDPB + DSKFMT/CHOICE + H.RUNC boot hook + FAT12 FS.LOAD (4025h), FS.DIR (4028h), FS.WRITE (402Bh) implemented |
+| NMS 8250 disk ROM | `make nms8250-disk-rom` | `build/rainbios_nms8250_disk.rom` | PHYDIO read/write + DSKCHG/GETDPB + DSKFMT/CHOICE + H.RUNC boot hook + FAT12 exact/bounded LOAD, DIR, and multi-cluster WRITE/replace |
+| Blank BASIC data disk | `make basic-blank-disk` | `build/disks/rainbios-basic-blank.dsk` | Non-bootable 720 KiB F9 FAT12 image for persistent embedded-BASIC programs; included in release bundles |
 | Standalone BASIC payload | Rebuilt by `make` in sibling repository | `build/payload/bbcbasic_msx_console.rom` | Pinned byte-exact source-built component; compressed into the combined ROM and restored exactly at runtime |
 | MSX2 main BIOS | First slice built | `build/rainbios_msx2.rom` | Distinct 32 KiB build sharing the MSX1 source: MSX2 ID byte, V9938 CD-scan detection, EXBRSA publication, R8-R23 shadow baseline and WRTVDP dispatch |
 | MSX2 SUB-ROM | Services + command/clock slices built | `build/rainbios_msx2_sub.rom` | Self-contained 16 KiB extended-VDP ROM: CHGMOD Screens 5/6/7/8, palette, WRTVDP/VDPSTA, 16-bit WRTVRM/RDVRM, BLTVV/BLTVM/BLTMV block transfers, REDCLK/WRTCLK. Disk-file transfers, screens 10-12 pending |
 | Omega unified image | `make omega` | `build/rainbios_omega.rom` | Deterministic 512 KiB image containing the MSX2 main BIOS, SUB-ROM, disk ROM, and embedded BASIC payload in both selectable halves |
 
-The main BIOS and disk ROM remain separate components. `make all` builds only
-the combined main BIOS; the model-specific disk ROM is explicitly optional.
+The main BIOS and disk ROM remain separate components. `make all` builds the
+MSX1 main ROM and the Omega image; Omega's dependency chain also builds the
+MSX2 main/SUB-ROM and generic disk ROM. The NMS-specific disk ROM remains
+explicitly optional.
 Every normal main-ROM build verifies and tests the pinned adjacent
 `../bbcbasic-z80-msx` checkout, rebuilds its 16 KiB payload from source, checks
 its digest, compresses it with ZX0, and embeds that stream in an `RBC1`
@@ -89,9 +92,9 @@ The main BIOS currently provides:
   descriptors, menu launch of external or built-in BASIC, and automatic
   built-in fallback after clean storage returns;
 - ZX0-compressed boot/menu tables expanded one at a time through transient
-  `C000h-D7FFh` RAM, leaving the public font directly addressable and 1,879
-  bytes free in MSX1 (1,135 bytes in MSX2) below the hard `4000h` lower-bank
-  boundary;
+  `C000h-D7FFh` RAM, leaving the public font directly addressable and a gated
+  reserve of more than 1 KiB in MSX1 and at least 512 bytes in MSX2 below the
+  hard `4000h` lower-bank boundary;
 - safe disk BIOS defaults, disk hook dispatch, extension `H.STKE` processing,
   and guarded `H.RUNC` disk bootstrap context.
 
@@ -100,12 +103,13 @@ of truth for which fixed entries are implemented, partial, or stubs.
 
 ## Embedded BASIC Status
 
-Issue #60 implements the embedded-payload development slice. The normal 32 KiB
+Issues #60 and #184 implement the embedded-payload and floppy-program-storage
+slices. The normal 32 KiB
 image dedicates `4000h-7FFFh` to an `RBC1` container: the exact pinned
-companion ROM is compressed to 12,502 bytes at build time, stored from `4008h`,
+companion ROM is compressed to 12,523 bytes at build time, stored from `4008h`,
 and expanded into page-1 RAM before launch. The current simpler CC0 boot logo
-leaves `38A9h-3FFFh` as 1,879 bytes of guarded MSX1 lower-bank padding; MSX2
-leaves `3B91h-3FFFh`, or 1,135 bytes. The font
+leaves more than 1 KiB of guarded MSX1 lower-bank padding; the MSX2 size gate
+retains at least 512 bytes. The font
 stays raw for `CGTABL`, while the menu and logo tables are also losslessly
 ZX0-compressed and expanded into transient RAM before VRAM upload.
 
@@ -129,10 +133,12 @@ The no-cartridge probes pass in 1983 and openMSX, including the rendered
 prompt, simple arithmetic, page-1 RAM slot state, decompressed
 header/descriptor bytes, and zero writes to the ROM page. Internal Graphics
 II, cassette load, scrolling, and editing workloads are also gated. The
-current companion revision adds reviewed PSG sound, Screen 2 sprites, and
-MSX2 Screens 5-8; its tests verify physical high VRAM, packed Screen 6/7
+current companion revision adds reviewed PSG sound, Screen 2 sprites, MSX2
+Screens 5-8, and the private RainBIOS floppy dispatcher; its tests verify physical high VRAM, packed Screen 6/7
 pixels, full bitmap clearing, mixer/envelope state, and a visibly rendered
-sprite. Random-access BASIC file channels, full BBC software envelopes, and
+sprite. Embedded BASIC `SAVE`/`LOAD`/`CHAIN` now persist `A:` programs as
+`.BBC` files on the active RainBIOS FAT12 drive, while unprefixed names retain
+cassette behavior. Random-access BASIC file channels, full BBC software envelopes, and
 the right half of Screens 6/7 remain future work. Public release is also blocked on
 permission to use the `BBC BASIC` name or a distinct rename. Human-readable
 combined notices are present in `THIRD_PARTY_NOTICES.md` and `LICENSES/`; the
@@ -191,10 +197,11 @@ The optional NMS 8250 disk-ROM layer:
   (`test-1983-disk-fat12`);
 - provides a FAT12 FS.DIR service (4028h) that reads raw 32-byte root-directory
   entries into a caller-supplied buffer (`test-1983-disk-fsdir`).
-- provides a FAT12 FS.WRITE service (402Bh) that creates a new file: finds a
-  free directory slot, allocates free clusters from the FAT, writes data via
-  PHYDIO, updates both FAT copies, and commits the directory entry
-  (`test-1983-disk-fswrite`).
+- provides a FAT12 FS.WRITE service (402Bh) that creates or transactionally
+  replaces a multi-cluster file, updates both FAT copies, commits one directory
+  entry, and reclaims the old chain (`test-1983-disk-fswrite`);
+- publishes a versioned `RBFS` capability block with bounded LOAD, rejecting
+  oversized files before destination writes.
 
 The Space-key boot menu invokes the same bootstrap on demand: option 2 runs the
 drive-A boot-sector path, while option 3 uses RainBIOS's own Sunrise ATA or SD
@@ -223,7 +230,8 @@ vector jumps to its relocated body.
 The formal component contract is `docs/abi/nms8250-disk-rom.md`.
 
 The RainBIOS disk ROM loads and runs an MSX-DOS-style boot sector and provides
-FAT12 FS.LOAD, FS.DIR, and FS.WRITE services plus DSKFMT/CHOICE formatting;
+FAT12 exact/bounded LOAD, DIR, and multi-cluster WRITE/replace services plus
+DSKFMT/CHOICE formatting;
 it does not provide drive B, non-NMS controllers, or a real DOS. Nextor now
 boots through Sunrise and SD Mapper cartridges.
 Destination buffers must remain within `8000h-EFFFh` while the extension
@@ -437,9 +445,14 @@ Coverage includes:
 - a FAT12 FS.DIR that reads raw 32-byte root-directory entries into a
   caller-supplied buffer and verifies the RAIN.BIN entry name, cluster, and size
   (`test-1983-disk-fsdir`);
-- a FAT12 FS.WRITE that creates a new file (MINI.TXT, 32 bytes), allocates a
-  free cluster from the FAT, writes data and directory entry via PHYDIO, and
-  updates both FAT copies (`test-1983-disk-fswrite`);
+- a FAT12 FS.WRITE that creates and replaces a 2,500-byte MINI.TXT over three
+  clusters, persists identical FAT copies and exact replacement bytes, leaves
+  one directory entry, and reclaims the old chain; the same fixture proves a
+  bounded LOAD fails before its destination is touched
+  (`test-1983-disk-fswrite`);
+- embedded BASIC `SAVE "A:TEST"` followed by a fresh 1983 start and `CHAIN
+  "A:TEST"`, with the image unchanged by LOAD and explicit read-only/no-media
+  errors (`test-1983-embedded-basic-floppy`);
 - CHOICE (4019h) returning 1 and DSKFMT (401Ch) formatting the full 80-track,
   2-side, 9-sector geometry via WD2793 Format Track (F0h) with sector header
   writes and fill-byte data (`test-1983-disk-dskfmt`).
@@ -565,14 +578,15 @@ is:
 | M3 keyboard/PSG/basic devices | In progress | Printer calls and touch-panel GTPAD implemented (`test-openmsx-printer`, `test-openmsx-gtpad`); light-pen/trackball detection unemulable in openMSX; remaining: selectable frequency/locale |
 | M4 cartridge compatibility | In progress | Payload-launch, cartridge-INIT, and page-2 INIT (mapper-style) arrangements gated; the redistributable compatibility corpus is deferred (TBD) |
 | M5 MSX2 main BIOS/SUB-ROM | Complete | MSX2 main-ROM build with V9938 detection, EXBRSA, R8-R23 shadows, and SUBROM/EXTROM/CHKSLZ calling entries available in both MSX1 and MSX2 builds; RainBIOS SUB-ROM with Screens 5-8, palette, WRTVDP/VDPSTA, 16-bit VRAM, BLTVV/BLTVM/BLTMV transfers, and REDCLK/WRTCLK. MAIN CHGMOD preserves live VBlank interrupts after Screens 5-8, gated by the embedded BASIC Screen 8 `INKEY` timeout on 1983. 64 KiB VRAM validated (openMSX). Disk-file transfer entries (BLTVD/BLTDV/BLTMD/BLTDV) remain documented safe returns; a real implementation requires DOS API bindings not yet provided. MSX2 storage boot via Nextor is now gated (#137) |
-| M6 completeness/optional components | In progress | Restore ROM headroom, finish embedded-payload regression/release gates, ABI gaps, broader disk functionality. Machine-readable component manifest (`components.json`) with `check-manifest`; lower-bank headroom size gate; all 21 callable BIOS stub entries gated by `test-1983-stubs`; hook-dispatching disk baseline (`PHYDIO`/`FORMAT`/`ISFLIO`/`OUTDLP`/`GETVCP`/`GETVC2`) gated by `test-1983-disk-abi`; GTPDL clobber contract gated by `test-1983-gtpdl-clobber`; INIFNK default strings gated by `test-1983-inifnk`; ISCNTC/CKCNTC break consumption gated by `test-1983-iscntc`; CHGMOD screen-mode dispatch gated by `test-1983-chgmod`; KEYINT VBlank bookkeeping gated by `test-1983-keyint`; internal-payload graphics workload gated by `test-1983-embedded-basic-graphics`; internal-payload cassette workload gated by `test-1983-embedded-basic-tape`; scrolling text workload gated by `test-1983-bbcbasic-scroll`/`test-1983-embedded-basic-scroll`; editing workload gated by `test-1983-bbcbasic-edit`/`test-1983-embedded-basic-edit`; DCOMPR/PSG clobber and flag contracts gated by `test-1983-abi-clobber`; function-key/text contracts gated by `test-1983-fnkey`; keyboard buffer contracts gated by `test-1983-kbd`; reproducible release bundle (`make release`) with SPDX 2.3 JSON export |
-| M7 disk/IDE boot | In progress | FAT12 FS.LOAD implemented and gated (`test-1983-disk-fat12`). Real DOS files, hardware validation; DSKIO writes gated (`test-1983-disk-write`/`-disk-write-protect`). Open issues: a second DSKIO call from a `C000h` fixture context crashes under 1983 (emulator artifact); the RainBIOS WD2793 driver's data transfer misaligns against openMSX's real WD2793 (read/write byte timing), blocking an openMSX write gate |
+| M6 completeness/optional components | In progress | Preserve the MSX2 512-byte lower-bank reserve and embedded-payload regression/release gates. The source-built payload now exposes persistent FAT12 program storage through the private versioned RainBIOS bridge; random-access BASIC channels remain future work. |
+| M7 disk/IDE boot | In progress | Exact/bounded FAT12 LOAD, DIR, multi-cluster WRITE/replace, a distributable blank data disk, and embedded BASIC restart persistence are gated in 1983. Remaining: real-hardware validation, drive B, other controllers, and the openMSX WD2793 byte-timing gap. |
 
 ## Recommended Next Work
 
-The simpler boot logo leaves 1,879 bytes of MSX1 page-0 headroom and 1,135
-bytes in MSX2, and passes the 1983 rendered-boot gate; the host suite gates
-that headroom (the lower-bank last non-`FF` byte must stay below `3C00h`).
+The simpler boot logo leaves more than 1 KiB of MSX1 page-0 headroom and at
+least 512 bytes in MSX2, and passes the 1983 rendered-boot gate; the host suite
+gates that headroom (the lower-bank last non-`FF` byte must stay at or below
+`3DFFh`).
 Issue #62 now covers the
 Arkanoid application-cartridge
 gate, corrected keyboard/`BREAKX` semantics, compressed internal payload, and
@@ -582,7 +596,8 @@ scrolling, and editing gates while extending the media matrix. PSG sound,
 Screen 2 sprites, and MSX2 Screens 5-8 are now validated in the companion
 project and through the rebuilt Omega image; the next media gaps are full
 software envelopes, 16-bit X coordinates for the right half of Screens 6/7,
-and random-access BASIC file channels. Resolve `BBC BASIC` branding before
+and random-access BASIC file channels. Sequential floppy program persistence
+is complete for drive A. Resolve `BBC BASIC` branding before
 any public combined-ROM release.
 
 The GeoBench storage boot matrix is now automated. `test-openmsx-geobench-sunrise`
@@ -654,7 +669,8 @@ that raw DSK images cannot reach. Real hardware can now be used to confirm that
 the injected polarity assumptions (LINES bit 6 as inverted IRQ) match the NMS
 8250.
 
-The `DSKCHG`/`GETDPB`, `DSKFMT`/`CHOICE`, FAT12 `FS.LOAD`/`FS.DIR`/`FS.WRITE`,
+The `DSKCHG`/`GETDPB`, `DSKFMT`/`CHOICE`, FAT12 exact/bounded LOAD, DIR,
+multi-cluster WRITE/replace, embedded BASIC disk persistence,
 floppy bootstrap, Sunrise/SD Mapper direct bootstraps, and Sunrise/SD Mapper
 Nextor paths are complete. The SD path covers single-card automatic selection,
 a dual-card A/B chooser, no-card menu fallback, and coexistence with a bootable
@@ -690,7 +706,9 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tools/run_1983_kbd_probe.py` | 1983 runner validating the keyboard probe markers |
 | `src/disk_nms8250_rom.asm` | Optional production disk-ROM shell |
 | `src/disk_nms8250_driver.asm` | Shared WD2793 PHYDIO read/write, DSKFMT, DSKCHG, GETDPB, and bootstrap implementation |
-| `src/disk_fat12.asm` | FAT12 FS.LOAD, FS.DIR, and FS.WRITE services (BPB parse, directory walk, FAT12 cluster chain) |
+| `src/basic_storage.asm` | Private RainBIOS/BASIC filename, active-disk, error, and cassette-fallback bridge |
+| `src/disk_fat12.asm` | FAT12 exact/bounded LOAD and FS.DIR (BPB parse, directory walk, cluster chain) |
+| `src/disk_fat12_save.asm` | Multi-cluster FAT12 FS.WRITE/create/replace and old-chain reclamation |
 | `src/ide_nms8250_driver.asm` | Page-0 Sunrise ATA / SD Mapper SPI bootstrap |
 | `docs/abi/main-bios.csv` | Truthful fixed-entry implementation status |
 | `docs/abi/controllers.md` | Keyboard, joystick, trigger, and mouse contracts |
@@ -732,6 +750,7 @@ Broader project work can instead return to the unfinished M1-M4 items in
 | `tests/cartridges/disk_phydio_rom.asm` | General read and validation probe |
 | `tests/cartridges/disk_fat12_boot.asm` | FAT12 FS.LOAD C000h boot-sector fixture |
 | `tools/make_fat12_disk.py` | Deterministic FAT12 720 KiB F9 DSK fixture generator |
+| `tools/run_1983_embedded_basic_floppy.py` | Persistent BASIC SAVE/restart/CHAIN plus read-only/no-media validation |
 | `tools/run_1983_disk_fat12.py` | 1983 FAT12 FS.LOAD integration runner |
 | `tests/test_1983_disk_fat12.py` | FAT12 marker validation unit tests |
 | `tests/cartridges/disk_no_media_rom.asm` | No-media probe |

@@ -94,14 +94,14 @@ replacing the system ROM and preserves the prior optional-cartridge behavior.
 The MAIN-ROM is exactly 32 KiB and is mapped at `0000h-7FFFh`. In the current
 build, the lower bank has this measured layout:
 
-- in MSX1, the ZX0 decoder begins at `27A5h`, the directly addressable 2 KiB
-  `CGTABL` font at `2A07h`, the menu streams at `3207h`, and the logo streams
-  at `33D8h`; the final stream ends at `38A9h`, leaving 1,879 bytes;
-- in MSX2, the corresponding decoder begins at `2A60h`, the font at `2CEEh`,
-  the menu streams at `34EEh`, and the logo streams at `36BFh`; the final
-  stream ends at `3B91h`, leaving 1,135 bytes;
-- the `RBC1` header occupies `4000h-4007h`, the 12,502-byte compressed
-  interpreter occupies `4008h-70DDh`, and `70DEh-7FFFh` is erased padding.
+- in MSX1, the directly addressable 2 KiB `CGTABL` font begins at `2C1Eh`,
+  the menu streams at `341Eh`, and the logo streams at `35EFh`; the lower bank
+  currently uses `3B11h` bytes, leaving 1,263 bytes;
+- in MSX2, the font begins at `2F06h`, the menu streams at `3706h`, and the
+  logo streams at `38D7h`; the lower bank currently uses `3DF9h` bytes, leaving
+  519 bytes below the guarded `3E00h` ceiling;
+- the `RBC1` header occupies `4000h-4007h`, the 12,523-byte compressed
+  interpreter occupies `4008h-70F2h`, and `70F3h-7FFFh` is erased padding.
 
 Appending a third 16 KiB page would not produce a standard MAIN-ROM mapping.
 A Z80 has only the `0000h-7FFFh` BIOS window available for the conventional
@@ -131,11 +131,14 @@ designed for `4000h-7FFFh`. Its relevant layout is:
 | `4350h-43F7h` | MSX2 bitmap pixel adapter |
 | `4400h-74C1h` | preserved Z80 language core |
 | `74C2h-7E45h` | graphics, sound, and remaining platform services |
-| `7E46h-7FE9h` | cassette storage adapter |
+| `7E46h-7FEFh` | cassette/RainBIOS storage adapter |
 | `7FF0h-7FFFh` | RainBIOS `RBP1` descriptor |
 | `8000h-82FFh` | interpreter fixed RAM |
 | `8300h-833Dh` | MSX adapter state |
-| `833Eh-F2FFh` | initial program and dynamic-memory area |
+| `833Eh-E6DFh` | initial program and dynamic-memory area |
+| `E6E0h-E7DFh` | guard above the BASIC stack ceiling |
+| `E7E0h-EFFFh` | RainBIOS FAT12 work area |
+| `F000h-F2FFh` | standalone disk-system private state |
 
 It already executes safely from ROM in the page-1 cartridge window and has
 tests which reject writes to that window. The combined target reconstructs
@@ -144,8 +147,8 @@ interpreter build; the standalone cartridge continues to execute directly
 from ROM.
 
 The pinned sibling checkout is at commit
-`c9ed73ddd228f1dae8528f39ce590511ece7d00d`. Its built ROM has SHA-256
-`5f8d03ea3c9a3ae4b7113ae6d4799fdb1d4800cc4777fd5ffcbac35ad24a5027`.
+`dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33`. Its built ROM has SHA-256
+`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
 RainBIOS's dependency lock records both exact identities and rejects drift.
 
 ## Implemented 32 KiB layout
@@ -197,14 +200,15 @@ logo/menu tests cover 1983 and openMSX. The build fails if the lower-half image
 reaches `4000h`; silently truncating or overlapping the interpreter is
 unacceptable.
 
-The simpler logo and current menu leave 1,879 bytes of lower-bank reserve in
-MSX1 and 1,135 bytes in MSX2. Committing the entire upper half to the BASIC
-container remains the principal long-term technical cost of a traditional
-combined ROM, so the assembly boundary and size reporting remain mandatory.
+The simpler logo and current menu leave 1,263 bytes of lower-bank reserve in
+MSX1 and 519 bytes in MSX2 after adding the storage bridge. Committing
+the entire upper half to the BASIC container remains the principal long-term
+technical cost of a traditional combined ROM, so the assembly boundary and
+size reporting remain mandatory.
 
 The host suite gates the headroom: `test_lower_bank_preserves_headroom_ceiling`
-checks both main-ROM variants and fails if the last non-`FF` byte rises above
-`3C00h` (i.e. the reserve drops below 1 KiB) or falls below `3000h`. Raising
+checks both main-ROM variants and fails if the last non-`FF` byte reaches
+`3E00h` (i.e. the reserve drops below 512 bytes) or falls below `3000h`. Raising
 the ceiling is a deliberate, documented step before substantial new page-0
 work.
 
@@ -228,7 +232,7 @@ It copies the compressed stream to `C000h`, maps the contiguous RAM slot into
 page 1, expands the exact source-built image at `4000h`, and checks the `AB`
 header plus `RBP1` marker before transferring control. The selected payload
 slot is therefore `RAMAD0` (for example `FCh` in the standard test machine),
-and its RAM limit remains `F300h`. Treating an internal build error as
+and its RAM limit is `E6E0h`. Treating an internal build error as
 impossible would turn a corrupt ROM into an uncontrolled jump.
 
 External payload discovery remains separate from the internal fallback. The
@@ -337,7 +341,7 @@ firmware growth matters more than a traditional drop-in MAIN-ROM image.
 
 ### Compressed interpreter copied to RAM (implemented after regression testing)
 
-The interpreter compresses to 12,502 bytes with the already-vendored ZX0
+The interpreter compresses to 12,523 bytes with the already-vendored ZX0
 toolchain, fitting in the 16 KiB upper bank with an erased tail. The initial
 byte-for-byte ROM mapping worked for BASIC but exposed interpreter data and its
 `RBP1` tail to storage firmware scans; issue #62 demonstrated that those bytes
@@ -346,8 +350,9 @@ could perturb Sunrise/Nextor boot.
 The corrected design copies the stream to high RAM while ROM still owns page
 1, then maps the same contiguous RAM slot used in pages 2 and 3 into page 1 and
 expands the original image. This requires the 64 KiB contiguous RAM profile
-already used by the combined target. BASIC still owns `8000h-F2FFh` for state
-and programs, while its code/data image occupies `4000h-7FFFh`. The standalone
+already used by the combined target. BASIC owns `8000h-E6DFh` for state and
+programs, while RainBIOS and the disk system reserve `E6E0h-F2FFh`; its
+code/data image occupies `4000h-7FFFh`. The standalone
 ROM-safety tests remain relevant to the exact source artifact; combined-image
 tests additionally guard the ROM container and reconstructed RAM image.
 
@@ -537,8 +542,9 @@ regression matrix still to promote to the internal mapping:
 - external valid BASIC payload: selected precedence over the internal copy;
 - invalid external payload: fails closed without suppressing the internal copy;
 - MSX1 and MSX2 configurations, including expanded slots and a mapper;
-- interpreter console, graphics, cassette LOAD/SAVE, scrolling, editing, and
-  zero-ROM-write guards continue to pass from the internal slot mapping.
+- interpreter console, graphics, cassette LOAD/SAVE, FAT12 program
+  SAVE/LOAD/CHAIN, scrolling, editing, and zero-ROM-write guards continue to
+  pass from the internal slot mapping.
 
 ### Fault injection
 
@@ -583,8 +589,9 @@ Before making the combined image the recommended default, test at least:
    in 1983/openMSX; Arkanoid renders a complete board in both; GeoBench boots
    through Sunrise in both and through SD Mapper in 1983. Issue #62 corrected
    the `BREAKX` interrupt/matrix regression and the raw upper-page storage-probe
-   collision. Internal Graphics II, cassette, scrolling, editing, PSG sound,
-   Screen 2 sprites, and MSX2 Screens 5-8 are now exercised; real-hardware
+   collision. Internal Graphics II, cassette, FAT12 program persistence,
+   scrolling, editing, PSG sound, Screen 2 sprites, and MSX2 Screens 5-8 are
+   now exercised; real-hardware
    promotion is still pending. The current GeoBench image digest is
    `e04e549075f0f7c3ddb37a2991e772bb0e672d2230719cc0f51ee5fb2bde2a05`.
 8. **Pending — validate hardware and release packaging.** Only then consider
