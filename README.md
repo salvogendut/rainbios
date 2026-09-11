@@ -249,6 +249,9 @@ release bundles. Mount it as drive A in read/write mode. Its deliberately
 non-bootable sector zero lets RainBIOS fall through to embedded BASIC while
 retaining a valid FAT12 BPB and empty root directory.
 
+To try embedded BBC BASIC with the blank disk already mounted in the 1983 web
+emulator, open [BBC BASIC with a Drive A data disk](https://salvogendut.github.io/chimeric/js1983/?machine=nms8250&disk=../media/MSX/basic-blank.dsk).
+
 For example, launch native 1983 with a writable copy mounted as drive A:
 
 ```sh
