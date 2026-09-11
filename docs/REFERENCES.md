@@ -305,7 +305,11 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 ## 2026-07-30 — BBC BASIC (Z80) from CP/Mish
 
 - Original interpreter author: R. T. Russell
-- Open-source source tree:
+- Original BBC BASIC for Z80 project page:
+  `http://www.rtrussell.co.uk/bbcbasic/z80basic.html`
+- Open-source source tree in David Given's CP/Mish project:
+  `https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic`
+- Exact source snapshot used by the port:
   `https://github.com/davidgiven/cpmish/tree/d70c643a5db24007ad6533f92b701fd714a99b7f/third_party/bbcbasic`
 - CP/Mish snapshot:
   `d70c643a5db24007ad6533f92b701fd714a99b7f`
@@ -332,7 +336,7 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 - MSX `POINT()` parsing revision:
   `6ddaa57afe51e45c0ebec88666c846b01841e05b`
 - Reviewed media/MSX2 revision:
-  `dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33`
+  `67a3168c4579e137999214a75bf8a74e1762d245`
 - Official BBC BASIC keyword reference:
   `https://www.bbcbasic.co.uk/bbcbasic/mancpm/bbckey1.html`
 - Official BBC BASIC `SOUND` reference:

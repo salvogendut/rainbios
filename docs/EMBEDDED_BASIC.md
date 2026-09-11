@@ -147,7 +147,7 @@ interpreter build; the standalone cartridge continues to execute directly
 from ROM.
 
 The pinned sibling checkout is at commit
-`dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33`. Its built ROM has SHA-256
+`67a3168c4579e137999214a75bf8a74e1762d245`. Its built ROM has SHA-256
 `06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
 RainBIOS's dependency lock records both exact identities and rejects drift.
 

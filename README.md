@@ -155,9 +155,16 @@ payload after a bounded one-second logo interval and a final
 non-blocking keyboard check. Pressing Space while the logo is visible, or
 holding it through the final check, opens the options menu. A compatible
 external payload can still override the embedded copy, and the standalone 16
-KiB cartridge ROM remains available from the companion build. The dependency, memory layout,
-boot policy, licensing analysis, and release gates are in
-[docs/EMBEDDED_BASIC.md](docs/EMBEDDED_BASIC.md) and
+KiB cartridge ROM remains available from the companion build.
+
+Our MSX port is derived from the openly available
+[`third_party/bbcbasic`](https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic)
+source subtree in David Given's CP/Mish project. BBC BASIC for Z80 was
+originally written by R. T. Russell; its original project page is
+[`BBC BASIC for Z80`](http://www.rtrussell.co.uk/bbcbasic/z80basic.html).
+
+The dependency, memory layout, boot policy, licensing analysis, and release
+gates are in [docs/EMBEDDED_BASIC.md](docs/EMBEDDED_BASIC.md) and
 [docs/BASIC_PAYLOAD.md](docs/BASIC_PAYLOAD.md); the exact handoff is in
 [docs/abi/payload-v1.md](docs/abi/payload-v1.md). The code licenses permit this
 combination, but public use of the `BBC BASIC` name still requires permission

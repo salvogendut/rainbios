@@ -14,6 +14,12 @@ The port lives in the separate
 repository. RainBIOS pins its current integration commit and preserved
 upstream tree in `deps/bbcbasic-z80-msx.lock.json`.
 
+The port is derived from the openly available
+[`third_party/bbcbasic`](https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic)
+source subtree in David Given's CP/Mish project. The original BBC BASIC for
+Z80 interpreter was written by R. T. Russell; Russell's original project page
+is [`BBC BASIC for Z80`](http://www.rtrussell.co.uk/bbcbasic/z80basic.html).
+
 The repository has two important branches:
 
 - `upstream` preserves the BBC BASIC-only history extracted from the openly
@@ -23,7 +29,7 @@ The repository has two important branches:
 
 The immutable `upstream-cpmish-d70c643` tag has Git tree
 `e9d0ae3c5f53fbd78379aa0d3f38d13f31c823f6`, exactly matching
-`third_party/bbcbasic` at CP/Mish revision
+David Given's `third_party/bbcbasic` subtree at CP/Mish revision
 `d70c643a5db24007ad6533f92b701fd714a99b7f`.
 
 ## Component and license boundary
@@ -85,7 +91,7 @@ console adapter at `4013h-4247h`, sprite and MSX2 bitmap adapters in the
 `74C2h-7E45h`, storage adapter at `7E46h-7FEFh`, fixed state at
 `8000h-833Dh`, and user memory from `833Eh-E6DFh`. Its deterministic 16 KiB ROM ends
 with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
-`dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33`, and has SHA-256
+`67a3168c4579e137999214a75bf8a74e1762d245`, and has SHA-256
 `06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,

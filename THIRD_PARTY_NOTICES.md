@@ -14,13 +14,18 @@ texts.
 | `0000h-3FFFh`, except generated logo data and ZX0 decoder | Original RainBIOS firmware, font, and menu tables | This repository | [`LICENSE`](LICENSE) (BSD-3-Clause) |
 | Generated logo pattern/name/color data below `4000h` | RainBIOS boot logo | `src/logo-simple.png` converted by `tools/png_to_screen2.py` | [`LICENSES/CC0-1.0.txt`](LICENSES/CC0-1.0.txt) |
 | `src/zx0_decompress.asm`, `tools/zx0/` | ZX0 v2 compressor and standard forward Z80 decoder | ZX0 commit `ecde3a2ae05061fe06469ed46df81a33b7de7d86` | [`LICENSES/ZX0.txt`](LICENSES/ZX0.txt) (BSD-3-Clause) |
-| `4000h-7FFFh`, imported interpreter modules | R. T. Russell Z80 interpreter core, altered/ported for MSX | `bbcbasic-z80-msx` commit `dd8468b3f5d9fb9b44c2e273dfc8eb75c8f7fb33` | [`LICENSES/BBCBASIC-Z80.txt`](LICENSES/BBCBASIC-Z80.txt) (Zlib-style notice) |
+| `4000h-7FFFh`, imported interpreter modules | R. T. Russell Z80 interpreter core, altered/ported for MSX | David Given's [CP/Mish `third_party/bbcbasic` subtree](https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic), preserved and ported in `bbcbasic-z80-msx` commit `67a3168c4579e137999214a75bf8a74e1762d245` | [`LICENSES/BBCBASIC-Z80.txt`](LICENSES/BBCBASIC-Z80.txt) (Zlib-style notice) |
 | `4000h-7FFFh`, MSX cartridge, console, graphics, storage, state, and descriptor adapters | Independently written MSX platform layer | Same pinned companion commit | [`LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt`](LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt) |
 
 The companion payload is rebuilt from the pinned source checkout on every
 normal RainBIOS build and copied unchanged into the combined ROM. Its current
 expected SHA-256 is
 `06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
+
+The RainBIOS MSX port derives from the BBC BASIC source subtree published in
+David Given's CP/Mish project. The original BBC BASIC for Z80 was written by
+R. T. Russell and is documented on Russell's
+[`BBC BASIC for Z80` page](http://www.rtrussell.co.uk/bbcbasic/z80basic.html).
 
 The permissive source licenses do not grant RainBIOS permission to use the
 `BBC BASIC` name. The upstream project's naming permission is expressly not
