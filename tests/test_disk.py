@@ -257,9 +257,9 @@ class DiskRomLayoutTests(unittest.TestCase):
         self.assertEqual(self.rom[0x10], 0xC3)
 
     def test_private_fat12_capability_block_is_versioned(self) -> None:
-        for offset in (0x25, 0x28, 0x2B, 0x3D):
+        for offset in (0x25, 0x28, 0x2B, 0x3D, 0x4D):
             self.assertEqual(self.rom[offset], 0xC3)
-        self.assertEqual(self.rom[0x37:0x3D], b"RBFS\x01\x07")
+        self.assertEqual(self.rom[0x37:0x3D], b"RBFS\x01\x0f")
 
     def test_init_preserves_an_existing_disk_system_master(self) -> None:
         init = int.from_bytes(self.rom[2:4], "little") - 0x4000

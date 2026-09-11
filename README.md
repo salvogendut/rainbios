@@ -227,13 +227,16 @@ tokenized programs directly on a writable 720 KiB FAT12 disk:
 SAVE "A:DEMO"
 LOAD "A:DEMO"
 CHAIN "A:DEMO"
+*CAT
+*DIR
 ```
 
 The explicit `A:` prefix selects floppy storage; unprefixed names continue to
 use cassette storage. Names contain one to eight letters, digits, `_`, or `-`,
 and are stored case-insensitively with a fixed `.BBC` extension. `SAVE`
 creates or safely replaces a multi-cluster file, while `LOAD` refuses an
-oversize file before changing BASIC program memory.
+oversize file before changing BASIC program memory. `*CAT` and `*DIR` are
+equivalent commands which list readable 8.3 filenames from drive A.
 
 Create the ready-to-use, non-bootable data disk with:
 

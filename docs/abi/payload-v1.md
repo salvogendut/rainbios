@@ -43,7 +43,9 @@ bytes at `400Ah-400Fh` contain little-endian pointers to its cassette SAVE,
 cassette LOAD, and extended-error routines. This is a private companion
 contract, not part of payload descriptor v1. The payload consults RainBIOS's
 `RBFS` signature at `0165h` before entering the private dispatcher at `0169h`;
-standalone use on other firmware ignores these pointers and stays on cassette.
+operations 0/1 select SAVE/LOAD and operation 2 dispatches storage OSCLI
+commands such as `*CAT`/`*DIR`. Standalone use on other firmware ignores these
+pointers and stays on cassette.
 
 The descriptor describes requirements; successful validation authorizes the
 menu entry, not immediate cartridge startup. RainBIOS also verifies that pages

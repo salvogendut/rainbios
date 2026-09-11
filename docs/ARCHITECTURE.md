@@ -132,10 +132,12 @@ without touching the controller. `CHOICE` (4019h) returns one format choice;
 `DSKFMT` (401Ch) formats all 80 tracks via WD2793 Format Track (F0h).
 Filesystem services provide FAT12 `FS.LOAD` (4025h), `FS.DIR` (4028h), and
 multi-cluster create/replace through `FS.WRITE` (402Bh). A private versioned
-capability block adds bounded LOAD for the embedded BASIC bridge. Integration
+capability block adds bounded LOAD and a streaming text catalogue for the
+embedded BASIC bridge. Integration
 probes cover reads, persistent replacement, exact-length and bounded loads,
-no media, partial record-not-found, write-protect rejection, DSKCHG/GETDPB,
-DSKFMT, and the three public FAT12 filesystem services.
+streamed BASIC `*CAT`/`*DIR`, no media, partial record-not-found,
+write-protect rejection, DSKCHG/GETDPB, DSKFMT, and the three public FAT12
+filesystem services.
 See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
  M2A publishes the eight TMS9918 register shadows and current screen/table work

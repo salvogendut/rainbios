@@ -1,9 +1,12 @@
-; RainBIOS/BBC BASIC private storage bridge. A=0 selects SAVE and A=1 LOAD;
+; RainBIOS/BBC BASIC private storage bridge. A=0 selects SAVE, A=1 LOAD, and
+; A=2 dispatches a storage OSCLI command;
 ; HL addresses the CR-terminated name, DE the program buffer, and BC its byte
 ; count/capacity. Only A:NAME selects floppy storage. Other names tail-call the
 ; cassette routines published in the payload header, preserving the standalone
 ; cartridge's legacy behavior without baking their linked addresses into BIOS.
 basic_storage_dispatch:
+                cp 2
+                jp z,basic_storage_oscli
                 or a
                 ld ix,(BASIC_CASS_SAVE)
                 jr z,basic_storage_fallback_ready
@@ -34,14 +37,14 @@ basic_storage_save:
                 push bc
                 push de
                 call basic_storage_filename
-                jp nc,basic_storage_bad_filename
+                jr nc,basic_storage_bad_filename
                 pop de
                 pop bc
                 ld (BASIC_FS_WORK),bc
                 push hl
                 push de
                 call basic_storage_disk_slot
-                jp nc,basic_storage_unavailable_stacked
+                jr nc,basic_storage_unavailable_stacked
                 pop de
                 pop hl
                 push af
@@ -57,14 +60,14 @@ basic_storage_load:
                 push bc
                 push de
                 call basic_storage_filename
-                jp nc,basic_storage_bad_filename
+                jr nc,basic_storage_bad_filename
                 pop de
                 pop bc
                 ld (BASIC_FS_WORK),bc
                 push hl
                 push de
                 call basic_storage_disk_slot
-                jp nc,basic_storage_unavailable_stacked
+                jr nc,basic_storage_unavailable_stacked
                 pop de
                 pop hl
                 push af
@@ -155,7 +158,7 @@ basic_storage_filename_extension:
                 inc de
                 ld (de),a
                 inc de
-                ld a,'C'
+                inc a                           ; 'C' follows 'B'
                 ld (de),a
                 pop hl
                 scf
@@ -170,10 +173,11 @@ basic_storage_filename_fail:
 ; This avoids a hard-coded Omega slot and never jumps into an unrelated disk
 ; ROM which happens to occupy the standard page-1 window.
 basic_storage_disk_slot:
-                ld a,(H_PHYD)
+                ld hl,(H_PHYD)
+                ld a,l
                 cp #f7
                 jr nz,basic_storage_disk_slot_fail
-                ld a,(H_PHYD+1)
+                ld a,h
                 ld (BASIC_FS_WORK+FS_SLOT_OFFSET),a
                 ld hl,BASIC_FS_SIG
                 ld a,(BASIC_FS_WORK+FS_SLOT_OFFSET)

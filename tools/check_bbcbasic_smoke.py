@@ -17,7 +17,7 @@ def validate_report(text: str) -> None:
         "1.41421356",
         "RAINBIOS",
         ">RUN",
-        "Storage unsupported",
+        "No disk service",
         ">PRINT TIME>=1000",
         ">PRINT INKEY(1)",
     )

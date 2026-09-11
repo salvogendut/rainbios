@@ -14,13 +14,13 @@ texts.
 | `0000h-3FFFh`, except generated logo data and ZX0 decoder | Original RainBIOS firmware, font, and menu tables | This repository | [`LICENSE`](LICENSE) (BSD-3-Clause) |
 | Generated logo pattern/name/color data below `4000h` | RainBIOS boot logo | `src/logo-simple.png` converted by `tools/png_to_screen2.py` | [`LICENSES/CC0-1.0.txt`](LICENSES/CC0-1.0.txt) |
 | `src/zx0_decompress.asm`, `tools/zx0/` | ZX0 v2 compressor and standard forward Z80 decoder | ZX0 commit `ecde3a2ae05061fe06469ed46df81a33b7de7d86` | [`LICENSES/ZX0.txt`](LICENSES/ZX0.txt) (BSD-3-Clause) |
-| `4000h-7FFFh`, imported interpreter modules | R. T. Russell Z80 interpreter core, altered/ported for MSX | David Given's [CP/Mish `third_party/bbcbasic` subtree](https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic), preserved and ported in `bbcbasic-z80-msx` commit `f9034e91a78e741e1cff513515e1ebd70f4f6c9c` | [`LICENSES/BBCBASIC-Z80.txt`](LICENSES/BBCBASIC-Z80.txt) (Zlib-style notice) |
+| `4000h-7FFFh`, imported interpreter modules | R. T. Russell Z80 interpreter core, altered/ported for MSX | David Given's [CP/Mish `third_party/bbcbasic` subtree](https://github.com/davidgiven/cpmish/tree/master/third_party/bbcbasic), preserved and ported in `bbcbasic-z80-msx` commit `e198bb17666d3e001a2f1468cf583beeadb37397` | [`LICENSES/BBCBASIC-Z80.txt`](LICENSES/BBCBASIC-Z80.txt) (Zlib-style notice) |
 | `4000h-7FFFh`, MSX cartridge, console, graphics, storage, state, and descriptor adapters | Independently written MSX platform layer | Same pinned companion commit | [`LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt`](LICENSES/BBCBASIC-MSX-BSD-3-Clause.txt) |
 
 The companion payload is rebuilt from the pinned source checkout on every
 normal RainBIOS build and copied unchanged into the combined ROM. Its current
 expected SHA-256 is
-`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
+`e64ba3c3e72bf562d835cebfbb274283b3f0bb4bc0997123d6a00fdd38ceaa67`.
 
 The RainBIOS MSX port derives from the BBC BASIC source subtree published in
 David Given's CP/Mish project. The original BBC BASIC for Z80 was written by

@@ -16,7 +16,7 @@ BBC BASIC (Z80) Version 3.00+1
 RAINBIOS
 >RUN
          1         2         3>*CAT
-Storage unsupported
+No disk service
 >PRINT TIME>=1000
         -1
 >PRINT INKEY(1)

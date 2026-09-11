@@ -126,9 +126,9 @@ designed for `4000h-7FFFh`. Its relevant layout is:
 | Address | Purpose |
 | --- | --- |
 | `4000h-4012h` | ordinary `AB` cartridge header and entry veneer |
-| `4013h-4247h` | MSX console adapter |
-| `4248h-434Dh` | sprite command adapter |
-| `4350h-43F7h` | MSX2 bitmap pixel adapter |
+| `4013h-424Bh` | MSX console adapter |
+| `424Ch-4351h` | sprite command adapter |
+| `4352h-43F9h` | MSX2 bitmap pixel adapter |
 | `4400h-74C1h` | preserved Z80 language core |
 | `74C2h-7E45h` | graphics, sound, and remaining platform services |
 | `7E46h-7FEFh` | cassette/RainBIOS storage adapter |
@@ -147,8 +147,8 @@ interpreter build; the standalone cartridge continues to execute directly
 from ROM.
 
 The pinned sibling checkout is at commit
-`f9034e91a78e741e1cff513515e1ebd70f4f6c9c`. Its built ROM has SHA-256
-`06d7935ee22650e89c6526bb4b0d457e320060f17ebf809fe220f719d1e15fc5`.
+`e198bb17666d3e001a2f1468cf583beeadb37397`. Its built ROM has SHA-256
+`e64ba3c3e72bf562d835cebfbb274283b3f0bb4bc0997123d6a00fdd38ceaa67`.
 RainBIOS's dependency lock records both exact identities and rejects drift.
 
 ## Implemented 32 KiB layout

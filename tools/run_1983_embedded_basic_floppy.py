@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Exercise embedded BASIC program SAVE/CHAIN on a persistent FAT12 disk."""
+"""Exercise embedded BASIC SAVE/CHAIN/catalogue on a persistent FAT12 disk."""
 
 from __future__ import annotations
 
@@ -169,6 +169,22 @@ def main() -> int:
             saved_image = working.read_bytes()
             saved_program, chain = read_fat12_file(saved_image, FAT_NAME)
 
+            for command in ("*CAT\n", "*DIR\n"):
+                catalog_output = run_1983(
+                    arguments,
+                    paste=command,
+                    disk=working,
+                )
+                for expected in ("Drive A:", "TEST.BBC"):
+                    if expected not in catalog_output:
+                        raise ValueError(
+                            f"{command.strip()} omitted catalogue text {expected!r}"
+                        )
+                if "Syntax error" in catalog_output:
+                    raise ValueError(f"{command.strip()} left unparsed OSCLI text")
+                if working.read_bytes() != saved_image:
+                    raise ValueError(f"{command.strip()} changed the disk image")
+
             load_output = run_1983(
                 arguments,
                 paste=CHAIN_PROGRAM,
@@ -207,7 +223,8 @@ def main() -> int:
     print(
         "validated embedded BASIC FAT12 storage in 1983: "
         f"saved {len(saved_program)} bytes via clusters {chain}, "
-        "CHAIN survived restart, read-only/no-media errors were explicit"
+        "*CAT/*DIR listed TEST.BBC, CHAIN survived restart, "
+        "read-only/no-media errors were explicit"
     )
     return 0
 
