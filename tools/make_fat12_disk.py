@@ -29,13 +29,16 @@ FIRST_DIR = FIRST_FAT + FAT_COUNT * FAT_SIZE
 DIR_SECTORS = (ROOT_ENTRIES * 32 + SECTOR_SIZE - 1) // SECTOR_SIZE
 FIRST_DATA = FIRST_DIR + DIR_SECTORS
 
-# File: 8.3 name in the root directory, three clusters = 3 KiB.
+# File: 8.3 name in the root directory, three clusters = 3 KiB. The sparse
+# chain crosses the 8-bit cluster boundary and ends on an odd cluster so the
+# production FS.LOAD gate covers both halves of FAT12 entry decoding.
 FILE_NAME = b"RAIN    BIN"
-FILE_CLUSTERS = 3
+FILE_CHAIN = (2, 0x100, 0x101)
+FILE_CLUSTERS = len(FILE_CHAIN)
 FILE_SIZE = FILE_CLUSTERS * SPC * SECTOR_SIZE
-FIRST_CLUSTER = 2
+FIRST_CLUSTER = FILE_CHAIN[0]
 
-# Runs of the file pattern never collide on the 512-byte cluster boundary.
+# Runs of the file pattern never collide on the 1 KiB cluster boundary.
 EXPECTED = {
     0: 0x52,  # 'R'
     1: 0x42,  # 'B'
@@ -85,11 +88,14 @@ def make_boot_sector() -> bytes:
 
 
 def make_fats() -> bytes:
-    # FAT[0] = 0xFF9 (media), FAT[1] = 0xFFF, data chain 2 -> 3 -> 4 -> 0xFFF.
-    values = [0xFF0 | MEDIA, 0xFFF]
-    for start in range(FIRST_CLUSTER, FIRST_CLUSTER + FILE_CLUSTERS - 1):
-        values.append(start + 1)
-    values.append(0xFFF)
+    # FAT[0] = 0xFF9 (media), FAT[1] = 0xFFF, followed by the sparse test
+    # chain. Unmentioned clusters remain free.
+    values = [0] * (max(FILE_CHAIN) + 1)
+    values[0] = 0xFF0 | MEDIA
+    values[1] = 0xFFF
+    for current, following in zip(FILE_CHAIN, FILE_CHAIN[1:]):
+        values[current] = following
+    values[FILE_CHAIN[-1]] = 0xFFF
     fat = fat12_pack(values)
     fat += bytes(FAT_SIZE * SECTOR_SIZE - len(fat))
     return fat
@@ -127,7 +133,13 @@ def make_data() -> bytes:
     )
     content[0:4] = b"RBO1"
     image = bytearray(bytes((0xE5,)) * (SECTORS - FIRST_DATA) * SECTOR_SIZE)
-    image[0 : SPC * SECTOR_SIZE * FILE_CLUSTERS] = content
+    cluster_size = SPC * SECTOR_SIZE
+    for index, cluster in enumerate(FILE_CHAIN):
+        source = index * cluster_size
+        destination = (cluster - 2) * cluster_size
+        image[destination : destination + cluster_size] = content[
+            source : source + cluster_size
+        ]
     return bytes(image)
 
 

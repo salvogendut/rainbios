@@ -102,9 +102,9 @@ def validate_written_image(image: bytes) -> list[int]:
     if bytes(content[:WRITTEN_SIZE]) != expected:
         raise ValueError("MINI.TXT does not contain the replacement data")
 
-    # The deterministic fixture allocates 5-7 for the first version and 8-10
+    # The sparse RAIN.BIN fixture leaves 3-5 for the first version and 6-8
     # for its replacement. The old chain must have been reclaimed.
-    if any(fat12_entry(fat, item) != 0 for item in (5, 6, 7)):
+    if any(fat12_entry(fat, item) != 0 for item in (3, 4, 5)):
         raise ValueError("the replaced file's old FAT chain was not reclaimed")
     return chain
 

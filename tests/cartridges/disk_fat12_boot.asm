@@ -6,8 +6,9 @@
 ; bytes) from the deterministic FAT12 fixture disk into page-3 RAM. After the
 ; call the loader verifies the byte pattern at the destination and writes the
 ; results into the F3D0h marker block so the 1983 harness can validate the
-; complete read path: BPB parse, root-directory walk, FAT12 cluster chain, and
-; PHYDIO sector delivery.
+; complete read path: BPB parse, root-directory walk, the sparse FAT12 chain
+; 2 -> 256 -> 257 -> EOC, and PHYDIO sector delivery. This crosses the 8-bit
+; cluster boundary and leaves the end marker in an odd FAT12 entry.
 ;
 ; Assembled as a standalone C000h image; tools/make_fat12_disk.py places the
 ; first 512 bytes as the boot sector of the FAT12 probe disk.
