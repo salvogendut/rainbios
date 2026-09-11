@@ -336,7 +336,7 @@ CPU/VDP state, and rendered screens. See `docs/CARTRIDGE_COMPATIBILITY.md`.
 - MSX `POINT()` parsing revision:
   `6ddaa57afe51e45c0ebec88666c846b01841e05b`
 - Reviewed media/MSX2 and catalogue-OSCLI revision:
-  `e198bb17666d3e001a2f1468cf583beeadb37397`
+  `ad34c1c9489e6f4cf925cf6ca8c4e88588a095f3`
 - Official BBC BASIC keyword reference:
   `https://www.bbcbasic.co.uk/bbcbasic/mancpm/bbckey1.html`
 - Official BBC BASIC `SOUND` reference:

@@ -220,12 +220,14 @@ propagates a PHYDIO error.
 | A | `00h`, drive A |
 | DE | Work area, 2080 bytes, in page-2/3 RAM |
 
-Returns carry clear with A = 0 after writing a `Drive A:` heading and one
-printable 8.3 name per line through the main-BIOS `CHPUT` entry. Deleted,
-long-filename, and volume-label entries are omitted; an empty root directory
-prints `(empty)`. Carry set propagates parameter and PHYDIO errors. This
-streaming interface is private because it emits console text rather than raw
-directory records; public `FS.DIR` remains unchanged.
+Returns carry clear with A = 0 after writing a `Drive A:` heading, one
+printable 8.3 name per line, and `Free: n KiB` through the main-BIOS `CHPUT`
+entry. The free-space value is calculated from unallocated FAT12 clusters.
+Deleted, long-filename, and volume-label entries are omitted; an empty root
+directory prints `(empty)` before the free-space line. Carry set propagates
+parameter and PHYDIO errors. This streaming interface is private because it
+emits console text rather than raw directory records; public `FS.DIR` remains
+unchanged.
 
 ### FS.WRITE (402Bh)
 

@@ -664,6 +664,40 @@ dfd_first:
                 ld (ix+FS_L_CURDIR), l
                 ld (ix+FS_L_CURDIR+1), h
 
+                ; The text catalogue also reports allocation-unit space.
+                ; Keep the first FAT resident while the directory sectors use
+                ; the separate FS_DIR scratch buffer.  Raw FS.DIR callers do
+                ; not need the FAT and retain their existing read sequence.
+                ld a,(ix+FS_L_FLAGS)
+                or a
+                jr z,dfd_sector
+                ld e,(ix+FS_DIR+FS_RESERVED)
+                ld d,(ix+FS_DIR+FS_RESERVED+1)
+                ld (ix+FS_L_FIRSTFAT),e
+                ld (ix+FS_L_FIRSTFAT+1),d
+                ld l,(ix+FS_DIR+FS_FAT_SIZE)
+                ld h,(ix+FS_DIR+FS_FAT_SIZE+1)
+                ld a,h
+                or a
+                jp nz,disk_fs_error_12
+                ld a,l
+                or a
+                jp z,disk_fs_error_12
+                cp DISK_FAT_SIZE+1
+                jp nc,disk_fs_error_12
+                ld (ix+FS_L_FATSIZ),a
+                push ix
+                pop hl
+                ld de,FS_FAT
+                add hl,de
+                ld b,(ix+FS_L_FATSIZ)
+                ld e,(ix+FS_L_FIRSTFAT)
+                ld d,(ix+FS_L_FIRSTFAT+1)
+                ld c,DISK_MEDIA
+                xor a
+                call disk_phydio
+                ret c
+
 dfd_sector:
                 ld a, (ix+FS_D_SECTOR)
                 or a
@@ -781,6 +815,7 @@ dfd_ret:
                 ld hl,dfd_catalog_empty
                 call dfd_print_text
 dfd_catalog_ret:
+                call dfd_print_free
                 xor a
                 ret
 
@@ -861,10 +896,101 @@ dfd_print_text:
                 inc hl
                 jr dfd_print_text
 
+; Count the zero FAT12 entries belonging to the supported 720 KiB data area.
+; DISK_CLUSTERS is derived from the shared disk geometry, and each cluster is
+; exactly one KiB (two 512-byte sectors), so the free-cluster count is also
+; the free-space count in KiB.
+dfd_print_free:
+                xor a
+                ld (ix+FS_L_COUNT),a
+                ld (ix+FS_L_COUNT+1),a
+                ld de,2
+dfd_free_loop:
+                ld a,d
+                cp (DISK_CLUSTERS+2) >> 8
+                jr c,dfd_free_read
+                jr nz,dfd_free_done
+                ld a,e
+                cp (DISK_CLUSTERS+2) & #ff
+                jr nc,dfd_free_done
+dfd_free_read:
+                call disk_fat12_read
+                ld a,b
+                or c
+                jr nz,dfd_free_next
+                ld l,(ix+FS_L_COUNT)
+                ld h,(ix+FS_L_COUNT+1)
+                inc hl
+                ld (ix+FS_L_COUNT),l
+                ld (ix+FS_L_COUNT+1),h
+dfd_free_next:
+                inc de
+                jr dfd_free_loop
+dfd_free_done:
+                ld hl,dfd_catalog_free
+                call dfd_print_text
+                ld l,(ix+FS_L_COUNT)
+                ld h,(ix+FS_L_COUNT+1)
+                call dfd_print_u16_3
+                ld hl,dfd_catalog_kib
+                jp dfd_print_text
+
+; Print an unsigned value in the catalogue's 0..713 range without leading
+; zeroes.  Keeping this deliberately three-digit avoids pulling a general
+; formatting library into the 16 KiB disk ROM.
+dfd_print_u16_3:
+                ld b,'0'
+                ld de,100
+dfd_print_hundreds:
+                or a
+                sbc hl,de
+                jr c,dfd_print_hundreds_done
+                inc b
+                jr dfd_print_hundreds
+dfd_print_hundreds_done:
+                add hl,de
+                ld c,'0'
+                ld de,10
+dfd_print_tens:
+                or a
+                sbc hl,de
+                jr c,dfd_print_tens_done
+                inc c
+                jr dfd_print_tens
+dfd_print_tens_done:
+                add hl,de
+                ld a,b
+                cp '0'
+                jr z,dfd_print_maybe_tens
+                call dfd_print_digit
+                ld a,c
+                call dfd_print_digit
+                jr dfd_print_ones
+dfd_print_maybe_tens:
+                ld a,c
+                cp '0'
+                call nz,dfd_print_digit
+dfd_print_ones:
+                ld a,l
+                add a,'0'
+                jp #00a2
+
+dfd_print_digit:
+                push bc
+                push hl
+                call #00a2
+                pop hl
+                pop bc
+                ret
+
 dfd_catalog_header:
                 db "Drive A:",#0d,#0a,0
 dfd_catalog_empty:
                 db "(empty)",#0d,#0a,0
+dfd_catalog_free:
+                db "Free: ",0
+dfd_catalog_kib:
+                db " KiB",#0d,#0a,0
 
 
 ; FAT12 entry-write helper: store the 12-bit value in BC at cluster DE in
@@ -991,7 +1117,6 @@ fat12_read_odd:
                 rr l
                 srl h
                 rr l
-                ld h, 0
 fat12_read_done:
                 ld b, h
                 ld c, l

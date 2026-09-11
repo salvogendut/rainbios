@@ -45,7 +45,8 @@ available program area before writing any destination byte. `CHAIN` uses the
 same LOAD path and immediately runs the recovered program.
 
 `*CAT` and `*DIR` are equivalent, case-insensitive OSCLI commands which list
-the active drive-A root directory as readable 8.3 filenames. They take no
+the active drive-A root directory as readable 8.3 filenames, followed by a
+`Free: n KiB` line calculated from the FAT allocation entries. They take no
 arguments. RainBIOS streams the catalogue through `CHPUT`, so the BASIC
 payload does not need to reserve a 3.5 KiB raw-directory buffer.
 

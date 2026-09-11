@@ -91,6 +91,58 @@ def read_fat12_file(image: bytes, name: bytes) -> tuple[bytes, list[int]]:
     return bytes(content[:size]), chain
 
 
+def fat12_free_kib(image: bytes) -> int:
+    sector_size = int.from_bytes(image[11:13], "little")
+    sectors_per_cluster = image[13]
+    reserved = int.from_bytes(image[14:16], "little")
+    fat_count = image[16]
+    root_entries = int.from_bytes(image[17:19], "little")
+    total_sectors = int.from_bytes(image[19:21], "little")
+    fat_sectors = int.from_bytes(image[22:24], "little")
+    root_sectors = (root_entries * 32 + sector_size - 1) // sector_size
+    first_data = reserved + fat_count * fat_sectors + root_sectors
+    clusters = (total_sectors - first_data) // sectors_per_cluster
+    fat_start = reserved * sector_size
+    fat = image[fat_start : fat_start + fat_sectors * sector_size]
+    free_clusters = sum(
+        fat12_entry(fat, cluster) == 0
+        for cluster in range(2, clusters + 2)
+    )
+    free_bytes = free_clusters * sectors_per_cluster * sector_size
+    if free_bytes % 1024:
+        raise ValueError("free space is not an integral number of KiB")
+    return free_bytes // 1024
+
+
+def with_odd_high_cluster_chain(image: bytes) -> bytes:
+    """Reserve 3 -> 256 -> EOC in both FATs as an assembly regression."""
+    output = bytearray(image)
+    sector_size = int.from_bytes(output[11:13], "little")
+    reserved = int.from_bytes(output[14:16], "little")
+    fat_count = output[16]
+    fat_sectors = int.from_bytes(output[22:24], "little")
+    fat_size = fat_sectors * sector_size
+
+    def store(fat: bytearray, cluster: int, value: int) -> None:
+        offset = cluster + cluster // 2
+        if cluster & 1:
+            fat[offset] = (fat[offset] & 0x0F) | ((value & 0x0F) << 4)
+            fat[offset + 1] = (value >> 4) & 0xFF
+        else:
+            fat[offset] = value & 0xFF
+            fat[offset + 1] = (fat[offset + 1] & 0xF0) | (
+                (value >> 8) & 0x0F
+            )
+
+    for copy in range(fat_count):
+        start = (reserved * sector_size) + copy * fat_size
+        fat = output[start : start + fat_size]
+        store(fat, 3, 0x100)
+        store(fat, 0x100, 0xFFF)
+        output[start : start + fat_size] = fat
+    return bytes(output)
+
+
 def run_1983(
     arguments: argparse.Namespace,
     *,
@@ -162,12 +214,17 @@ def main() -> int:
             shutil.copy2(arguments.blank_disk, working)
             if working.read_bytes()[:3] != bytes(3):
                 raise ValueError("blank data disk is unexpectedly bootable")
+            # Reserve a valid chain whose odd cluster-3 entry has meaningful
+            # bits only above bit 7. A truncated FAT12 decoder would count
+            # cluster 3 as free and make the catalogue total one KiB too high.
+            working.write_bytes(with_odd_high_cluster_chain(working.read_bytes()))
 
             save_output = run_1983(arguments, paste=SAVE_PROGRAM, disk=working)
             if "Disk " in save_output or "No disk" in save_output:
                 raise ValueError("SAVE reported a disk error")
             saved_image = working.read_bytes()
             saved_program, chain = read_fat12_file(saved_image, FAT_NAME)
+            free_kib = fat12_free_kib(saved_image)
 
             for command in ("*CAT\n", "*DIR\n"):
                 catalog_output = run_1983(
@@ -175,7 +232,11 @@ def main() -> int:
                     paste=command,
                     disk=working,
                 )
-                for expected in ("Drive A:", "TEST.BBC"):
+                for expected in (
+                    "Drive A:",
+                    "TEST.BBC",
+                    f"Free: {free_kib} KiB",
+                ):
                     if expected not in catalog_output:
                         raise ValueError(
                             f"{command.strip()} omitted catalogue text {expected!r}"
@@ -223,7 +284,8 @@ def main() -> int:
     print(
         "validated embedded BASIC FAT12 storage in 1983: "
         f"saved {len(saved_program)} bytes via clusters {chain}, "
-        "*CAT/*DIR listed TEST.BBC, CHAIN survived restart, "
+        f"*CAT/*DIR listed TEST.BBC and {free_kib} KiB free, "
+        "CHAIN survived restart, "
         "read-only/no-media errors were explicit"
     )
     return 0
