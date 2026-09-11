@@ -20,9 +20,13 @@ from tools.make_fat12_disk import (
     make_image,
 )
 from tools.run_1983_disk_fswrite import fat12_entry
+from tools.run_1983_embedded_basic_floppy import fat12_free_kib
 
 
 class BlankFat12DiskTests(unittest.TestCase):
+    def test_blank_image_reports_all_data_clusters_free(self) -> None:
+        self.assertEqual(fat12_free_kib(make_blank_image()), 713)
+
     def test_blank_image_is_formatted_and_non_bootable(self) -> None:
         image = make_blank_image()
         self.assertEqual(len(image), DISK_SIZE)
@@ -63,6 +67,7 @@ class Fat12LoadFixtureTests(unittest.TestCase):
         for current, following in zip(FILE_CHAIN, FILE_CHAIN[1:]):
             self.assertEqual(fat12_entry(fat, current), following)
         self.assertEqual(fat12_entry(fat, FILE_CHAIN[-1]), 0xFFF)
+        self.assertEqual(fat12_free_kib(image), 710)
 
     def test_file_content_follows_sparse_chain(self) -> None:
         image = make_image()

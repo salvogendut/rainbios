@@ -236,7 +236,8 @@ use cassette storage. Names contain one to eight letters, digits, `_`, or `-`,
 and are stored case-insensitively with a fixed `.BBC` extension. `SAVE`
 creates or safely replaces a multi-cluster file, while `LOAD` refuses an
 oversize file before changing BASIC program memory. `*CAT` and `*DIR` are
-equivalent commands which list readable 8.3 filenames from drive A.
+equivalent commands which list readable 8.3 filenames from drive A followed
+by the available FAT12 space in KiB.
 
 Create the ready-to-use, non-bootable data disk with:
 

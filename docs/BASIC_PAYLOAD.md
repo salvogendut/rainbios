@@ -91,7 +91,7 @@ console adapter at `4013h-424Bh`, sprite and MSX2 bitmap adapters in the
 `74C2h-7E45h`, storage adapter at `7E46h-7FEFh`, fixed state at
 `8000h-833Dh`, and user memory from `833Eh-E6DFh`. Its deterministic 16 KiB ROM ends
 with payload descriptor v1 at `7FF0h-7FFFh`, is pinned at companion revision
-`e198bb17666d3e001a2f1468cf583beeadb37397`, and has SHA-256
+`ad34c1c9489e6f4cf925cf6ca8c4e88588a095f3`, and has SHA-256
 `e64ba3c3e72bf562d835cebfbb274283b3f0bb4bc0997123d6a00fdd38ceaa67`.
 A guarded openMSX test exercises editing, integer and
 floating-point expressions, strings, a stored program, error handling, time,
