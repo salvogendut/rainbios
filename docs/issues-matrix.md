@@ -57,6 +57,7 @@ milestone percentages are estimates derived from the roadmap slices
 | #138 | — | Remove stale 'read-only' references from all docs |
 | #139 | — | Fix: restore Nextor console after MSX2 graphics VDP state |
 | #147 | M7 | Clear the RainBIOS logo before DOS startup |
+| #191 | M7 | Correct the consecutive DSKIO diagnosis and gate write/read return behavior |
 | — | — | Transition from the boot logo to a clean yellow-on-logo-blue text console before cartridge INIT |
 
 ## Issue matrix
@@ -107,4 +108,4 @@ milestone percentages are estimates derived from the roadmap slices
 | 88 | CLOSED | M6 | M6: characterize keyboard buffer contracts |
 | 149 | OPEN | M7 | Allow the internal NMS8250 floppy to boot under Nextor |
 | 184 | MERGED | M7 | Add persistent floppy SAVE/LOAD for embedded BASIC |
-| 190 | OPEN | M7 | Fix consecutive DSKIO calls through CALSLT from C000h loaders |
+| 190 | MERGED | M7 | Fix consecutive DSKIO calls through CALSLT from C000h loaders |
