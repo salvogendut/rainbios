@@ -38,6 +38,14 @@ READ_BUF        equ #c400
 
 ; Entry point, matching the MSX-DOS kernel convention C000h+1Eh.
 disk_write_entry:
+                xor a
+                ld (m_write_carry),a
+                ld (m_write_error),a
+                ld (m_compare),a
+                ld (m_read_error),a
+                ld (pass_marker),a
+                ld (m_write_count),a
+                ld (m_read_count),a
                 ld a,1
                 ld (m_entry),a
                 ld a,(H_PHYD+1)                ; disk ROM slot ID
@@ -66,10 +74,12 @@ disk_write_fill_inner:
                 ld bc,#01f9
                 scf                            ; write operation
                 call CALSLT
+                ld (m_write_error),a
                 jr nc,disk_write_did_write
 
                 ; Write failed: record the DSKIO error number.
-                ld (m_write_error),a
+                ld a,b
+                ld (m_write_count),a
                 ld a,1
                 ld (m_write_carry),a
                 ld a,0
@@ -77,11 +87,46 @@ disk_write_fill_inner:
                 jr disk_write_done
 
 disk_write_did_write:
-                ; Write succeeded; the host verifies the image sector.
+                ; Write succeeded. PHYDIO may clobber IX and IY, so reload
+                ; both parts of the CALSLT target before the read-back call.
+                ld a,b
+                ld (m_write_count),a
                 xor a
                 ld (m_write_carry),a
-                ld (m_write_error),a
+                ld a,(H_PHYD+1)
+                push af
+                pop iy
+                ld ix,DSKIO
+                ld hl,READ_BUF
+                ld de,2
+                ld bc,#01f9
+                xor a                           ; drive 0, read operation
+                call CALSLT
+                ld (m_read_error),a
+                ld a,b
+                ld (m_read_count),a
+                jr nc,disk_write_did_read
+
                 jr disk_write_done
+
+disk_write_did_read:
+                ; Prove the second call returned and supplied exactly the
+                ; bytes written by the first call.
+                ld hl,WRITE_BUF
+                ld de,READ_BUF
+                ld bc,512
+disk_write_compare:
+                ld a,(de)
+                cp (hl)
+                jr nz,disk_write_done
+                inc de
+                inc hl
+                dec bc
+                ld a,b
+                or c
+                jr nz,disk_write_compare
+                ld a,1
+                ld (m_compare),a
 
 disk_write_done:
                 ld a,#5a
@@ -101,4 +146,7 @@ m_entry         equ #f3c5
 m_write_carry   equ #f3c0
 m_write_error   equ #f3c1
 m_compare       equ #f3c2
+m_read_error    equ #f3c3
 pass_marker     equ #f3c4
+m_write_count   equ #f3c6
+m_read_count    equ #f3c7

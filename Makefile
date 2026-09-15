@@ -2370,7 +2370,8 @@ test-1983-disk-read: \
 		--disk-a "$(DISK_PHYDIO_IMAGE)" --floppy-mode read-only \
 		--screenshot "$(EMULATOR_1983_DISK_PHYDIO_SCREEN)"
 	$(PYTHON) tools/check_boot_screenshot.py \
-		--size 640x480 $(EMULATOR_1983_DISK_PHYDIO_SCREEN)
+		--size 640x480 --min-colors 1 --max-colors 1 \
+		$(EMULATOR_1983_DISK_PHYDIO_SCREEN)
 
 test-1983-disk-no-media: $(MSX1_ROM) $(DISK_NO_MEDIA_TEST_ROM) \
 		$(DISK_NO_MEDIA_TEST_ROM_SYM)

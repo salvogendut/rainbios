@@ -56,6 +56,9 @@ the target returns, RainBIOS restores the exact previous primary and secondary
 selections and returns the target routine's normal registers and flags. Slot
 selection runs through the alternate banks so AF/BC/DE/HL reach the target
 unchanged. Maskable interrupts are inhibited before the target is selected.
+`CALSLT` does not add an IX/IY preservation guarantee: the called routine may
+clobber either register according to its own ABI, so a caller making another
+inter-slot call must reload both the target address and slot ID.
 Expanded calls expose separate saved primary and secondary selector fields at
 the standard stack offsets used by mapper kernels. If the target patches those
 page-2/page-3 fields after reallocating RAM, RainBIOS restores the patched

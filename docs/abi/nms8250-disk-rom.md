@@ -46,6 +46,10 @@ The normal `H.RUNC` path keeps this ROM mapped in page 1. The mixed-controller
 `H.PHYD` fallback restores the pre-call map before entering the loader instead.
 In both cases the page-3 loader may call `DSKIO` (`4010h`) and every other entry
 below through an inter-slot call using the slot ID published in `H.PHYD+1`.
+The loader must reload that byte into `IYH`, reload the entry address into
+`IX`, and supply the complete DSKIO input frame before every call. In
+particular, it must not reuse `IX` or `IY` after a previous PHYDIO request,
+because both registers are documented as clobbered.
 The cold-boot path invokes the hook once; the menu re-enters it on request. A
 return always means no bootable medium was found and the caller (cold boot or
 menu) continues.
