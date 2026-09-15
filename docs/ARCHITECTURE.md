@@ -136,8 +136,8 @@ capability block adds bounded LOAD and a streaming text catalogue for the
 embedded BASIC bridge. Integration
 probes cover reads, persistent replacement, exact-length and bounded loads,
 streamed BASIC `*CAT`/`*DIR`, no media, partial record-not-found,
-write-protect rejection, DSKCHG/GETDPB, DSKFMT, and the three public FAT12
-filesystem services.
+write-protect rejection, consecutive DSKIO write/read calls from a `C000h`
+loader, DSKCHG/GETDPB, DSKFMT, and the three public FAT12 filesystem services.
 See `docs/abi/nms8250-disk-rom.md` for the exact contract.
 
  M2A publishes the eight TMS9918 register shadows and current screen/table work

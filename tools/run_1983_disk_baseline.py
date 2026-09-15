@@ -46,7 +46,7 @@ def validate_disk_baseline_state(
     symbols: dict[str, int],
     expected_slot: str = "F4",
     expected_pass_label: str = "disk_baseline_pass",
-    minimum_sp: int = 0xF080,
+    minimum_sp: int = 0xF060,
 ) -> dict[str, str]:
     fields = validate_cartridge_state(
         text, expected_slot=expected_slot, minimum_sp=minimum_sp
@@ -80,7 +80,7 @@ def main() -> int:
     parser.add_argument("--expected-slot", default="F4")
     parser.add_argument("--expected-pass-label", default="disk_baseline_pass")
     parser.add_argument(
-        "--minimum-sp", type=lambda value: int(value, 0), default=0xF080
+        "--minimum-sp", type=lambda value: int(value, 0), default=0xF060
     )
     parser.add_argument("--disk-rom", type=pathlib.Path)
     parser.add_argument("--disk-a", type=pathlib.Path)

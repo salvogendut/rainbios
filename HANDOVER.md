@@ -618,9 +618,11 @@ sectors arrive byte-shifted. This affects both read and write transfers and
 needs a dedicated timing investigation (compare the driver's per-byte DRQ
 handling against the real NMS 8250 BIOS and openMSX's model) before the
 openMSX write gate can land. A second DSKIO call from a `C000h` boot-fixture
-context also crashes under 1983 (jumps into the fixture buffer); the 1983
-write gate uses a single-call design with host-side image verification to
-avoid it.
+was initially reported as a CALSLT crash under 1983. Issue #190 established
+that the fixture violated the documented PHYDIO clobber contract by reusing
+IY after the first request. The gate now reloads IYH/IX and the complete
+DSKIO input frame, performs the second read successfully, compares all 512
+bytes in guest RAM, and retains the independent host-side image verification.
 
 The M5 first slice now produces a distinct MSX2 main-ROM build
 (`build/rainbios_msx2.rom`) via `make msx2-main-rom`. It is validated by

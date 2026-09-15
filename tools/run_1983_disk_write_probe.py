@@ -29,7 +29,12 @@ PATTERN = bytes(range(256)) * 2
 
 M_WRITE_CARRY = BASE + 0
 M_WRITE_ERROR = BASE + 1
+M_COMPARE = BASE + 2
+M_READ_ERROR = BASE + 3
 M_PASS = BASE + 4
+M_ENTRY = BASE + 5
+M_WRITE_COUNT = BASE + 6
+M_READ_COUNT = BASE + 7
 
 
 def parse_markers(text: str) -> dict[int, int]:
@@ -43,6 +48,8 @@ def parse_markers(text: str) -> dict[int, int]:
 
 def check_markers(text: str, *, write_protect: bool) -> None:
     markers = parse_markers(text)
+    if markers.get(M_ENTRY) != 0x01:
+        raise ValueError("DSKIO write fixture did not record its entry")
     if markers.get(M_PASS) != 0x5A:
         raise ValueError("DSKIO write fixture did not reach its pass label")
     if write_protect:
@@ -54,6 +61,18 @@ def check_markers(text: str, *, write_protect: bool) -> None:
             raise ValueError(
                 f"write-protect error={markers.get(M_WRITE_ERROR)!r}, expected 3"
             )
+        if markers.get(M_WRITE_COUNT) != 0x00:
+            raise ValueError(
+                "write-protect completed count="
+                f"{markers.get(M_WRITE_COUNT)!r}, expected 0"
+            )
+        if markers.get(M_COMPARE) != 0x00 or markers.get(M_READ_COUNT) != 0x00:
+            raise ValueError("write-protect path unexpectedly attempted read-back")
+        if markers.get(M_READ_ERROR) != 0x00:
+            raise ValueError(
+                "write-protect read-back error marker="
+                f"{markers.get(M_READ_ERROR)!r}, expected 0"
+            )
     else:
         if markers.get(M_WRITE_CARRY) != 0x00:
             raise ValueError(
@@ -63,6 +82,22 @@ def check_markers(text: str, *, write_protect: bool) -> None:
             raise ValueError(
                 f"writable error={markers.get(M_WRITE_ERROR)!r}, expected 0"
             )
+        if markers.get(M_WRITE_COUNT) != 0x01:
+            raise ValueError(
+                f"write completed count={markers.get(M_WRITE_COUNT)!r}, expected 1"
+            )
+        if markers.get(M_READ_ERROR) != 0x00:
+            raise ValueError(
+                f"read-back error={markers.get(M_READ_ERROR)!r}, expected 0"
+            )
+        if markers.get(M_COMPARE) != 0x01:
+            raise ValueError(
+                f"read-back compare={markers.get(M_COMPARE)!r}, expected 1"
+            )
+        if markers.get(M_READ_COUNT) != 0x01:
+            raise ValueError(
+                f"read completed count={markers.get(M_READ_COUNT)!r}, expected 1"
+            )
 
 
 def check_image_written(image: pathlib.Path) -> None:
@@ -71,6 +106,11 @@ def check_image_written(image: pathlib.Path) -> None:
         sector = handle.read(SECTOR_SIZE)
     if sector != PATTERN:
         raise ValueError("disk image sector 2 does not hold the written pattern")
+
+
+def check_image_unchanged(image: pathlib.Path, original: bytes) -> None:
+    if image.read_bytes() != original:
+        raise ValueError("write-protected disk image changed")
 
 
 def main() -> int:
@@ -88,6 +128,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as directory:
         working = pathlib.Path(directory) / "disk-write.dsk"
         shutil.copy2(arguments.disk_a, working)
+        original = working.read_bytes()
         command = [
             arguments.emulator,
             "--config",
@@ -112,7 +153,7 @@ def main() -> int:
             "300",
             "--dump-state",
             "--dump-ram",
-            "0xF3C0:0x5",
+            "0xF3C0:0x8",
             "--screenshot",
             str(arguments.screenshot),
         ]
@@ -127,7 +168,9 @@ def main() -> int:
             return result.returncode
         try:
             check_markers(result.stdout, write_protect=arguments.write_protect)
-            if not arguments.write_protect:
+            if arguments.write_protect:
+                check_image_unchanged(working, original)
+            else:
                 check_image_written(working)
         except (ValueError, OSError) as error:
             print(f"error: invalid 1983 DSKIO write result: {error}", file=sys.stderr)
@@ -135,7 +178,10 @@ def main() -> int:
     if arguments.write_protect:
         print("validated 1983 DSKIO write-protect: error 3, image untouched")
     else:
-        print("validated 1983 DSKIO write path: sector 2 pattern persisted")
+        print(
+            "validated 1983 consecutive DSKIO calls: "
+            "sector 2 read-back matched and pattern persisted"
+        )
     return 0
 
 

@@ -209,12 +209,12 @@ make test-1983 \
 | `test-1983-disk-boot` | Test disk-ROM bootstrap hook and preserve the scan when `INIT` claims `F300h` work RAM |
 | `test-1983-disk-boot-production` | Production ROM clears the boot logo to a uniform Screen 0 and loads a two-sector boot fixture; the fixture captures the loader inputs (HL=DISKVE F323h, DE=ENAKRN 0) at the C000h+1Eh contract |
 | `test-1983-disk-bdos` | Source-built DOS1 loader/system fixture on both RainBIOS MSX1 and MSX2: cold handoff on a cleared 40-column Screen 0 with the cursor homed, standard communication state, page-1 loading, `$$INIT`, the resident `CA06h` to `F37Dh` CALL-5 gate, version/login/default-drive calls, blocking buffered console input driven by scripted `OK` plus Return, and FCB Search First/Search Next over a root containing enough volume/deleted/LFN entries to exercise the 16-bit FS.DIR count before exact and wildcard matches |
-| `test-1983-disk-write` | DSKIO write path: a fixture writes a deterministic 512-byte pattern to logical sector 2 and the host byte-verifies the image |
+| `test-1983-disk-write` | Consecutive DSKIO calls from a C000h loader: the fixture writes a deterministic 512-byte pattern to logical sector 2, reloads the documented CALSLT/DSKIO call frame, reads it back through a second call, checks both completed-sector counts, compares all 512 bytes in guest RAM, and the host independently byte-verifies the image |
 | `test-1983-disk-write-protect` | DSKIO write-protect: the same write against a read-only image reports error 3 and leaves the image untouched |
 | `test-1983-disk-boot-fallback` | Empty/non-bootable media returns to the menu |
 | `test-1983-disk-boot-menu` | Menu option 2 reaches the production bootstrap |
 | `test-1983-disk-menu-stub` | Option 3 without a storage cartridge remains in the menu |
-| `test-1983-disk-read` | Multi-sector, side/track, and boundary reads, and the motor-arm adoption: after the access the drive stays on until the RainBIOS IM 1 handler stops it (reaches `disk_phydio_motor_pass`) |
+| `test-1983-disk-read` | Multi-sector, side/track, and boundary reads, the documented expanded page-1 extension stack, and the motor-arm adoption: after the access the drive stays on until the RainBIOS IM 1 handler stops it (reaches `disk_phydio_motor_pass`) |
 | `test-1983-disk-no-media` | No-media error behavior |
 | `test-1983-disk-dskchg-getdpb` | Media-change state and DPB publication with media |
 | `test-1983-disk-dskchg-no-media` | Media-change/DPB behavior without media |

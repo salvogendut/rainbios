@@ -748,11 +748,15 @@ COMMAND.COM's code or return address.
 DSKIO now supports writes: the production NMS 8250 disk ROM writes sectors
 through the WD2793 (`A4h`) and persists them to the medium, reporting the
 write-protect error (`A = 3`) on a read-only disk. `test-1983-disk-write`
-boots a fixture that writes a deterministic 512-byte pattern to logical
-sector 2 and byte-verifies the image; `test-1983-disk-write-protect` verifies
-the read-only rejection with the image untouched. A pre-existing CALSLT
-double-call crash (a second DSKIO call from a `C000h` fixture context corrupts
-the return stack) is noted but not exercised by these gates.
+boots a `C000h` fixture that writes a deterministic 512-byte pattern to
+logical sector 2, rebuilds the complete DSKIO/CALSLT input frame, reads the
+sector back through a second call, compares it in guest RAM, and then
+byte-verifies the image on the host. `test-1983-disk-write-protect` verifies
+the read-only rejection with the image untouched. The earlier apparent
+CALSLT double-call crash was a fixture ABI violation: PHYDIO documents IX and
+IY as clobbered, but the fixture reused the first call's IY slot selector.
+Issue #190 corrects that diagnosis and keeps the consecutive-call sequence as
+a regression gate.
 
 FAT12 filesystem services are implemented and gated. FS.LOAD (4025h) parses
 the boot-sector BPB, walks the root directory and cluster chain, and copies
